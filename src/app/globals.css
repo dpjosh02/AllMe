@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f7f4ee;
+  --foreground: #181713;
+  --muted: #6d6a61;
+  --line: #d8d1c3;
+  --panel: #fffdf8;
+  --panel-strong: #ede7dc;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --warn: #b45309;
+  --success: #15803d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background:
+    linear-gradient(135deg, rgb(247 244 238 / 90%), rgb(233 239 235 / 86%)),
+    radial-gradient(circle at top left, rgb(15 118 110 / 16%), transparent 34%),
+    var(--background);
+  color: var(--foreground);
+  font-family:
+    "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgb(15 118 110 / 24%);
+}
