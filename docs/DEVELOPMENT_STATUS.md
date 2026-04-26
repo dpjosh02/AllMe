@@ -18,6 +18,7 @@ Implemented:
 - Toggleable light/dark theme control in the top-right corner of the app.
 - Finance dashboard account filtering for recent transactions.
 - Positive monetary values render green and negative monetary values render red.
+- Finance categorization analysis documented in `docs/finance/CATEGORIZATION_ANALYSIS.md`.
 
 ## Verified Local Import
 
