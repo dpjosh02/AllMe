@@ -103,9 +103,11 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
   }, []);
 
   function updateDraftLookback(field: keyof LookbackInput, value: string) {
+    const numericValue = value.replace(/\D/g, "");
+
     setDraftLookback((current) => ({
       ...current,
-      [field]: Math.max(0, Number(value) || 0),
+      [field]: Math.max(0, Number(numericValue) || 0),
     }));
   }
 
@@ -260,9 +262,10 @@ function LookbackField({
       <span>{label}</span>
       <input
         className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
-        min={0}
+        inputMode="numeric"
         onChange={(event) => onChange(event.target.value)}
-        type="number"
+        pattern="[0-9]*"
+        type="text"
         value={value}
       />
     </label>

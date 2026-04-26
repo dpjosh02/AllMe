@@ -80,7 +80,9 @@ export function RecentTransactions({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const accountFilterRef = useRef<HTMLDivElement>(null);
   const calendarFilterRef = useRef<HTMLDivElement>(null);
-  const [afterDate, setAfterDate] = useState<string | null>(null);
+  const [afterDate, setAfterDate] = useState<string | null>(() =>
+    toDateKey(addMonths(new Date(), -1)),
+  );
   const [beforeDate, setBeforeDate] = useState<string | null>(null);
   const [isReviewingUncategorized, setIsReviewingUncategorized] = useState(false);
   const [selectedTransaction, setSelectedTransaction] =
@@ -713,6 +715,21 @@ function isTransactionInDateRange({
 
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, offset: number) {
+  const next = new Date(date);
+  const originalDay = next.getDate();
+
+  next.setDate(1);
+  next.setMonth(next.getMonth() + offset);
+  next.setDate(Math.min(originalDay, getDaysInMonth(next)));
+
+  return next;
+}
+
+function getDaysInMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
 function getCalendarDays(month: Date) {
