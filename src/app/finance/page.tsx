@@ -5,9 +5,9 @@ import {
   Banknote,
   CircleDollarSign,
   Database,
-  RefreshCcw,
 } from "lucide-react";
 
+import { RecentTransactions } from "@/features/finance/dashboard/components/recent-transactions";
 import { getFinanceDashboardData } from "@/features/finance/dashboard/queries";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 
 export default async function FinancePage() {
   const data = await getFinanceDashboardData();
+  const accountNames = data.accounts.map((account) => account.name);
 
   return (
     <main className="min-h-screen px-5 py-5 sm:px-8 lg:px-10">
@@ -62,12 +63,14 @@ export default async function FinancePage() {
             icon={<ArrowDownLeft aria-hidden="true" className="h-5 w-5" />}
             label="Inflows"
             value={formatCurrency(data.summary.totalInflow)}
+            valueClassName="text-[var(--success)]"
           />
           <MetricCard
             detail="Spend and transfers out"
             icon={<ArrowUpRight aria-hidden="true" className="h-5 w-5" />}
             label="Outflows"
-            value={formatCurrency(data.summary.totalOutflow)}
+            value={`-${formatCurrency(data.summary.totalOutflow)}`}
+            valueClassName="text-[var(--danger)]"
           />
         </section>
 
@@ -94,11 +97,11 @@ export default async function FinancePage() {
                     <div>
                       <p className="font-semibold">{account.name}</p>
                       <p className="text-sm text-[var(--muted)]">
-                        {account.institutionName ?? "Unknown institution"} · {account.type}
+                        {account.institutionName ?? "Unknown institution"}
                       </p>
                     </div>
                     <div className="text-left sm:text-right">
-                      <p className="font-semibold">
+                      <p className={`font-semibold ${getAmountClass(account.balance ?? "0")}`}>
                         {account.balance ? formatCurrency(account.balance) : "--"}
                       </p>
                       <p className="text-sm text-[var(--muted)]">
@@ -113,53 +116,10 @@ export default async function FinancePage() {
             </div>
           </div>
 
-          <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold">Recent Transactions</h2>
-                <p className="text-sm text-[var(--muted)]">
-                  Most recent normalized Fintable transactions.
-                </p>
-              </div>
-              <RefreshCcw aria-hidden="true" className="h-6 w-6 text-[var(--accent)]" />
-            </div>
-            <div className="divide-y divide-[var(--line)]">
-              {data.recentTransactions.length === 0 ? (
-                <EmptyState label="No transactions imported yet." />
-              ) : (
-                data.recentTransactions.map((transaction) => (
-                  <div
-                    className="grid gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]"
-                    key={transaction.id}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">{transaction.description}</p>
-                      <p className="truncate text-sm text-[var(--muted)]">
-                        {transaction.accountName}
-                        {transaction.category ? ` · ${transaction.category}` : ""}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <p
-                        className={
-                          Number(transaction.amount) < 0
-                            ? "font-semibold text-[var(--foreground)]"
-                            : "font-semibold text-[var(--success)]"
-                        }
-                      >
-                        {formatCurrency(transaction.amount)}
-                      </p>
-                      <p className="text-sm text-[var(--muted)]">
-                        {dateFormatter.format(
-                          new Date(`${transaction.postedDate}T00:00:00`),
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <RecentTransactions
+            accountNames={accountNames}
+            transactions={data.recentTransactions}
+          />
         </section>
       </div>
     </main>
@@ -171,11 +131,13 @@ function MetricCard({
   icon,
   label,
   value,
+  valueClassName,
 }: {
   detail: string;
   icon: React.ReactNode;
   label: string;
   value: string;
+  valueClassName?: string;
 }) {
   return (
     <article className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
@@ -185,7 +147,7 @@ function MetricCard({
         </h2>
         {icon}
       </div>
-      <p className="text-3xl font-semibold">{value}</p>
+      <p className={`text-3xl font-semibold ${valueClassName ?? ""}`}>{value}</p>
       <p className="mt-2 text-sm text-[var(--muted)]">{detail}</p>
     </article>
   );
@@ -219,7 +181,7 @@ function ImportStatus({
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="rounded-md border border-dashed border-[var(--line)] bg-white/50 p-4 text-sm text-[var(--muted)]">
+    <div className="rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-4 text-sm text-[var(--muted)]">
       {label}
     </div>
   );
@@ -227,4 +189,8 @@ function EmptyState({ label }: { label: string }) {
 
 function formatCurrency(value: string) {
   return currencyFormatter.format(Number(value));
+}
+
+function getAmountClass(value: string) {
+  return Number(value) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]";
 }

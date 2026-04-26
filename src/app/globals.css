@@ -12,6 +12,34 @@
   --accent-strong: #115e59;
   --warn: #b45309;
   --success: #15803d;
+  --danger: #b91c1c;
+  --input: #ffffffb3;
+  --empty: #ffffff80;
+  --body-gradient:
+    linear-gradient(135deg, rgb(247 244 238 / 90%), rgb(233 239 235 / 86%)),
+    radial-gradient(circle at top left, rgb(15 118 110 / 16%), transparent 34%),
+    var(--background);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #11140f;
+  --foreground: #f4f1e9;
+  --muted: #aca699;
+  --line: #3a4038;
+  --panel: #1a1f19;
+  --panel-strong: #242a22;
+  --accent: #5eead4;
+  --accent-strong: #99f6e4;
+  --warn: #f59e0b;
+  --success: #4ade80;
+  --danger: #f87171;
+  --input: #11170fcc;
+  --empty: #11170f80;
+  --body-gradient:
+    linear-gradient(135deg, rgb(17 20 15 / 96%), rgb(27 36 31 / 92%)),
+    radial-gradient(circle at top left, rgb(94 234 212 / 12%), transparent 34%),
+    var(--background);
 }
 
 * {
@@ -26,10 +54,7 @@ html {
 body {
   min-height: 100%;
   margin: 0;
-  background:
-    linear-gradient(135deg, rgb(247 244 238 / 90%), rgb(233 239 235 / 86%)),
-    radial-gradient(circle at top left, rgb(15 118 110 / 16%), transparent 34%),
-    var(--background);
+  background: var(--body-gradient);
   color: var(--foreground);
   font-family:
     "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;

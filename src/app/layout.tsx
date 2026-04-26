@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,8 +15,11 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeToggle />
+        {children}
+      </body>
     </html>
   );
 }

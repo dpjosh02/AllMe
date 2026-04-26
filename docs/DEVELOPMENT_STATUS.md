@@ -15,6 +15,9 @@ Implemented:
 - Fintable dry-run command that reads and parses the private sheet without printing financial details.
 - Fintable import command that writes parsed data into PostgreSQL.
 - First `/finance` dashboard backed by imported Postgres data.
+- Toggleable light/dark theme control in the top-right corner of the app.
+- Finance dashboard account filtering for recent transactions.
+- Positive monetary values render green and negative monetary values render red.
 
 ## Verified Local Import
 
