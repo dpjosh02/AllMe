@@ -8,7 +8,7 @@ import {
   Clock3,
   Database,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const reviewUncategorizedTransactionsEvent =
   "allme:review-uncategorized-transactions";
@@ -55,6 +55,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 
 export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const lookbackRef = useRef<HTMLDivElement>(null);
   const [lookback, setLookback] = useState<LookbackInput>(emptyLookback);
   const [draftLookback, setDraftLookback] = useState<LookbackInput>(emptyLookback);
   const sinceDate = getSinceDate(lookback);
@@ -83,6 +84,23 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
   ).length;
   const uncategorizedCount = filteredTransactions.length - categorizedCount;
   const lookbackLabel = formatLookbackLabel({ lookback, sinceDate });
+
+  useEffect(() => {
+    function closeLookback(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node) || lookbackRef.current?.contains(target)) {
+        return;
+      }
+
+      setIsOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeLookback);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeLookback);
+    };
+  }, []);
 
   function updateDraftLookback(field: keyof LookbackInput, value: string) {
     setDraftLookback((current) => ({
@@ -113,7 +131,7 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
             Transaction metrics update from the selected lookback date through today.
           </p>
         </div>
-        <div className="relative">
+        <div className="relative" ref={lookbackRef}>
           <button
             aria-expanded={isOpen}
             className="inline-flex h-10 min-w-52 items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
@@ -208,7 +226,7 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
               <span>{uncategorizedCount} need review</span>
               {uncategorizedCount > 0 ? (
                 <button
-                  className="font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
+                  className="inline-flex min-h-8 items-center rounded-full border border-[var(--accent-strong)] bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--panel)] shadow-sm transition hover:bg-[var(--accent-strong)]"
                   onClick={() =>
                     window.dispatchEvent(new Event(reviewUncategorizedTransactionsEvent))
                   }

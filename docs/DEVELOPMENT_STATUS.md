@@ -29,6 +29,8 @@ Implemented:
 - Transaction search in Recent Transactions.
 - Uncategorized review entry point from the Categorized metric card.
 - Fidelity core/cash-reserve sweep handling so automatic settlement mechanics do not distort spending, income, or deliberate investment behavior.
+- Account detail pages at `/finance/accounts/[accountId]`.
+- Transaction detail modal with raw Fintable/Plaid category context.
 
 ## Verified Local Import
 
@@ -130,6 +132,13 @@ Recent finance dashboard work:
 - Account imports are keyed by Fintable source account id. If Fintable changes a source account id for an existing account name, the importer merges into the existing account instead of creating a duplicate or failing on account name uniqueness.
 - Recent Transactions includes a search input for finding transactions by description/name.
 - The Categorized metric card includes a `Review` action when uncategorized transactions exist. Clicking it switches Recent Transactions into an uncategorized-only review mode.
+- Recent Transactions filter controls render as a dedicated row under the section header so the header does not collapse awkwardly beside Accounts.
+- Recent Transactions rows open a detail modal that shows displayed transaction information plus selected raw response category and description fields.
+- The transaction detail modal includes a local database delete action with an in-modal confirmation warning and a browser-local "do not show again" preference.
+- Current delete behavior removes the local transaction row only. A future Fintable sync can re-import the row unless a persistent ignore/blocklist table is added.
+- Account cards on the finance L1 page navigate to account detail pages instead of exposing inline rename controls.
+- Account display-name editing now lives on the account L2 page.
+- Calendar, account, and lookback dropdowns close when the user taps outside their border.
 
 Verified after this work:
 
@@ -175,6 +184,7 @@ The dashboard account query now reads only each account's latest balance snapsho
 Recent project milestones:
 
 ```text
+9373315 Refresh finance development status
 c760912 Improve transaction review and cash flow categorization
 1d888ec Fix Fintable account sync conflicts
 e165044 Compact transaction date filter labels
@@ -210,5 +220,5 @@ aa4df6f Initial project blueprint
 3. Add a category/rule editor UI.
 4. Consider moving transaction filtering server-side once the dataset grows beyond a few hundred rows.
 5. Add app navigation so `/`, `/finance`, and future sections share one shell.
-6. Add a finance account detail page.
-7. Add a visible import status/history page.
+6. Add a visible import status/history page.
+7. Add a persistent ignored/deleted source-transaction table if transaction deletion should survive future Fintable syncs.

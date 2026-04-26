@@ -1,9 +1,6 @@
-"use client";
-
-import { CircleDollarSign, Pencil, RotateCcw, X } from "lucide-react";
-import { useState } from "react";
-
-import { renameFinanceAccount } from "@/features/finance/dashboard/actions";
+import { ArrowRight, CircleDollarSign } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 
 type Account = {
   id: string;
@@ -30,8 +27,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export function AccountsPanel({ accounts }: AccountsPanelProps) {
-  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
-
   return (
     <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-4">
@@ -48,86 +43,33 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
           <EmptyState label="No accounts imported yet." />
         ) : (
           accounts.map((account) => {
-            const isEditing = editingAccountId === account.id;
             const displayName = account.displayName ?? account.name;
+            const accountHref = `/finance/accounts/${account.id}` as Route;
 
             return (
-              <div
-                className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[1fr_auto]"
+              <Link
+                className="grid gap-3 py-4 transition first:pt-0 last:pb-0 hover:text-[var(--accent-strong)] sm:grid-cols-[1fr_auto]"
+                href={accountHref}
                 key={account.id}
               >
                 <div className="min-w-0">
-                  {isEditing ? (
-                    <form
-                      action={async (formData) => {
-                        await renameFinanceAccount(formData);
-                        setEditingAccountId(null);
-                      }}
-                      className="flex flex-col gap-2 sm:flex-row"
-                    >
-                      <input name="accountId" type="hidden" value={account.id} />
-                      <input
-                        autoFocus
-                        className="min-h-10 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
-                        defaultValue={displayName}
-                        name="displayName"
-                        placeholder={account.name}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                          type="submit"
-                        >
-                          Save
-                        </button>
-                        <button
-                          aria-label="Cancel account rename"
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
-                          onClick={() => setEditingAccountId(null)}
-                          type="button"
-                        >
-                          <X aria-hidden="true" className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="flex min-w-0 items-start gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{displayName}</p>
-                        <p className="text-sm text-[var(--muted)]">
-                          {formatInstitutionName(account.institutionName)}
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{displayName}</p>
+                      <p className="text-sm text-[var(--muted)]">
+                        {formatInstitutionName(account.institutionName)}
+                      </p>
+                      {account.displayName ? (
+                        <p className="truncate text-xs text-[var(--muted)]">
+                          Fintable: {account.name}
                         </p>
-                        {account.displayName ? (
-                          <p className="truncate text-xs text-[var(--muted)]">
-                            Fintable: {account.name}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 gap-1">
-                        <button
-                          aria-label={`Rename ${displayName}`}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-[var(--muted)] transition hover:border-[var(--line)] hover:text-[var(--foreground)]"
-                          onClick={() => setEditingAccountId(account.id)}
-                          type="button"
-                        >
-                          <Pencil aria-hidden="true" className="h-4 w-4" />
-                        </button>
-                        {account.displayName ? (
-                          <form action={renameFinanceAccount}>
-                            <input name="accountId" type="hidden" value={account.id} />
-                            <input name="displayName" type="hidden" value="" />
-                            <button
-                              aria-label={`Reset ${displayName} to Fintable name`}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-[var(--muted)] transition hover:border-[var(--line)] hover:text-[var(--foreground)]"
-                              type="submit"
-                            >
-                              <RotateCcw aria-hidden="true" className="h-4 w-4" />
-                            </button>
-                          </form>
-                        ) : null}
-                      </div>
+                      ) : null}
                     </div>
-                  )}
+                    <ArrowRight
+                      aria-hidden="true"
+                      className="mt-1 h-4 w-4 shrink-0 text-[var(--muted)]"
+                    />
+                  </div>
                 </div>
                 <div className="text-left sm:text-right">
                   <p className={`font-semibold ${getAmountClass(account.balance ?? "0")}`}>
@@ -141,7 +83,7 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
                       : "No snapshot"}
                   </p>
                 </div>
-              </div>
+              </Link>
             );
           })
         )}

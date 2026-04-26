@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
@@ -6,6 +6,7 @@ import {
   financeBalanceSnapshots,
   financeTransactionCategoryAssignments,
   financeImportRuns,
+  financeRawRecords,
   financeTransactions,
   financeUserCategories,
 } from "@/server/db/schema";
@@ -76,31 +77,7 @@ export async function getFinanceDashboardData() {
     }),
   );
 
-  const recentTransactions = await db
-    .select({
-      id: financeTransactions.id,
-      postedDate: financeTransactions.postedDate,
-      description: financeTransactions.description,
-      amount: financeTransactions.amount,
-      currency: financeTransactions.currency,
-      assignedCategoryName: financeUserCategories.name,
-      assignedCategoryColor: financeUserCategories.color,
-      categoryAssignmentSource: financeTransactionCategoryAssignments.source,
-      accountId: financeAccounts.id,
-      accountName: sql<string>`coalesce(${financeAccounts.displayName}, ${financeAccounts.name})`,
-    })
-    .from(financeTransactions)
-    .innerJoin(financeAccounts, eq(financeAccounts.id, financeTransactions.accountId))
-    .leftJoin(
-      financeTransactionCategoryAssignments,
-      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
-    )
-    .leftJoin(
-      financeUserCategories,
-      eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
-    )
-    .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
-    .limit(1000);
+  const recentTransactions = await getRecentFinanceTransactions({ limit: 1000 });
 
   const metricTransactions = await db
     .select({
@@ -151,4 +128,127 @@ export async function getFinanceDashboardData() {
     recentTransactions,
     latestImport: latestImport ?? null,
   };
+}
+
+export async function getFinanceAccountDetail(accountId: string) {
+  const [account] = await db
+    .select({
+      id: financeAccounts.id,
+      name: financeAccounts.name,
+      displayName: financeAccounts.displayName,
+      institutionName: financeAccounts.institutionName,
+      type: financeAccounts.type,
+      subtype: financeAccounts.subtype,
+      currency: financeAccounts.currency,
+      sourceAccountId: financeAccounts.sourceAccountId,
+    })
+    .from(financeAccounts)
+    .where(and(eq(financeAccounts.id, accountId), eq(financeAccounts.isActive, true)))
+    .limit(1);
+
+  if (!account) {
+    return null;
+  }
+
+  const [latestBalance] = await db
+    .select({
+      balance: financeBalanceSnapshots.balance,
+      snapshotDate: financeBalanceSnapshots.snapshotDate,
+    })
+    .from(financeBalanceSnapshots)
+    .where(eq(financeBalanceSnapshots.accountId, account.id))
+    .orderBy(desc(financeBalanceSnapshots.snapshotDate))
+    .limit(1);
+
+  const transactions = await getRecentFinanceTransactions({
+    accountId: account.id,
+    limit: 1000,
+  });
+
+  return {
+    ...account,
+    balance: latestBalance?.balance ?? null,
+    snapshotDate: latestBalance?.snapshotDate ?? null,
+    transactions,
+  };
+}
+
+async function getRecentFinanceTransactions({
+  accountId,
+  limit,
+}: {
+  accountId?: string;
+  limit: number;
+}) {
+  const rows = await db
+    .select({
+      id: financeTransactions.id,
+      postedDate: financeTransactions.postedDate,
+      description: financeTransactions.description,
+      amount: financeTransactions.amount,
+      currency: financeTransactions.currency,
+      storedCategory: financeTransactions.category,
+      assignedCategoryName: financeUserCategories.name,
+      assignedCategoryColor: financeUserCategories.color,
+      categoryAssignmentSource: financeTransactionCategoryAssignments.source,
+      accountId: financeAccounts.id,
+      accountName: sql<string>`coalesce(${financeAccounts.displayName}, ${financeAccounts.name})`,
+      rawPayload: financeRawRecords.payload,
+    })
+    .from(financeTransactions)
+    .innerJoin(financeAccounts, eq(financeAccounts.id, financeTransactions.accountId))
+    .leftJoin(
+      financeTransactionCategoryAssignments,
+      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+    )
+    .leftJoin(
+      financeUserCategories,
+      eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
+    )
+    .leftJoin(financeRawRecords, eq(financeRawRecords.id, financeTransactions.rawRecordId))
+    .where(accountId ? eq(financeTransactions.accountId, accountId) : undefined)
+    .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
+    .limit(limit);
+
+  return rows.map(({ rawPayload, ...transaction }) => ({
+    ...transaction,
+    ...extractRawTransactionDetails(rawPayload),
+  }));
+}
+
+function extractRawTransactionDetails(payload: Record<string, unknown> | null) {
+  const personalFinanceCategory = getObject(payload?.personal_finance_category);
+  const legacyCategory = Array.isArray(payload?.category)
+    ? payload.category
+        .map((entry) => (typeof entry === "string" ? entry : null))
+        .filter(Boolean)
+        .join(" > ")
+    : getString(payload?.category);
+
+  return {
+    rawDescription: getString(payload?.name),
+    rawMerchantName: getString(payload?.merchant_name),
+    rawCategoryPath: legacyCategory,
+    rawPersonalFinancePrimary: getString(personalFinanceCategory?.primary),
+    rawPersonalFinanceDetailed: getString(personalFinanceCategory?.detailed),
+    rawPersonalFinanceConfidence: getString(personalFinanceCategory?.confidence_level),
+  };
+}
+
+function getObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function getString(value: unknown) {
+  if (typeof value === "string") {
+    return value.trim() || null;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return null;
 }

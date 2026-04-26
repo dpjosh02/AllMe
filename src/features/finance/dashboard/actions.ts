@@ -7,7 +7,7 @@ import { importFintableSnapshot } from "@/features/finance/imports/fintable/impo
 import { getFintableSheetConfig } from "@/features/finance/integrations/fintable/config";
 import { readFintableGoogleSheetsSnapshot } from "@/features/finance/integrations/fintable/google-sheets";
 import { db } from "@/server/db";
-import { financeAccounts, users } from "@/server/db/schema";
+import { financeAccounts, financeTransactions, users } from "@/server/db/schema";
 
 export async function renameFinanceAccount(formData: FormData) {
   const accountId = String(formData.get("accountId") ?? "");
@@ -26,6 +26,26 @@ export async function renameFinanceAccount(formData: FormData) {
     .where(eq(financeAccounts.id, accountId));
 
   revalidatePath("/finance");
+  revalidatePath(`/finance/accounts/${accountId}`);
+}
+
+export async function deleteFinanceTransaction(formData: FormData) {
+  const transactionId = String(formData.get("transactionId") ?? "");
+  const accountId = String(formData.get("accountId") ?? "");
+
+  if (!transactionId) {
+    throw new Error("Missing transaction id");
+  }
+
+  await db
+    .delete(financeTransactions)
+    .where(eq(financeTransactions.id, transactionId));
+
+  revalidatePath("/finance");
+
+  if (accountId) {
+    revalidatePath(`/finance/accounts/${accountId}`);
+  }
 }
 
 export async function syncFintableNow() {
