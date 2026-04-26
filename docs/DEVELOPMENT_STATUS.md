@@ -26,6 +26,9 @@ Implemented:
 - Persistent account display names that survive future Fintable imports.
 - Dashboard metric lookback control for Transactions, Inflows, Outflows, and Categorized cards.
 - In-app Fintable sync button on `/finance`.
+- Transaction search in Recent Transactions.
+- Uncategorized review entry point from the Categorized metric card.
+- Fidelity core/cash-reserve sweep handling so automatic settlement mechanics do not distort spending, income, or deliberate investment behavior.
 
 ## Verified Local Import
 
@@ -73,32 +76,37 @@ npm run dev
 
 ## Current Categorization Status
 
-Local categorization has been applied to the first imported Fintable transaction set.
+Local categorization has been applied to the current imported Fintable transaction set.
 
 Assignment counts:
 
 ```text
-rule: 112
-uncategorized: 3
+rule: 3253
+uncategorized: 188
 ```
 
 Category coverage:
 
 ```text
-Investing: 34
-Transfers: 19
-Shopping And Lifestyle: 16
-Ordering Out: 15
-Credit Card Payments: 8
-Transportation: 6
-Medical: 5
-Entertainment: 4
-Groceries: 4
-Income: 1
-Uncategorized: 3
+Transfers: 783
+Ordering Out: 675
+Shopping And Lifestyle: 347
+Investing: 309
+Credit Card Payments: 307
+Transportation: 253
+Uncategorized: 188
+Investment Sweep: 161
+Medical: 153
+Entertainment: 144
+Groceries: 114
+Income: 7
 ```
 
 The assignment system currently preserves manual overrides by only allowing automated categorization to update non-manual assignments.
+
+Fidelity core-position and money-market settlement rows are classified as `Investment Sweep`. These rows represent automatic cash-reserve mechanics around brokerage settlement, not user spending, income, or deliberate investment allocation. The category is excluded from income and spending metrics.
+
+Cash-flow summary cards now include only categories explicitly marked for income or spending. Transfers, credit-card payments, investing, investment sweeps, and uncategorized transactions are excluded from inflow/outflow totals until they are intentionally categorized into income or spending categories.
 
 ## Recent UI Progress
 
@@ -120,6 +128,8 @@ Recent finance dashboard work:
 - The lookback window applies from the computed past date through today and affects Transactions, Inflows, Outflows, and Categorized counts.
 - The finance page includes a `Sync Fintable` button beside import status. It reads the configured Google Sheet, runs the existing Fintable import pipeline, reruns categorization, and refreshes `/finance`.
 - Account imports are keyed by Fintable source account id. If Fintable changes a source account id for an existing account name, the importer merges into the existing account instead of creating a duplicate or failing on account name uniqueness.
+- Recent Transactions includes a search input for finding transactions by description/name.
+- The Categorized metric card includes a `Review` action when uncategorized transactions exist. Clicking it switches Recent Transactions into an uncategorized-only review mode.
 
 Verified after this work:
 
@@ -188,7 +198,7 @@ aa4df6f Initial project blueprint
 ## Near-Term Next Steps
 
 1. Add category filtering to Recent Transactions.
-2. Add a category review UI for uncategorized transactions.
+2. Add a dedicated category review workflow for assigning categories to uncategorized transactions.
 3. Add a category/rule editor UI.
 4. Consider moving transaction filtering server-side once the dataset grows beyond a few hundred rows.
 5. Add app navigation so `/`, `/finance`, and future sections share one shell.

@@ -10,11 +10,17 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+export const reviewUncategorizedTransactionsEvent =
+  "allme:review-uncategorized-transactions";
+
 type MetricTransaction = {
   id: string;
   postedDate: string;
   amount: string;
+  assignedCategoryName: string | null;
   categoryAssignmentSource: "manual" | "rule" | "system" | "uncategorized" | null;
+  includeInIncome: boolean | null;
+  includeInSpending: boolean | null;
 };
 
 type SummaryMetricsProps = {
@@ -58,12 +64,16 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
     : transactions;
   const totalInflow = filteredTransactions.reduce(
     (sum, transaction) =>
-      Number(transaction.amount) > 0 ? sum + Number(transaction.amount) : sum,
+      Number(transaction.amount) > 0 && transaction.includeInIncome
+        ? sum + Number(transaction.amount)
+        : sum,
     0,
   );
   const totalOutflow = filteredTransactions.reduce(
     (sum, transaction) =>
-      Number(transaction.amount) < 0 ? sum + Math.abs(Number(transaction.amount)) : sum,
+      Number(transaction.amount) < 0 && transaction.includeInSpending
+        ? sum + Math.abs(Number(transaction.amount))
+        : sum,
     0,
   );
   const categorizedCount = filteredTransactions.filter(
@@ -179,21 +189,36 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
           value={String(filteredTransactions.length)}
         />
         <MetricCard
-          detail="Positive cash flow rows"
+          detail="Income categories"
           icon={<ArrowDownLeft aria-hidden="true" className="h-5 w-5" />}
           label="Inflows"
           value={formatCurrency(totalInflow)}
           valueClassName="money-positive"
         />
         <MetricCard
-          detail="Spend and transfers out"
+          detail="Spending categories"
           icon={<ArrowUpRight aria-hidden="true" className="h-5 w-5" />}
           label="Outflows"
           value={`-${formatCurrency(totalOutflow)}`}
           valueClassName="money-negative"
         />
         <MetricCard
-          detail={`${uncategorizedCount} need review`}
+          detail={
+            <span className="flex flex-wrap items-center gap-2">
+              <span>{uncategorizedCount} need review</span>
+              {uncategorizedCount > 0 ? (
+                <button
+                  className="font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
+                  onClick={() =>
+                    window.dispatchEvent(new Event(reviewUncategorizedTransactionsEvent))
+                  }
+                  type="button"
+                >
+                  Review
+                </button>
+              ) : null}
+            </span>
+          }
           icon={<CircleDollarSign aria-hidden="true" className="h-5 w-5" />}
           label="Categorized"
           value={String(categorizedCount)}
@@ -233,7 +258,7 @@ function MetricCard({
   value,
   valueClassName,
 }: {
-  detail: string;
+  detail: React.ReactNode;
   icon: React.ReactNode;
   label: string;
   value: string;

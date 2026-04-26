@@ -279,6 +279,35 @@ export const DEFAULT_FINANCE_CATEGORIES = [
     ],
   },
   {
+    name: "Investment Sweep",
+    slug: "investment-sweep",
+    color: "#38bdf8",
+    icon: "shuffle",
+    includeInSpending: false,
+    includeInIncome: false,
+    sortOrder: 95,
+    rules: [
+      {
+        name: "Fidelity core cash and money market sweep activity",
+        priority: 5,
+        matchLogic: "any",
+        conditions: [
+          {
+            field: "description",
+            operator: "contains_any",
+            value: [
+              "CORE ACCOUNT",
+              "MORNING TRADE",
+              "FIDELITY GOVERNMENT CASH RESERVES",
+              "FDRXX",
+              "YOU BOUGHT PROSPECTUS",
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
     name: "Investing",
     slug: "investing",
     color: "#2563eb",

@@ -6,9 +6,12 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Search,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { reviewUncategorizedTransactionsEvent } from "@/features/finance/dashboard/components/summary-metrics";
 
 type RecentTransaction = {
   id: string;
@@ -19,6 +22,7 @@ type RecentTransaction = {
   currency: string;
   assignedCategoryName: string | null;
   assignedCategoryColor: string | null;
+  categoryAssignmentSource: "manual" | "rule" | "system" | "uncategorized" | null;
   accountName: string;
 };
 
@@ -65,19 +69,28 @@ export function RecentTransactions({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [afterDate, setAfterDate] = useState<string | null>(null);
   const [beforeDate, setBeforeDate] = useState<string | null>(null);
+  const [isReviewingUncategorized, setIsReviewingUncategorized] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [selectedAccountIds, setSelectedAccountIds] = useState(
     () => new Set(accounts.map((account) => account.id)),
   );
   const filteredTransactions = transactions.filter((transaction) => {
     const isSelectedAccount = selectedAccountIds.has(transaction.accountId);
+    const isSearchMatch =
+      searchQuery.trim().length === 0 ||
+      transaction.description.toLowerCase().includes(searchQuery.trim().toLowerCase());
+    const isReviewMatch =
+      !isReviewingUncategorized ||
+      transaction.categoryAssignmentSource === "uncategorized" ||
+      !transaction.assignedCategoryName;
     const isInDateRange = isTransactionInDateRange({
       afterDate,
       beforeDate,
       postedDate: transaction.postedDate,
     });
 
-    return isSelectedAccount && isInDateRange;
+    return isSelectedAccount && isSearchMatch && isReviewMatch && isInDateRange;
   });
   const selectedCount = selectedAccountIds.size;
   const filterLabel =
@@ -88,6 +101,25 @@ export function RecentTransactions({
         : `${selectedCount} selected`;
   const dateFilterLabel = formatDateFilterLabel(afterDate, beforeDate);
   const calendarDays = getCalendarDays(visibleMonth);
+
+  useEffect(() => {
+    function reviewUncategorizedTransactions() {
+      setIsReviewingUncategorized(true);
+      setSearchQuery("");
+    }
+
+    window.addEventListener(
+      reviewUncategorizedTransactionsEvent,
+      reviewUncategorizedTransactions,
+    );
+
+    return () => {
+      window.removeEventListener(
+        reviewUncategorizedTransactionsEvent,
+        reviewUncategorizedTransactions,
+      );
+    };
+  }, []);
 
   function toggleAccount(accountId: string) {
     setSelectedAccountIds((current) => {
@@ -137,8 +169,31 @@ export function RecentTransactions({
           <p className="text-sm text-[var(--muted)]">
             Most recent normalized Fintable transactions.
           </p>
+          {isReviewingUncategorized ? (
+            <button
+              className="mt-2 inline-flex text-sm font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
+              onClick={() => setIsReviewingUncategorized(false)}
+              type="button"
+            >
+              Reviewing uncategorized only · Clear
+            </button>
+          ) : null}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+          <label className="relative">
+            <span className="sr-only">Search transactions</span>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
+            />
+            <input
+              className="h-10 w-56 rounded-md border border-[var(--line)] bg-[var(--input)] pl-9 pr-3 text-sm font-semibold outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search name"
+              type="search"
+              value={searchQuery}
+            />
+          </label>
           <div className="relative">
             <button
               aria-expanded={isCalendarOpen}

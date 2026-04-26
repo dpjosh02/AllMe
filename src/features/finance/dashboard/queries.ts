@@ -85,6 +85,7 @@ export async function getFinanceDashboardData() {
       currency: financeTransactions.currency,
       assignedCategoryName: financeUserCategories.name,
       assignedCategoryColor: financeUserCategories.color,
+      categoryAssignmentSource: financeTransactionCategoryAssignments.source,
       accountId: financeAccounts.id,
       accountName: sql<string>`coalesce(${financeAccounts.displayName}, ${financeAccounts.name})`,
     })
@@ -106,12 +107,19 @@ export async function getFinanceDashboardData() {
       id: financeTransactions.id,
       postedDate: financeTransactions.postedDate,
       amount: financeTransactions.amount,
+      assignedCategoryName: financeUserCategories.name,
       categoryAssignmentSource: financeTransactionCategoryAssignments.source,
+      includeInIncome: financeUserCategories.includeInIncome,
+      includeInSpending: financeUserCategories.includeInSpending,
     })
     .from(financeTransactions)
     .leftJoin(
       financeTransactionCategoryAssignments,
       eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+    )
+    .leftJoin(
+      financeUserCategories,
+      eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
     );
 
   const [latestImport] = await db
