@@ -103,7 +103,7 @@ export default async function FinancePage() {
                     <div>
                       <p className="font-semibold">{account.name}</p>
                       <p className="text-sm text-[var(--muted)]">
-                        {account.institutionName ?? "Unknown institution"}
+                        {formatInstitutionName(account.institutionName)}
                       </p>
                     </div>
                     <div className="text-left sm:text-right">
@@ -195,6 +195,14 @@ function EmptyState({ label }: { label: string }) {
 
 function formatCurrency(value: string) {
   return currencyFormatter.format(Number(value));
+}
+
+function formatInstitutionName(institutionName: string | null) {
+  if (!institutionName) {
+    return "Unknown institution";
+  }
+
+  return institutionName.replace(/\s*\(Connection-\d+.*?\)\s*/gi, "").trim();
 }
 
 function getAmountClass(value: string) {

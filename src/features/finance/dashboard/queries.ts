@@ -68,10 +68,8 @@ export async function getFinanceDashboardData() {
       description: financeTransactions.description,
       amount: financeTransactions.amount,
       currency: financeTransactions.currency,
-      category: financeTransactions.category,
       assignedCategoryName: financeUserCategories.name,
       assignedCategoryColor: financeUserCategories.color,
-      categoryAssignmentSource: financeTransactionCategoryAssignments.source,
       accountName: financeAccounts.name,
     })
     .from(financeTransactions)
@@ -85,7 +83,7 @@ export async function getFinanceDashboardData() {
       eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
     )
     .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
-    .limit(12);
+    .limit(250);
 
   const [latestImport] = await db
     .select({
