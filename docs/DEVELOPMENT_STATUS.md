@@ -184,6 +184,7 @@ The dashboard account query now reads only each account's latest balance snapsho
 Recent project milestones:
 
 ```text
+382eba1 Add finance account detail and transaction modal
 9373315 Refresh finance development status
 c760912 Improve transaction review and cash flow categorization
 1d888ec Fix Fintable account sync conflicts
