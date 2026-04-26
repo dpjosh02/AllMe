@@ -121,6 +121,7 @@ export default async function FinanceAccountPage({
 
         <RecentTransactions
           accounts={[account]}
+          categories={account.categories}
           showAccountFilter={false}
           transactions={account.transactions}
         />

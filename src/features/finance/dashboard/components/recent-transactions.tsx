@@ -6,12 +6,18 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  MoreHorizontal,
   Search,
+  Tag,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { deleteFinanceTransaction } from "@/features/finance/dashboard/actions";
+import {
+  assignFinanceTransactionCategory,
+  createFinanceCategory,
+  deleteFinanceTransaction,
+} from "@/features/finance/dashboard/actions";
 import { reviewUncategorizedTransactionsEvent } from "@/features/finance/dashboard/components/summary-metrics";
 
 type RecentTransaction = {
@@ -22,6 +28,7 @@ type RecentTransaction = {
   amount: string;
   currency: string;
   storedCategory: string | null;
+  assignedCategoryId: string | null;
   assignedCategoryName: string | null;
   assignedCategoryColor: string | null;
   categoryAssignmentSource: "manual" | "rule" | "system" | "uncategorized" | null;
@@ -40,8 +47,19 @@ type AccountOption = {
   displayName: string | null;
 };
 
+type CategoryOption = {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  includeInIncome: boolean;
+  includeInSpending: boolean;
+  transactionCount: number;
+};
+
 type RecentTransactionsProps = {
   accounts: AccountOption[];
+  categories: CategoryOption[];
   showAccountFilter?: boolean;
   transactions: RecentTransaction[];
 };
@@ -73,6 +91,7 @@ const skipDeleteWarningStorageKey = "allme.skipTransactionDeleteWarning";
 
 export function RecentTransactions({
   accounts,
+  categories,
   showAccountFilter = true,
   transactions,
 }: RecentTransactionsProps) {
@@ -85,6 +104,7 @@ export function RecentTransactions({
   );
   const [beforeDate, setBeforeDate] = useState<string | null>(null);
   const [isReviewingUncategorized, setIsReviewingUncategorized] = useState(false);
+  const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] =
     useState<RecentTransaction | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -207,20 +227,30 @@ export function RecentTransactions({
   return (
     <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
       <div className="mb-5 flex flex-col gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">Recent Transactions</h2>
-          <p className="text-sm text-[var(--muted)]">
-            Most recent normalized Fintable transactions.
-          </p>
-          {isReviewingUncategorized ? (
-            <button
-              className="mt-2 inline-flex text-sm font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
-              onClick={() => setIsReviewingUncategorized(false)}
-              type="button"
-            >
-              Reviewing uncategorized only · Clear
-            </button>
-          ) : null}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">Recent Transactions</h2>
+            <p className="text-sm text-[var(--muted)]">
+              Most recent normalized Fintable transactions.
+            </p>
+            {isReviewingUncategorized ? (
+              <button
+                className="mt-2 inline-flex text-sm font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
+                onClick={() => setIsReviewingUncategorized(false)}
+                type="button"
+              >
+                Reviewing uncategorized only · Clear
+              </button>
+            ) : null}
+          </div>
+          <button
+            aria-label="Manage transaction tags"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[var(--line)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+            onClick={() => setIsTagManagerOpen(true)}
+            type="button"
+          >
+            <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
+          </button>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <label className="relative min-w-0">
@@ -418,8 +448,16 @@ export function RecentTransactions({
       </div>
       {selectedTransaction ? (
         <TransactionDetailModal
+          categories={categories}
           onClose={() => setSelectedTransaction(null)}
           transaction={selectedTransaction}
+        />
+      ) : null}
+      {isTagManagerOpen ? (
+        <TagManagerModal
+          accountId={showAccountFilter ? null : accounts[0]?.id ?? null}
+          categories={categories}
+          onClose={() => setIsTagManagerOpen(false)}
         />
       ) : null}
     </div>
@@ -452,13 +490,16 @@ function CategoryBadge({
 }
 
 function TransactionDetailModal({
+  categories,
   onClose,
   transaction,
 }: {
+  categories: CategoryOption[];
   onClose: () => void;
   transaction: RecentTransaction;
 }) {
   const deleteFormRef = useRef<HTMLFormElement>(null);
+  const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [dontShowDeleteWarningAgain, setDontShowDeleteWarningAgain] =
     useState(false);
@@ -528,9 +569,11 @@ function TransactionDetailModal({
             )}
           />
           <DetailItem label="Account" value={transaction.accountName} />
-          <DetailItem
-            label="AllMe Category"
-            value={transaction.assignedCategoryName ?? "Uncategorized"}
+          <CategoryDetailItem
+            categories={categories}
+            isOpen={isCategoryPickerOpen}
+            onToggle={() => setIsCategoryPickerOpen((current) => !current)}
+            transaction={transaction}
           />
           <DetailItem
             label="Raw Response Description"
@@ -621,6 +664,258 @@ function TransactionDetailModal({
       </div>
     </div>
   );
+}
+
+function CategoryDetailItem({
+  categories,
+  isOpen,
+  onToggle,
+  transaction,
+}: {
+  categories: CategoryOption[];
+  isOpen: boolean;
+  onToggle: () => void;
+  transaction: RecentTransaction;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3 sm:col-span-2">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+        AllMe Category
+      </p>
+      <button
+        className="mt-2 inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 text-left text-sm font-semibold transition hover:border-[var(--accent)]"
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="h-3 w-3 shrink-0 rounded-full"
+            style={{ backgroundColor: transaction.assignedCategoryColor ?? "#64748b" }}
+          />
+          <span className="truncate">
+            {transaction.assignedCategoryName ?? "Uncategorized"}
+          </span>
+        </span>
+        <span className="text-xs text-[var(--muted)]">Change</span>
+      </button>
+
+      {isOpen ? (
+        <div className="mt-3 grid max-h-64 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+          {categories.map((category) => {
+            const isSelected = category.id === transaction.assignedCategoryId;
+
+            return (
+              <form action={assignFinanceTransactionCategory} key={category.id}>
+                <input name="transactionId" type="hidden" value={transaction.id} />
+                <input name="accountId" type="hidden" value={transaction.accountId} />
+                <input name="categoryId" type="hidden" value={category.id} />
+                <button
+                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md border px-3 text-left text-sm font-semibold transition hover:border-[var(--accent)] ${
+                    isSelected
+                      ? "border-[var(--accent)] bg-[var(--panel-strong)]"
+                      : "border-[var(--line)] bg-[var(--panel)]"
+                  }`}
+                  type="submit"
+                >
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <span className="truncate">{category.name}</span>
+                  </span>
+                  {isSelected ? <Check aria-hidden="true" className="h-4 w-4" /> : null}
+                </button>
+              </form>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TagManagerModal({
+  accountId,
+  categories,
+  onClose,
+}: {
+  accountId: string | null;
+  categories: CategoryOption[];
+  onClose: () => void;
+}) {
+  const [isCreating, setIsCreating] = useState(false);
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+      role="dialog"
+    >
+      <div className="max-h-[min(42rem,92vh)] w-full max-w-2xl overflow-y-auto rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-2xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+              Tags
+            </p>
+            <h3 className="mt-1 text-2xl font-semibold">Manage Categories</h3>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Create personal tags now. Rule previews for similar transactions come next.
+            </p>
+          </div>
+          <button
+            aria-label="Close tag manager"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid gap-2">
+          {categories.map((category) => (
+            <div
+              className="flex items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--empty)] p-3"
+              key={category.id}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 rounded-full"
+                  style={{ backgroundColor: category.color }}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{category.name}</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {formatCategoryBehavior(category)} · {category.transactionCount} tagged
+                  </p>
+                </div>
+              </div>
+              <Tag aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+            </div>
+          ))}
+        </div>
+
+        {isCreating ? (
+          <form action={createFinanceCategory} className="mt-5 rounded-md border border-[var(--line)] bg-[var(--empty)] p-4">
+            {accountId ? <input name="accountId" type="hidden" value={accountId} /> : null}
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <label className="flex flex-col gap-1 text-sm font-semibold">
+                <span>Tag name</span>
+                <input
+                  autoFocus
+                  className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
+                  name="name"
+                  placeholder="Ordering Out, Rent, Subscriptions"
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-semibold">
+                <span>Color</span>
+                <input
+                  className="h-10 w-20 rounded-md border border-[var(--line)] bg-[var(--input)] p-1"
+                  defaultValue="#0f766e"
+                  name="color"
+                  type="color"
+                />
+              </label>
+            </div>
+
+            <fieldset className="mt-3">
+              <legend className="mb-2 text-sm font-semibold">Cash-flow behavior</legend>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <CashFlowRadio
+                  description="Counts as spending."
+                  label="Spending"
+                  value="spending"
+                />
+                <CashFlowRadio
+                  description="Counts as income."
+                  label="Income"
+                  value="income"
+                />
+                <CashFlowRadio
+                  description="Excluded from cash flow."
+                  label="Neutral"
+                  value="neutral"
+                />
+              </div>
+            </fieldset>
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold transition hover:border-[var(--accent)]"
+                onClick={() => setIsCreating(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)]"
+                type="submit"
+              >
+                Create tag
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button
+            className="mt-5 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)]"
+            onClick={() => setIsCreating(true)}
+            type="button"
+          >
+            Create new tag
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CashFlowRadio({
+  description,
+  label,
+  value,
+}: {
+  description: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <label className="flex cursor-pointer gap-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 text-sm">
+      <input
+        className="mt-1 h-4 w-4 accent-[var(--accent)]"
+        defaultChecked={value === "spending"}
+        name="cashFlowType"
+        type="radio"
+        value={value}
+      />
+      <span>
+        <span className="block font-semibold">{label}</span>
+        <span className="block text-xs text-[var(--muted)]">{description}</span>
+      </span>
+    </label>
+  );
+}
+
+function formatCategoryBehavior(category: CategoryOption) {
+  if (category.includeInIncome) {
+    return "Income";
+  }
+
+  if (category.includeInSpending) {
+    return "Spending";
+  }
+
+  return "Neutral";
 }
 
 function DetailItem({

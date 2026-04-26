@@ -45,6 +45,7 @@ export default async function FinancePage() {
 
           <RecentTransactions
             accounts={data.accounts}
+            categories={data.categories}
             transactions={data.recentTransactions}
           />
         </section>

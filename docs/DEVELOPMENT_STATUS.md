@@ -31,6 +31,7 @@ Implemented:
 - Fidelity core/cash-reserve sweep handling so automatic settlement mechanics do not distort spending, income, or deliberate investment behavior.
 - Account detail pages at `/finance/accounts/[accountId]`.
 - Transaction detail modal with raw Fintable/Plaid category context.
+- First self-serve transaction tagging flow.
 
 ## Verified Local Import
 
@@ -139,6 +140,11 @@ Recent finance dashboard work:
 - Account cards on the finance L1 page navigate to account detail pages instead of exposing inline rename controls.
 - Account display-name editing now lives on the account L2 page.
 - Calendar, account, and lookback dropdowns close when the user taps outside their border.
+- Recent Transactions includes a tag manager entry point from the ellipsis button.
+- The tag manager can create user-owned tags with a name, color, and cash-flow behavior: spending, income, or neutral.
+- The transaction detail modal's AllMe Category section is interactive and can manually assign an existing tag to that transaction.
+- Manual transaction category assignments use source `manual`, which preserves them from automated rule recategorization.
+- Tag creation is manual-only in this slice. Rule preview and "apply to similar transactions" are planned as the next layer.
 
 Verified after this work:
 
@@ -184,6 +190,8 @@ The dashboard account query now reads only each account's latest balance snapsho
 Recent project milestones:
 
 ```text
+42d620a Refine finance date and lookback filters
+bda5974 Clean up finance account rows
 382eba1 Add finance account detail and transaction modal
 9373315 Refresh finance development status
 c760912 Improve transaction review and cash flow categorization
@@ -217,8 +225,8 @@ aa4df6f Initial project blueprint
 ## Near-Term Next Steps
 
 1. Add category filtering to Recent Transactions.
-2. Add a dedicated category review workflow for assigning categories to uncategorized transactions.
-3. Add a category/rule editor UI.
+2. Add rule preview and "apply to similar transactions" for user-created tags.
+3. Add a dedicated category review workflow for assigning categories to uncategorized transactions.
 4. Consider moving transaction filtering server-side once the dataset grows beyond a few hundred rows.
 5. Add app navigation so `/`, `/finance`, and future sections share one shell.
 6. Add a visible import status/history page.

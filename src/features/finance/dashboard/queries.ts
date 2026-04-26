@@ -124,6 +124,7 @@ export async function getFinanceDashboardData() {
       uncategorizedCount: categorizationSummary?.uncategorizedCount ?? 0,
     },
     accounts,
+    categories: await getFinanceCategoryOptions(),
     metricTransactions,
     recentTransactions,
     latestImport: latestImport ?? null,
@@ -168,9 +169,31 @@ export async function getFinanceAccountDetail(accountId: string) {
   return {
     ...account,
     balance: latestBalance?.balance ?? null,
+    categories: await getFinanceCategoryOptions(),
     snapshotDate: latestBalance?.snapshotDate ?? null,
     transactions,
   };
+}
+
+async function getFinanceCategoryOptions() {
+  return db
+    .select({
+      id: financeUserCategories.id,
+      name: financeUserCategories.name,
+      slug: financeUserCategories.slug,
+      color: financeUserCategories.color,
+      includeInIncome: financeUserCategories.includeInIncome,
+      includeInSpending: financeUserCategories.includeInSpending,
+      transactionCount:
+        sql<number>`count(${financeTransactionCategoryAssignments.id})::int`,
+    })
+    .from(financeUserCategories)
+    .leftJoin(
+      financeTransactionCategoryAssignments,
+      eq(financeTransactionCategoryAssignments.categoryId, financeUserCategories.id),
+    )
+    .groupBy(financeUserCategories.id)
+    .orderBy(financeUserCategories.sortOrder, financeUserCategories.name);
 }
 
 async function getRecentFinanceTransactions({
@@ -188,6 +211,7 @@ async function getRecentFinanceTransactions({
       amount: financeTransactions.amount,
       currency: financeTransactions.currency,
       storedCategory: financeTransactions.category,
+      assignedCategoryId: financeUserCategories.id,
       assignedCategoryName: financeUserCategories.name,
       assignedCategoryColor: financeUserCategories.color,
       categoryAssignmentSource: financeTransactionCategoryAssignments.source,
