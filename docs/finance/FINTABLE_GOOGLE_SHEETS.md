@@ -86,8 +86,7 @@ Current implementation:
 
 Current limitations:
 
-- The Google Sheets reader only fetches and parses rows.
-- It does not write to PostgreSQL yet.
+- The Google Sheets reader only fetches and parses rows; database writes are handled by the separate importer.
 - It supports private-sheet reads through a Google service account via `GOOGLE_APPLICATION_CREDENTIALS`.
 - It can still use an API key for public/readable sheets, but private finance sheets should use service-account access.
 - Holdings are not mapped yet because the current confirmed sheet headers only cover `Accounts` and `Transactions`.
