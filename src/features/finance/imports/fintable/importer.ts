@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
+import { categorizeFinanceTransactions } from "@/features/finance/categorization/service";
 import { createFintableImportPlan } from "@/features/finance/imports/fintable/plan";
 import type { FintableGoogleSheetsSnapshot } from "@/features/finance/integrations/fintable/google-sheets";
 import type { db as appDb } from "@/server/db";
@@ -213,6 +214,8 @@ export async function importFintableSnapshot({
       })
       .where(eq(financeImportRuns.id, importRun.id));
 
+    const categorization = await categorizeFinanceTransactions({ db, userId });
+
     return {
       importRunId: importRun.id,
       accounts: plan.accounts.length,
@@ -220,6 +223,8 @@ export async function importFintableSnapshot({
       transactions: plan.transactions.length,
       rawRecords: plan.rawRecords.length,
       unmatchedTransactions: plan.unmatchedTransactions.length,
+      categorizedTransactions: categorization.ruleAssigned,
+      uncategorizedTransactions: categorization.uncategorized,
     };
   } catch (error) {
     await db

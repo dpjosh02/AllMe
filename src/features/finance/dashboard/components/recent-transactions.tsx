@@ -10,6 +10,9 @@ type RecentTransaction = {
   amount: string;
   currency: string;
   category: string | null;
+  assignedCategoryName: string | null;
+  assignedCategoryColor: string | null;
+  categoryAssignmentSource: "manual" | "rule" | "system" | "uncategorized" | null;
   accountName: string;
 };
 
@@ -134,6 +137,11 @@ export function RecentTransactions({
                   {transaction.accountName}
                   {transaction.category ? ` · ${transaction.category}` : ""}
                 </p>
+                <CategoryBadge
+                  color={transaction.assignedCategoryColor}
+                  name={transaction.assignedCategoryName}
+                  source={transaction.categoryAssignmentSource}
+                />
               </div>
               <div className="text-left sm:text-right">
                 <p className={`font-semibold ${getAmountClass(transaction.amount)}`}>
@@ -148,6 +156,42 @@ export function RecentTransactions({
         )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CategoryBadge({
+  color,
+  name,
+  source,
+}: {
+  color: string | null;
+  name: string | null;
+  source: RecentTransaction["categoryAssignmentSource"];
+}) {
+  const label = name ?? "Uncategorized";
+  const badgeColor = color ?? "#64748b";
+  const sourceLabel =
+    source === "manual"
+      ? "manual"
+      : source === "rule"
+        ? "rule"
+        : source === "system"
+          ? "system"
+          : "needs review";
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+      <span
+        className="inline-flex items-center rounded-full border px-2 py-1 font-semibold"
+        style={{
+          borderColor: badgeColor,
+          color: badgeColor,
+        }}
+      >
+        {label}
+      </span>
+      <span className="text-[var(--muted)]">{sourceLabel}</span>
     </div>
   );
 }

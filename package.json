@@ -18,6 +18,7 @@
     "db:studio": "drizzle-kit studio",
     "finance:fintable:dry-run": "tsx scripts/fintable-dry-run.ts",
     "finance:fintable:import": "tsx scripts/fintable-import.ts",
+    "finance:categorize": "tsx scripts/finance-categorize.ts",
     "verify": "npm run lint && npm run typecheck && npm run test"
   },
   "repository": {

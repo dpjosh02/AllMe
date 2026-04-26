@@ -45,3 +45,5 @@ console.info(`Balance snapshots upserted: ${result.balances}`);
 console.info(`Transactions upserted: ${result.transactions}`);
 console.info(`Raw records upserted: ${result.rawRecords}`);
 console.info(`Unmatched transactions skipped: ${result.unmatchedTransactions}`);
+console.info(`Transactions categorized by rule: ${result.categorizedTransactions}`);
+console.info(`Transactions left uncategorized: ${result.uncategorizedTransactions}`);

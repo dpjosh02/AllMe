@@ -72,6 +72,12 @@ export default async function FinancePage() {
             value={`-${formatCurrency(data.summary.totalOutflow)}`}
             valueClassName="money-negative"
           />
+          <MetricCard
+            detail={`${data.summary.uncategorizedCount} need review`}
+            icon={<CircleDollarSign aria-hidden="true" className="h-5 w-5" />}
+            label="Categorized"
+            value={String(data.summary.categorizedCount)}
+          />
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1fr_1.15fr]">

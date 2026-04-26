@@ -538,3 +538,24 @@ manual overrides
 ```
 
 This gives the user the flexibility to define personal categories like `Ordering Out`, while still preserving provider metadata for future rule changes and reprocessing.
+
+## Implementation Status
+
+Initial implementation is now connected to the website.
+
+Implemented:
+
+- `finance_user_categories`
+- `finance_category_rules`
+- `finance_transaction_category_assignments`
+- Default seed categories and rules
+- Rule evaluator with unit tests
+- `npm run finance:categorize`
+- Automatic categorization after Fintable imports
+- `/finance` transaction category badges
+
+Current limitations:
+
+- Categories and rules are code-seeded, not yet editable in the UI.
+- Uncategorized transactions do not yet have a review queue.
+- The dashboard shows assigned categories but does not yet filter by assigned category.

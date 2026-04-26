@@ -4,8 +4,10 @@ import { db } from "@/server/db";
 import {
   financeAccounts,
   financeBalanceSnapshots,
+  financeTransactionCategoryAssignments,
   financeImportRuns,
   financeTransactions,
+  financeUserCategories,
 } from "@/server/db/schema";
 
 export type FinanceDashboardData = Awaited<ReturnType<typeof getFinanceDashboardData>>;
@@ -27,6 +29,19 @@ export async function getFinanceDashboardData() {
         sql<string>`coalesce(sum(case when ${financeTransactions.amount}::numeric > 0 then ${financeTransactions.amount}::numeric else 0 end), 0)::text`,
     })
     .from(financeTransactions);
+
+  const [categorizationSummary] = await db
+    .select({
+      categorizedCount:
+        sql<number>`count(${financeTransactionCategoryAssignments.id}) filter (where ${financeTransactionCategoryAssignments.source} <> 'uncategorized')::int`,
+      uncategorizedCount:
+        sql<number>`count(*) filter (where ${financeTransactionCategoryAssignments.id} is null or ${financeTransactionCategoryAssignments.source} = 'uncategorized')::int`,
+    })
+    .from(financeTransactions)
+    .leftJoin(
+      financeTransactionCategoryAssignments,
+      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+    );
 
   const accounts = await db
     .select({
@@ -54,10 +69,21 @@ export async function getFinanceDashboardData() {
       amount: financeTransactions.amount,
       currency: financeTransactions.currency,
       category: financeTransactions.category,
+      assignedCategoryName: financeUserCategories.name,
+      assignedCategoryColor: financeUserCategories.color,
+      categoryAssignmentSource: financeTransactionCategoryAssignments.source,
       accountName: financeAccounts.name,
     })
     .from(financeTransactions)
     .innerJoin(financeAccounts, eq(financeAccounts.id, financeTransactions.accountId))
+    .leftJoin(
+      financeTransactionCategoryAssignments,
+      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+    )
+    .leftJoin(
+      financeUserCategories,
+      eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
+    )
     .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
     .limit(12);
 
@@ -82,6 +108,8 @@ export async function getFinanceDashboardData() {
       transactionCount: transactionSummary?.transactionCount ?? 0,
       totalOutflow: transactionSummary?.totalOutflow ?? "0",
       totalInflow: transactionSummary?.totalInflow ?? "0",
+      categorizedCount: categorizationSummary?.categorizedCount ?? 0,
+      uncategorizedCount: categorizationSummary?.uncategorizedCount ?? 0,
     },
     accounts,
     recentTransactions,

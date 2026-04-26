@@ -19,6 +19,7 @@ Implemented:
 - Finance dashboard account filtering for recent transactions.
 - Positive monetary values render green and negative monetary values render red.
 - Finance categorization analysis documented in `docs/finance/CATEGORIZATION_ANALYSIS.md`.
+- Finance categorization database tables, default rules, assignment script, import hook, and `/finance` category badges.
 
 ## Verified Local Import
 
@@ -58,8 +59,38 @@ npm run build
 npm run db:migrate
 npm run finance:fintable:dry-run
 npm run finance:fintable:import
+npm run finance:categorize
 npm run dev
 ```
+
+## Current Categorization Status
+
+Local categorization has been applied to the first imported Fintable transaction set.
+
+Assignment counts:
+
+```text
+rule: 112
+uncategorized: 3
+```
+
+Category coverage:
+
+```text
+Investing: 34
+Transfers: 19
+Shopping And Lifestyle: 16
+Ordering Out: 15
+Credit Card Payments: 8
+Transportation: 6
+Medical: 5
+Entertainment: 4
+Groceries: 4
+Income: 1
+Uncategorized: 3
+```
+
+The assignment system currently preserves manual overrides by only allowing automated categorization to update non-manual assignments.
 
 ## Current Git History
 
@@ -79,9 +110,10 @@ aa4df6f Initial project blueprint
 
 ## Near-Term Next Steps
 
-1. Add app navigation so `/`, `/finance`, and future sections share one shell.
-2. Add a finance account detail page.
-3. Add transaction filtering and search.
-4. Add a visible import status/history page.
-5. Move from manual import command to a controlled in-app import trigger.
-6. Add holdings support if Fintable exposes a holdings sheet or usable raw investment payload.
+1. Add a category review UI for uncategorized transactions.
+2. Add a category/rule editor UI.
+3. Add transaction filtering by assigned user category.
+4. Add app navigation so `/`, `/finance`, and future sections share one shell.
+5. Add a finance account detail page.
+6. Add a visible import status/history page.
+7. Move from manual import command to a controlled in-app import trigger.

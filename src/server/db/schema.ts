@@ -26,6 +26,11 @@ export const transactionStatus = pgEnum("transaction_status", [
   "voided",
 ]);
 
+export const financeCategoryAssignmentSource = pgEnum(
+  "finance_category_assignment_source",
+  ["manual", "rule", "system", "uncategorized"],
+);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
@@ -263,6 +268,123 @@ export const financeHoldingsSnapshots = pgTable(
     accountSnapshotIdx: index("finance_holdings_snapshots_account_snapshot_idx").on(
       table.accountId,
       table.snapshotDate,
+    ),
+  }),
+);
+
+export type FinanceCategoryRuleCondition = {
+  field: string;
+  operator:
+    | "equals"
+    | "not_equals"
+    | "in"
+    | "contains"
+    | "contains_any"
+    | "starts_with"
+    | "regex"
+    | "exists"
+    | "amount_less_than"
+    | "amount_greater_than";
+  value?: unknown;
+};
+
+export type FinanceCategoryRuleConditions = FinanceCategoryRuleCondition[];
+
+export const financeUserCategories = pgTable(
+  "finance_user_categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    color: text("color").notNull().default("#64748b"),
+    icon: text("icon"),
+    parentId: uuid("parent_id"),
+    includeInSpending: boolean("include_in_spending").notNull().default(true),
+    includeInIncome: boolean("include_in_income").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userSlugUnique: uniqueIndex("finance_user_categories_user_slug_unique").on(
+      table.userId,
+      table.slug,
+    ),
+    userSortIdx: index("finance_user_categories_user_sort_idx").on(
+      table.userId,
+      table.sortOrder,
+    ),
+  }),
+);
+
+export const financeCategoryRules = pgTable(
+  "finance_category_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => financeUserCategories.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    priority: integer("priority").notNull().default(100),
+    matchLogic: text("match_logic").notNull().default("all"),
+    conditions: jsonb("conditions")
+      .$type<FinanceCategoryRuleConditions>()
+      .notNull()
+      .default([]),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userCategoryNameUnique: uniqueIndex("finance_category_rules_user_category_name_unique").on(
+      table.userId,
+      table.categoryId,
+      table.name,
+    ),
+    userActivePriorityIdx: index("finance_category_rules_user_active_priority_idx").on(
+      table.userId,
+      table.isActive,
+      table.priority,
+    ),
+  }),
+);
+
+export const financeTransactionCategoryAssignments = pgTable(
+  "finance_transaction_category_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    transactionId: uuid("transaction_id")
+      .notNull()
+      .references(() => financeTransactions.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id").references(() => financeUserCategories.id, {
+      onDelete: "set null",
+    }),
+    source: financeCategoryAssignmentSource("source")
+      .notNull()
+      .default("uncategorized"),
+    matchedRuleId: uuid("matched_rule_id").references(() => financeCategoryRules.id, {
+      onDelete: "set null",
+    }),
+    confidence: integer("confidence").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userTransactionUnique: uniqueIndex(
+      "finance_transaction_category_assignments_user_transaction_unique",
+    ).on(table.userId, table.transactionId),
+    userCategoryIdx: index("finance_transaction_category_assignments_user_category_idx").on(
+      table.userId,
+      table.categoryId,
     ),
   }),
 );
