@@ -103,6 +103,7 @@ export const financeAccounts = pgTable(
     }),
     sourceAccountId: text("source_account_id").notNull(),
     name: text("name").notNull(),
+    displayName: text("display_name"),
     institutionName: text("institution_name"),
     type: text("type").notNull(),
     subtype: text("subtype"),

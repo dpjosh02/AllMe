@@ -23,6 +23,8 @@ Implemented:
 - Recent Transactions calendar date-range filter that composes with account filtering.
 - Finance display cleanup for institution labels and category badges.
 - Local synthetic finance test-data scripts for stress testing transactions and balance history.
+- Persistent account display names that survive future Fintable imports.
+- Dashboard metric lookback control for Transactions, Inflows, Outflows, and Categorized cards.
 
 ## Verified Local Import
 
@@ -107,9 +109,14 @@ Recent finance dashboard work:
 - Date filtering now uses a calendar popover with an inclusive `afterDate` and `beforeDate` range.
 - If the same date is selected twice, the filter returns transactions from that day only.
 - Account filtering and date filtering are composed in the same transaction filter pass.
-- The finance dashboard query now fetches up to 250 recent rows so date filtering has enough local data to operate on.
+- The finance dashboard query now fetches up to 1000 recent rows so date filtering has enough local data to operate on.
 - Account institution labels strip Fintable suffixes such as `(Connection-1...)` for display only.
 - Recent transaction subtext now shows only the originating account; assigned category appears as a badge without the assignment source label.
+- Account cards can be renamed locally. The original Fintable account name is preserved in `finance_accounts.name`; the local alias is stored in `finance_accounts.display_name`.
+- Fintable imports continue updating source account names but do not overwrite local display aliases.
+- Recent Transactions account filtering uses account ids, not display names, so renaming accounts does not break filters.
+- Top dashboard transaction metrics are controlled by a `Lookback` popover with manual days, weeks, months, and years inputs.
+- The lookback window applies from the computed past date through today and affects Transactions, Inflows, Outflows, and Categorized counts.
 
 Verified after this work:
 

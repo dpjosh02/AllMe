@@ -29,6 +29,13 @@
       "when": 1777182912184,
       "tag": "0003_smart_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777206309676,
+      "tag": "0004_bright_marauders",
+      "breakpoints": true
     }
   ]
 }

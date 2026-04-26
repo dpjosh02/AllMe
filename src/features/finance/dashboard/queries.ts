@@ -47,6 +47,7 @@ export async function getFinanceDashboardData() {
     .select({
       id: financeAccounts.id,
       name: financeAccounts.name,
+      displayName: financeAccounts.displayName,
       institutionName: financeAccounts.institutionName,
       type: financeAccounts.type,
       currency: financeAccounts.currency,
@@ -84,7 +85,8 @@ export async function getFinanceDashboardData() {
       currency: financeTransactions.currency,
       assignedCategoryName: financeUserCategories.name,
       assignedCategoryColor: financeUserCategories.color,
-      accountName: financeAccounts.name,
+      accountId: financeAccounts.id,
+      accountName: sql<string>`coalesce(${financeAccounts.displayName}, ${financeAccounts.name})`,
     })
     .from(financeTransactions)
     .innerJoin(financeAccounts, eq(financeAccounts.id, financeTransactions.accountId))
@@ -98,6 +100,19 @@ export async function getFinanceDashboardData() {
     )
     .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
     .limit(1000);
+
+  const metricTransactions = await db
+    .select({
+      id: financeTransactions.id,
+      postedDate: financeTransactions.postedDate,
+      amount: financeTransactions.amount,
+      categoryAssignmentSource: financeTransactionCategoryAssignments.source,
+    })
+    .from(financeTransactions)
+    .leftJoin(
+      financeTransactionCategoryAssignments,
+      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+    );
 
   const [latestImport] = await db
     .select({
@@ -124,6 +139,7 @@ export async function getFinanceDashboardData() {
       uncategorizedCount: categorizationSummary?.uncategorizedCount ?? 0,
     },
     accounts,
+    metricTransactions,
     recentTransactions,
     latestImport: latestImport ?? null,
   };

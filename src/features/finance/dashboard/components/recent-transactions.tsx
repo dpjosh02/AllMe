@@ -12,6 +12,7 @@ import { useState } from "react";
 
 type RecentTransaction = {
   id: string;
+  accountId: string;
   postedDate: string;
   description: string;
   amount: string;
@@ -21,8 +22,14 @@ type RecentTransaction = {
   accountName: string;
 };
 
+type AccountOption = {
+  id: string;
+  name: string;
+  displayName: string | null;
+};
+
 type RecentTransactionsProps = {
-  accountNames: string[];
+  accounts: AccountOption[];
   transactions: RecentTransaction[];
 };
 
@@ -45,7 +52,7 @@ const monthFormatter = new Intl.DateTimeFormat("en-US", {
 const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function RecentTransactions({
-  accountNames,
+  accounts,
   transactions,
 }: RecentTransactionsProps) {
   const [isAccountFilterOpen, setIsAccountFilterOpen] = useState(false);
@@ -53,9 +60,11 @@ export function RecentTransactions({
   const [afterDate, setAfterDate] = useState<string | null>(null);
   const [beforeDate, setBeforeDate] = useState<string | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
-  const [selectedAccounts, setSelectedAccounts] = useState(() => new Set(accountNames));
+  const [selectedAccountIds, setSelectedAccountIds] = useState(
+    () => new Set(accounts.map((account) => account.id)),
+  );
   const filteredTransactions = transactions.filter((transaction) => {
-    const isSelectedAccount = selectedAccounts.has(transaction.accountName);
+    const isSelectedAccount = selectedAccountIds.has(transaction.accountId);
     const isInDateRange = isTransactionInDateRange({
       afterDate,
       beforeDate,
@@ -64,9 +73,9 @@ export function RecentTransactions({
 
     return isSelectedAccount && isInDateRange;
   });
-  const selectedCount = selectedAccounts.size;
+  const selectedCount = selectedAccountIds.size;
   const filterLabel =
-    selectedCount === accountNames.length
+    selectedCount === accounts.length
       ? "All accounts"
       : selectedCount === 0
         ? "No accounts"
@@ -74,13 +83,13 @@ export function RecentTransactions({
   const dateFilterLabel = formatDateFilterLabel(afterDate, beforeDate);
   const calendarDays = getCalendarDays(visibleMonth);
 
-  function toggleAccount(accountName: string) {
-    setSelectedAccounts((current) => {
+  function toggleAccount(accountId: string) {
+    setSelectedAccountIds((current) => {
       const next = new Set(current);
-      if (next.has(accountName)) {
-        next.delete(accountName);
+      if (next.has(accountId)) {
+        next.delete(accountId);
       } else {
-        next.add(accountName);
+        next.add(accountId);
       }
 
       return next;
@@ -219,7 +228,9 @@ export function RecentTransactions({
                 <div className="mb-3 flex gap-2">
                   <button
                     className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                    onClick={() => setSelectedAccounts(new Set(accountNames))}
+                    onClick={() =>
+                      setSelectedAccountIds(new Set(accounts.map((account) => account.id)))
+                    }
                     type="button"
                   >
                     <Check aria-hidden="true" className="h-4 w-4" />
@@ -227,7 +238,7 @@ export function RecentTransactions({
                   </button>
                   <button
                     className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                    onClick={() => setSelectedAccounts(new Set())}
+                    onClick={() => setSelectedAccountIds(new Set())}
                     type="button"
                   >
                     <X aria-hidden="true" className="h-4 w-4" />
@@ -235,20 +246,24 @@ export function RecentTransactions({
                   </button>
                 </div>
                 <div className="max-h-72 overflow-auto">
-                  {accountNames.map((accountName) => (
+                  {accounts.map((account) => {
+                    const accountName = account.displayName ?? account.name;
+
+                    return (
                     <label
                       className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
-                      key={accountName}
+                      key={account.id}
                     >
                       <input
-                        checked={selectedAccounts.has(accountName)}
+                        checked={selectedAccountIds.has(account.id)}
                         className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                        onChange={() => toggleAccount(accountName)}
+                        onChange={() => toggleAccount(account.id)}
                         type="checkbox"
                       />
                       <span className="min-w-0 truncate">{accountName}</span>
                     </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : null}
