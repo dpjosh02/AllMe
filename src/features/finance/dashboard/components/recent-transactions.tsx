@@ -44,6 +44,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
+const compactDateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+});
+
 const monthFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
   year: "numeric",
@@ -144,7 +150,7 @@ export function RecentTransactions({
               }}
               type="button"
             >
-              <span className="min-w-0 truncate text-left text-[0.72rem] leading-none">
+              <span className="min-w-0 whitespace-nowrap text-left text-[0.72rem] leading-none">
                 {dateFilterLabel}
               </span>
               <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" />
@@ -352,18 +358,18 @@ function formatDateFilterLabel(afterDate: string | null, beforeDate: string | nu
   }
 
   if (!beforeDate) {
-    return `After ${formatDateLabel(afterDate)}`;
+    return `After ${formatCompactDateLabel(afterDate)}`;
   }
 
   if (afterDate === beforeDate) {
-    return formatDateLabel(afterDate);
+    return formatCompactDateLabel(afterDate);
   }
 
-  return `${formatDateLabel(afterDate)} - ${formatDateLabel(beforeDate)}`;
+  return `${formatCompactDateLabel(afterDate)} - ${formatCompactDateLabel(beforeDate)}`;
 }
 
-function formatDateLabel(date: string) {
-  return dateFormatter.format(new Date(`${date}T00:00:00`));
+function formatCompactDateLabel(date: string) {
+  return compactDateFormatter.format(new Date(`${date}T00:00:00`));
 }
 
 function getAmountClass(value: string) {
