@@ -78,6 +78,9 @@ Current implementation:
 - `src/features/finance/integrations/fintable/parser.ts` validates headers and parses row objects into normalized account and transaction shapes.
 - `src/features/finance/integrations/fintable/google-sheets.ts` reads Google Sheets values, converts them into row objects, validates the header contract, and feeds rows into the Fintable parser.
 - `scripts/fintable-dry-run.ts` can test the configured sheet connection and print only counts, never account or transaction details.
+- `src/features/finance/imports/fintable/plan.ts` converts a parsed snapshot into idempotent database-write candidates and flags unmatched transaction account names.
+- `src/features/finance/imports/fintable/importer.ts` upserts Fintable data into finance connections, import runs, raw records, accounts, balances, and transactions.
+- `scripts/fintable-import.ts` reads the configured sheet and writes the parsed data into PostgreSQL for `ALLME_IMPORT_USER_EMAIL`.
 - `tests/unit/finance/fintable-parser.test.ts` covers parser behavior with fake rows.
 - `tests/unit/finance/fintable-google-sheets.test.ts` covers Google Sheets value conversion and parsing with fake rows.
 
@@ -99,6 +102,7 @@ GOOGLE_APPLICATION_CREDENTIALS=""
 FINTABLE_SPREADSHEET_ID=""
 FINTABLE_ACCOUNTS_RANGE="Accounts!A:H"
 FINTABLE_TRANSACTIONS_RANGE="Transactions!A:H"
+ALLME_IMPORT_USER_EMAIL=""
 ```
 
 For private sheets, prefer `GOOGLE_APPLICATION_CREDENTIALS` and leave `GOOGLE_SHEETS_API_KEY` empty. The credentials value should be an absolute path to a service-account JSON file stored outside this repo.
@@ -122,3 +126,20 @@ Transactions parsed: 1200
 ```
 
 The command intentionally does not print account names, balances, merchants, or transaction amounts.
+
+## Database Import
+
+After PostgreSQL is configured, migrations are applied, and a user exists for `ALLME_IMPORT_USER_EMAIL`, run:
+
+```bash
+npm run finance:fintable:import
+```
+
+The importer is designed to be idempotent:
+
+- accounts upsert by user and source account id
+- raw records upsert by user, provider, and row hash
+- balance snapshots upsert by account and snapshot date
+- transactions upsert by user and source fingerprint
+
+Transactions whose Fintable account name does not match an imported account are skipped and counted as unmatched.

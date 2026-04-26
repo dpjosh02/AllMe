@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "finance_accounts_user_name_unique" ON "finance_accounts" USING btree ("user_id","name");
