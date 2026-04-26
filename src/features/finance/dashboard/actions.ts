@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { importFintableSnapshot } from "@/features/finance/imports/fintable/importer";
@@ -87,6 +87,72 @@ export async function createFinanceCategory(formData: FormData) {
   }
 }
 
+export async function updateFinanceCategory(formData: FormData) {
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const color = normalizeHexColor(String(formData.get("color") ?? ""));
+  const cashFlowType = String(formData.get("cashFlowType") ?? "spending");
+  const returnAccountId = String(formData.get("accountId") ?? "");
+
+  if (!categoryId || !name) {
+    throw new Error("Missing category id/name");
+  }
+
+  const userId = await getDefaultFinanceUserId();
+  const includeInIncome = cashFlowType === "income";
+  const includeInSpending = cashFlowType === "spending";
+
+  await db
+    .update(financeUserCategories)
+    .set({
+      name,
+      color,
+      includeInIncome,
+      includeInSpending,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(financeUserCategories.id, categoryId), eq(financeUserCategories.userId, userId)),
+    );
+
+  revalidateFinancePaths(returnAccountId);
+}
+
+export async function deleteFinanceCategory(formData: FormData) {
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const returnAccountId = String(formData.get("accountId") ?? "");
+
+  if (!categoryId) {
+    throw new Error("Missing category id");
+  }
+
+  const userId = await getDefaultFinanceUserId();
+
+  await db
+    .update(financeTransactionCategoryAssignments)
+    .set({
+      categoryId: null,
+      source: "uncategorized",
+      matchedRuleId: null,
+      confidence: 0,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(financeTransactionCategoryAssignments.userId, userId),
+        eq(financeTransactionCategoryAssignments.categoryId, categoryId),
+      ),
+    );
+
+  await db
+    .delete(financeUserCategories)
+    .where(
+      and(eq(financeUserCategories.id, categoryId), eq(financeUserCategories.userId, userId)),
+    );
+
+  revalidateFinancePaths(returnAccountId);
+}
+
 export async function assignFinanceTransactionCategory(formData: FormData) {
   const transactionId = String(formData.get("transactionId") ?? "");
   const categoryId = String(formData.get("categoryId") ?? "");
@@ -152,6 +218,74 @@ export async function assignFinanceTransactionCategory(formData: FormData) {
   revalidatePath(`/finance/accounts/${accountId || transaction.accountId}`);
 }
 
+export async function assignFinanceCategoryToTransactions(formData: FormData) {
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const accountId = String(formData.get("accountId") ?? "");
+  const transactionIds = Array.from(
+    new Set(
+      formData
+        .getAll("transactionIds")
+        .map((value) => String(value))
+        .filter(Boolean),
+    ),
+  );
+
+  if (!categoryId || transactionIds.length === 0) {
+    throw new Error("Missing category id or transaction ids");
+  }
+
+  const [category] = await db
+    .select({ id: financeUserCategories.id, userId: financeUserCategories.userId })
+    .from(financeUserCategories)
+    .where(eq(financeUserCategories.id, categoryId))
+    .limit(1);
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  const transactions = await db
+    .select({ id: financeTransactions.id })
+    .from(financeTransactions)
+    .where(
+      and(
+        eq(financeTransactions.userId, category.userId),
+        inArray(financeTransactions.id, transactionIds),
+      ),
+    );
+
+  if (transactions.length === 0) {
+    throw new Error("No matching transactions found");
+  }
+
+  await db
+    .insert(financeTransactionCategoryAssignments)
+    .values(
+      transactions.map((transaction) => ({
+        userId: category.userId,
+        transactionId: transaction.id,
+        categoryId: category.id,
+        source: "manual" as const,
+        confidence: 100,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [
+        financeTransactionCategoryAssignments.userId,
+        financeTransactionCategoryAssignments.transactionId,
+      ],
+      set: {
+        categoryId: category.id,
+        source: "manual",
+        matchedRuleId: null,
+        confidence: 100,
+        updatedAt: new Date(),
+      },
+    });
+
+  revalidateFinancePaths(accountId);
+}
+
 export async function syncFintableNow() {
   const userEmail = process.env.ALLME_IMPORT_USER_EMAIL;
 
@@ -184,6 +318,14 @@ export async function syncFintableNow() {
   });
 
   revalidatePath("/finance");
+}
+
+function revalidateFinancePaths(accountId: string) {
+  revalidatePath("/finance");
+
+  if (accountId) {
+    revalidatePath(`/finance/accounts/${accountId}`);
+  }
 }
 
 async function getDefaultFinanceUserId() {

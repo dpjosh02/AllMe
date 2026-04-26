@@ -144,7 +144,11 @@ Recent finance dashboard work:
 - The tag manager can create user-owned tags with a name, color, and cash-flow behavior: spending, income, or neutral.
 - The transaction detail modal's AllMe Category section is interactive and can manually assign an existing tag to that transaction.
 - Manual transaction category assignments use source `manual`, which preserves them from automated rule recategorization.
-- Tag creation is manual-only in this slice. Rule preview and "apply to similar transactions" are planned as the next layer.
+- The tag manager can edit tag name, color, and cash-flow behavior.
+- The tag manager can delete tags after an in-modal confirmation. Existing assignments for that tag become uncategorized.
+- Recent Transactions can be filtered by assigned category, including Uncategorized.
+- The transaction detail modal can infer simple matching signals from the selected transaction and preview/apply a tag to similar loaded transactions.
+- Current apply-to-similar is scoped to the transactions loaded into the Recent Transactions component. Full-history server-side rule preview is still a future layer.
 
 ## Current Tagging Architecture
 
@@ -163,7 +167,13 @@ Current tag creation supports:
 - tag color
 - cash-flow behavior: spending, income, or neutral
 
-The next tagging layer should add an inference and preview workflow before any batch changes:
+The first inference and preview layer exists in the transaction detail modal:
+
+- AllMe proposes matching signals from the selected transaction.
+- The preview count is computed from the currently loaded transaction list.
+- Applying to previewed matches writes manual assignments for that previewed set.
+
+The next tagging layer should move this inference and preview workflow server-side for full-history coverage:
 
 - infer candidate rules from the selected transaction's raw fields
 - show matching signals such as raw category, personal finance category, merchant, website, and description
@@ -260,8 +270,8 @@ aa4df6f Initial project blueprint
 
 ## Near-Term Next Steps
 
-1. Add category filtering to Recent Transactions.
-2. Add rule preview and "apply to similar transactions" for user-created tags.
+1. Move category rule preview and apply-to-similar matching server-side for full-history coverage.
+2. Add persistent saved rules for user-created tags after preview approval.
 3. Add a dedicated category review workflow for assigning categories to uncategorized transactions.
 4. Consider moving transaction filtering server-side once the dataset grows beyond a few hundred rows.
 5. Add app navigation so `/`, `/finance`, and future sections share one shell.
