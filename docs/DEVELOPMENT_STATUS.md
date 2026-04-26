@@ -32,9 +32,9 @@ Implemented:
 
 ## Verified Local Import
 
-First real Fintable import succeeded against local Postgres.
+The first real Fintable import succeeded against local Postgres and later syncs expanded the local dataset.
 
-Imported counts:
+Initial import counts:
 
 ```text
 Accounts upserted: 6
@@ -44,13 +44,13 @@ Raw records upserted: 121
 Unmatched transactions skipped: 0
 ```
 
-Database count check:
+Current transaction/categorization snapshot:
 
 ```text
-accounts: 6
-transactions: 115
-raw_records: 121
-import_runs: 1
+transactions analyzed: 3441
+rule-categorized: 3253
+uncategorized: 188
+investment sweep rows: 161
 ```
 
 ## Current Local Services
@@ -175,6 +175,14 @@ The dashboard account query now reads only each account's latest balance snapsho
 Recent project milestones:
 
 ```text
+c760912 Improve transaction review and cash flow categorization
+1d888ec Fix Fintable account sync conflicts
+e165044 Compact transaction date filter labels
+a282cbd Add in-app Fintable sync
+036c985 Add account aliases and metric lookback
+1c6ff22 Polish transaction filter controls
+06d47d3 Add synthetic finance test data scripts
+9c7cee1 Document recent finance dashboard progress
 759580d Add transaction date range filter
 2acdff8 Add finance categorization system
 818acdf Document finance categorization analysis
@@ -204,4 +212,3 @@ aa4df6f Initial project blueprint
 5. Add app navigation so `/`, `/finance`, and future sections share one shell.
 6. Add a finance account detail page.
 7. Add a visible import status/history page.
-8. Move from manual import command to a controlled in-app import trigger.
