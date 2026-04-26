@@ -3,8 +3,11 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+import { importFintableSnapshot } from "@/features/finance/imports/fintable/importer";
+import { getFintableSheetConfig } from "@/features/finance/integrations/fintable/config";
+import { readFintableGoogleSheetsSnapshot } from "@/features/finance/integrations/fintable/google-sheets";
 import { db } from "@/server/db";
-import { financeAccounts } from "@/server/db/schema";
+import { financeAccounts, users } from "@/server/db/schema";
 
 export async function renameFinanceAccount(formData: FormData) {
   const accountId = String(formData.get("accountId") ?? "");
@@ -21,6 +24,40 @@ export async function renameFinanceAccount(formData: FormData) {
       updatedAt: new Date(),
     })
     .where(eq(financeAccounts.id, accountId));
+
+  revalidatePath("/finance");
+}
+
+export async function syncFintableNow() {
+  const userEmail = process.env.ALLME_IMPORT_USER_EMAIL;
+
+  if (!userEmail) {
+    throw new Error("Missing required environment variable: ALLME_IMPORT_USER_EMAIL");
+  }
+
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, userEmail));
+
+  if (!user) {
+    throw new Error(`No AllMe user found for ALLME_IMPORT_USER_EMAIL=${userEmail}`);
+  }
+
+  const config = getFintableSheetConfig();
+  const snapshot = await readFintableGoogleSheetsSnapshot({
+    apiKey: config.apiKey,
+    credentialsFile: config.credentialsFile,
+    spreadsheetId: config.spreadsheetId,
+    accountsRange: config.accountsRange,
+    transactionsRange: config.transactionsRange,
+  });
+
+  await importFintableSnapshot({
+    db,
+    userId: user.id,
+    snapshot,
+  });
 
   revalidatePath("/finance");
 }

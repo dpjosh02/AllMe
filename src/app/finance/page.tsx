@@ -1,8 +1,10 @@
 import Link from "next/link";
 
+import { syncFintableNow } from "@/features/finance/dashboard/actions";
 import { AccountsPanel } from "@/features/finance/dashboard/components/accounts-panel";
 import { RecentTransactions } from "@/features/finance/dashboard/components/recent-transactions";
 import { SummaryMetrics } from "@/features/finance/dashboard/components/summary-metrics";
+import { SyncFintableButton } from "@/features/finance/dashboard/components/sync-fintable-button";
 import { getFinanceDashboardData } from "@/features/finance/dashboard/queries";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +27,12 @@ export default async function FinancePage() {
               Finance
             </h1>
           </div>
-          <ImportStatus latestImport={data.latestImport} />
+          <div className="flex flex-col gap-2 sm:items-end">
+            <ImportStatus latestImport={data.latestImport} />
+            <form action={syncFintableNow}>
+              <SyncFintableButton />
+            </form>
+          </div>
         </header>
 
         <SummaryMetrics

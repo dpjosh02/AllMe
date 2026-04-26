@@ -25,6 +25,7 @@ Implemented:
 - Local synthetic finance test-data scripts for stress testing transactions and balance history.
 - Persistent account display names that survive future Fintable imports.
 - Dashboard metric lookback control for Transactions, Inflows, Outflows, and Categorized cards.
+- In-app Fintable sync button on `/finance`.
 
 ## Verified Local Import
 
@@ -117,6 +118,7 @@ Recent finance dashboard work:
 - Recent Transactions account filtering uses account ids, not display names, so renaming accounts does not break filters.
 - Top dashboard transaction metrics are controlled by a `Lookback` popover with manual days, weeks, months, and years inputs.
 - The lookback window applies from the computed past date through today and affects Transactions, Inflows, Outflows, and Categorized counts.
+- The finance page includes a `Sync Fintable` button beside import status. It reads the configured Google Sheet, runs the existing Fintable import pipeline, reruns categorization, and refreshes `/finance`.
 
 Verified after this work:
 
