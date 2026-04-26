@@ -76,10 +76,12 @@ select {
   background: rgb(15 118 110 / 24%);
 }
 
-.money-positive {
-  color: var(--success);
+.money-positive,
+[data-money="positive"] {
+  color: var(--success) !important;
 }
 
-.money-negative {
-  color: var(--danger);
+.money-negative,
+[data-money="negative"] {
+  color: var(--danger) !important;
 }
