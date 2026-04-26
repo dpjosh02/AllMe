@@ -63,14 +63,14 @@ export default async function FinancePage() {
             icon={<ArrowDownLeft aria-hidden="true" className="h-5 w-5" />}
             label="Inflows"
             value={formatCurrency(data.summary.totalInflow)}
-            valueClassName="text-[var(--success)]"
+            valueClassName="money-positive"
           />
           <MetricCard
             detail="Spend and transfers out"
             icon={<ArrowUpRight aria-hidden="true" className="h-5 w-5" />}
             label="Outflows"
             value={`-${formatCurrency(data.summary.totalOutflow)}`}
-            valueClassName="text-[var(--danger)]"
+            valueClassName="money-negative"
           />
         </section>
 
@@ -192,5 +192,5 @@ function formatCurrency(value: string) {
 }
 
 function getAmountClass(value: string) {
-  return Number(value) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]";
+  return Number(value) < 0 ? "money-negative" : "money-positive";
 }

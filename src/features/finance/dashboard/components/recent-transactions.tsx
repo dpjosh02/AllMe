@@ -163,5 +163,5 @@ function formatCurrency(value: string) {
 }
 
 function getAmountClass(value: string) {
-  return Number(value) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]";
+  return Number(value) < 0 ? "money-negative" : "money-positive";
 }

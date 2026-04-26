@@ -6,7 +6,10 @@ import { useEffect, useSyncExternalStore } from "react";
 type Theme = "light" | "dark";
 
 const storageKey = "allme-theme";
+const themeChangeEvent = "allme-theme-change";
 const defaultTheme: Theme = "light";
+
+let currentTheme: Theme = defaultTheme;
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(
@@ -16,14 +19,13 @@ export function ThemeToggle() {
   );
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    const storedTheme = window.localStorage.getItem(storageKey);
+    const initialTheme = storedTheme === "dark" ? "dark" : "light";
+    setTheme(initialTheme);
+  }, []);
 
   function toggleTheme() {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    window.localStorage.setItem(storageKey, nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
-    window.dispatchEvent(new Event("allme-theme-change"));
+    setTheme(theme === "dark" ? "light" : "dark");
   }
 
   return (
@@ -43,23 +45,23 @@ export function ThemeToggle() {
   );
 }
 
+function setTheme(theme: Theme) {
+  currentTheme = theme;
+  window.localStorage.setItem(storageKey, theme);
+  document.documentElement.setAttribute("data-theme", theme);
+  window.dispatchEvent(new Event(themeChangeEvent));
+}
+
 function subscribeToTheme(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener("allme-theme-change", onStoreChange);
+  window.addEventListener(themeChangeEvent, onStoreChange);
 
   return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener("allme-theme-change", onStoreChange);
+    window.removeEventListener(themeChangeEvent, onStoreChange);
   };
 }
 
 function getThemeSnapshot(): Theme {
-  const storedTheme = window.localStorage.getItem(storageKey);
-  if (storedTheme === "light" || storedTheme === "dark") {
-    return storedTheme;
-  }
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return currentTheme;
 }
 
 function getServerSnapshot(): Theme {

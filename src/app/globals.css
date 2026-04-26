@@ -75,3 +75,11 @@ select {
 ::selection {
   background: rgb(15 118 110 / 24%);
 }
+
+.money-positive {
+  color: var(--success);
+}
+
+.money-negative {
+  color: var(--danger);
+}
