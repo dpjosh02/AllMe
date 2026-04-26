@@ -22,6 +22,7 @@ Implemented:
 - Finance categorization database tables, default rules, assignment script, import hook, and `/finance` category badges.
 - Recent Transactions calendar date-range filter that composes with account filtering.
 - Finance display cleanup for institution labels and category badges.
+- Local synthetic finance test-data scripts for stress testing transactions and balance history.
 
 ## Verified Local Import
 
@@ -62,6 +63,8 @@ npm run db:migrate
 npm run finance:fintable:dry-run
 npm run finance:fintable:import
 npm run finance:categorize
+npm run finance:test-data:seed
+npm run finance:test-data:clear
 npm run dev
 ```
 
@@ -115,6 +118,37 @@ npm run verify
 npm run build
 Live browser test on http://localhost:3000/finance
 ```
+
+## Synthetic Test Data
+
+Synthetic finance test data is local-only and should not be written back to Fintable or Google Sheets.
+
+Implemented commands:
+
+```bash
+npm run finance:test-data:seed
+npm run finance:test-data:clear
+```
+
+The seed command uses existing imported accounts as anchors and generates:
+
+- deterministic synthetic transactions tagged with `source_type = synthetic_test_data`
+- deterministic synthetic raw records tagged with `provider = synthetic_test_data`
+- daily historical balance snapshots for account-growth experiments
+- categorization assignments by rerunning the normal finance categorization service
+
+Current local synthetic seed result:
+
+```text
+Synthetic transactions: 521
+Synthetic balance snapshots: 4380
+Synthetic raw records: 4901
+Total transaction rows after seed: 636
+Distinct balance snapshot dates after seed: 731
+Balance snapshot range after seed: 2024-04-25 to 2026-04-25
+```
+
+The dashboard account query now reads only each account's latest balance snapshot. This prevents duplicated account rows when historical balance snapshots exist.
 
 ## Current Git History
 

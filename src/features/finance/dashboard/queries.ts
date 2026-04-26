@@ -43,23 +43,37 @@ export async function getFinanceDashboardData() {
       eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
     );
 
-  const accounts = await db
+  const activeAccounts = await db
     .select({
       id: financeAccounts.id,
       name: financeAccounts.name,
       institutionName: financeAccounts.institutionName,
       type: financeAccounts.type,
       currency: financeAccounts.currency,
-      balance: financeBalanceSnapshots.balance,
-      snapshotDate: financeBalanceSnapshots.snapshotDate,
     })
     .from(financeAccounts)
-    .leftJoin(
-      financeBalanceSnapshots,
-      eq(financeBalanceSnapshots.accountId, financeAccounts.id),
-    )
     .where(eq(financeAccounts.isActive, true))
     .orderBy(financeAccounts.institutionName, financeAccounts.name);
+
+  const accounts = await Promise.all(
+    activeAccounts.map(async (account) => {
+      const [latestBalance] = await db
+        .select({
+          balance: financeBalanceSnapshots.balance,
+          snapshotDate: financeBalanceSnapshots.snapshotDate,
+        })
+        .from(financeBalanceSnapshots)
+        .where(eq(financeBalanceSnapshots.accountId, account.id))
+        .orderBy(desc(financeBalanceSnapshots.snapshotDate))
+        .limit(1);
+
+      return {
+        ...account,
+        balance: latestBalance?.balance ?? null,
+        snapshotDate: latestBalance?.snapshotDate ?? null,
+      };
+    }),
+  );
 
   const recentTransactions = await db
     .select({
@@ -83,7 +97,7 @@ export async function getFinanceDashboardData() {
       eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
     )
     .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
-    .limit(250);
+    .limit(1000);
 
   const [latestImport] = await db
     .select({
