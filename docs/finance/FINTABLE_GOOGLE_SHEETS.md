@@ -85,7 +85,8 @@ Current limitations:
 
 - The Google Sheets reader only fetches and parses rows.
 - It does not write to PostgreSQL yet.
-- It does not perform OAuth yet. The current reader expects an API key and a sheet that can be read by that key.
+- It supports private-sheet reads through a Google service account via `GOOGLE_APPLICATION_CREDENTIALS`.
+- It can still use an API key for public/readable sheets, but private finance sheets should use service-account access.
 - Holdings are not mapped yet because the current confirmed sheet headers only cover `Accounts` and `Transactions`.
 
 ## Environment Variables
@@ -94,10 +95,13 @@ Expected local configuration:
 
 ```text
 GOOGLE_SHEETS_API_KEY=""
+GOOGLE_APPLICATION_CREDENTIALS=""
 FINTABLE_SPREADSHEET_ID=""
 FINTABLE_ACCOUNTS_RANGE="Accounts!A:H"
 FINTABLE_TRANSACTIONS_RANGE="Transactions!A:H"
 ```
+
+For private sheets, prefer `GOOGLE_APPLICATION_CREDENTIALS` and leave `GOOGLE_SHEETS_API_KEY` empty. The credentials value should be an absolute path to a service-account JSON file stored outside this repo.
 
 The range names should match the actual Google Sheets tab names. If Fintable uses different tab names, only the range values need to change.
 

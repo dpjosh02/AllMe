@@ -129,4 +129,15 @@ describe("Fintable Google Sheets reader", () => {
     expect(String(fetcher.mock.calls[0]?.[0])).toContain("Accounts!A%3AH");
     expect(String(fetcher.mock.calls[1]?.[0])).toContain("Transactions!A%3AH");
   });
+
+  it("requires either an API key or service account credentials", async () => {
+    await expect(
+      readFintableGoogleSheetsSnapshot({
+        spreadsheetId: "fake-spreadsheet-id",
+        accountsRange: "Accounts!A:H",
+        transactionsRange: "Transactions!A:H",
+        fetcher: vi.fn<typeof fetch>(),
+      }),
+    ).rejects.toThrow("Missing Google Sheets credentials");
+  });
 });

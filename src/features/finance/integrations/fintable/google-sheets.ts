@@ -1,3 +1,5 @@
+import { GoogleAuth } from "google-auth-library";
+
 import {
   FINTABLE_ACCOUNT_HEADERS,
   FINTABLE_TRANSACTION_HEADERS,
@@ -19,7 +21,8 @@ type GoogleSheetsValuesResponse = {
 };
 
 export type FintableGoogleSheetsConfig = {
-  apiKey: string;
+  apiKey?: string;
+  credentialsFile?: string;
   spreadsheetId: string;
   accountsRange: string;
   transactionsRange: string;
@@ -105,16 +108,44 @@ async function fetchGoogleSheetValues(
   const url = new URL(
     `https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/${encodeURIComponent(range)}`,
   );
-  url.searchParams.set("key", config.apiKey);
+  const headers = new Headers();
 
-  const response = await fetcher(url);
+  if (config.credentialsFile) {
+    headers.set("Authorization", `Bearer ${await getServiceAccountAccessToken(config)}`);
+  } else if (config.apiKey) {
+    url.searchParams.set("key", config.apiKey);
+  } else {
+    throw new Error(
+      "Missing Google Sheets credentials. Set GOOGLE_APPLICATION_CREDENTIALS for private sheets or GOOGLE_SHEETS_API_KEY for public/readable sheets.",
+    );
+  }
+
+  const response = await fetcher(url, { headers });
 
   if (!response.ok) {
-    throw new Error(`Google Sheets request failed with status ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(
+      `Google Sheets request failed with status ${response.status}: ${errorText}`,
+    );
   }
 
   const body = (await response.json()) as GoogleSheetsValuesResponse;
   return body.values ?? [];
+}
+
+async function getServiceAccountAccessToken(config: FintableGoogleSheetsConfig) {
+  const auth = new GoogleAuth({
+    keyFile: config.credentialsFile,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+
+  if (!tokenResponse.token) {
+    throw new Error("Google service account did not return an access token");
+  }
+
+  return tokenResponse.token;
 }
 
 function hasRequiredValue(row: FintableSheetRow, header: string) {
