@@ -118,7 +118,8 @@ export function RecentTransactions({
           ) : null}
         </div>
       </div>
-      <div className="divide-y divide-[var(--line)]">
+      <div className="max-h-[min(34rem,calc(100vh-19rem))] overflow-y-auto pr-2">
+        <div className="divide-y divide-[var(--line)]">
         {filteredTransactions.length === 0 ? (
           <EmptyState label="No transactions match the selected accounts." />
         ) : (
@@ -145,6 +146,7 @@ export function RecentTransactions({
             </div>
           ))
         )}
+        </div>
       </div>
     </div>
   );
