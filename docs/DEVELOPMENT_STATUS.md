@@ -20,6 +20,8 @@ Implemented:
 - Positive monetary values render green and negative monetary values render red.
 - Finance categorization analysis documented in `docs/finance/CATEGORIZATION_ANALYSIS.md`.
 - Finance categorization database tables, default rules, assignment script, import hook, and `/finance` category badges.
+- Recent Transactions calendar date-range filter that composes with account filtering.
+- Finance display cleanup for institution labels and category badges.
 
 ## Verified Local Import
 
@@ -92,11 +94,42 @@ Uncategorized: 3
 
 The assignment system currently preserves manual overrides by only allowing automated categorization to update non-manual assignments.
 
+## Recent UI Progress
+
+Recent finance dashboard work:
+
+- Dark/light theme toggle remains global in `src/components/theme/theme-toggle.tsx`.
+- Recent Transactions is a client component at `src/features/finance/dashboard/components/recent-transactions.tsx`.
+- Account filtering uses an in-component `Set` of selected account names and supports select all/deselect all.
+- Date filtering now uses a calendar popover with an inclusive `afterDate` and `beforeDate` range.
+- If the same date is selected twice, the filter returns transactions from that day only.
+- Account filtering and date filtering are composed in the same transaction filter pass.
+- The finance dashboard query now fetches up to 250 recent rows so date filtering has enough local data to operate on.
+- Account institution labels strip Fintable suffixes such as `(Connection-1...)` for display only.
+- Recent transaction subtext now shows only the originating account; assigned category appears as a badge without the assignment source label.
+
+Verified after this work:
+
+```text
+npm run verify
+npm run build
+Live browser test on http://localhost:3000/finance
+```
+
 ## Current Git History
 
 Recent project milestones:
 
 ```text
+759580d Add transaction date range filter
+2acdff8 Add finance categorization system
+818acdf Document finance categorization analysis
+51ab26e Make recent transactions scrollable
+df22f5a Enforce finance amount colors
+3e0cfc0 Fix finance theme and amount colors
+23963d3 Fix theme toggle hydration
+a902316 Add finance filters and theme toggle
+a583af2 Document finance import progress
 0ab41eb Add finance dashboard page
 93eb9c9 Fix Fintable import setup
 30673f2 Load local env in Drizzle config
@@ -110,10 +143,11 @@ aa4df6f Initial project blueprint
 
 ## Near-Term Next Steps
 
-1. Add a category review UI for uncategorized transactions.
-2. Add a category/rule editor UI.
-3. Add transaction filtering by assigned user category.
-4. Add app navigation so `/`, `/finance`, and future sections share one shell.
-5. Add a finance account detail page.
-6. Add a visible import status/history page.
-7. Move from manual import command to a controlled in-app import trigger.
+1. Add category filtering to Recent Transactions.
+2. Add a category review UI for uncategorized transactions.
+3. Add a category/rule editor UI.
+4. Consider moving transaction filtering server-side once the dataset grows beyond a few hundred rows.
+5. Add app navigation so `/`, `/finance`, and future sections share one shell.
+6. Add a finance account detail page.
+7. Add a visible import status/history page.
+8. Move from manual import command to a controlled in-app import trigger.

@@ -559,3 +559,4 @@ Current limitations:
 - Categories and rules are code-seeded, not yet editable in the UI.
 - Uncategorized transactions do not yet have a review queue.
 - The dashboard shows assigned categories but does not yet filter by assigned category.
+- The dashboard now filters transactions by account and inclusive calendar date range on the client.
