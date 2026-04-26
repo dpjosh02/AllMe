@@ -146,6 +146,41 @@ Recent finance dashboard work:
 - Manual transaction category assignments use source `manual`, which preserves them from automated rule recategorization.
 - Tag creation is manual-only in this slice. Rule preview and "apply to similar transactions" are planned as the next layer.
 
+## Current Tagging Architecture
+
+The finance tagging system is currently built on the existing categorization tables rather than a separate tag model:
+
+- `finance_user_categories` stores user-owned tags, including display name, slug, color, icon, and cash-flow behavior.
+- `finance_transaction_category_assignments` stores the selected tag for each transaction.
+- `source = manual` is used for user-chosen transaction tags.
+- Automated recategorization intentionally does not overwrite manual assignments.
+- The Recent Transactions ellipsis opens tag management.
+- The transaction detail modal's AllMe Category widget opens a tag picker for that individual transaction.
+
+Current tag creation supports:
+
+- tag name
+- tag color
+- cash-flow behavior: spending, income, or neutral
+
+The next tagging layer should add an inference and preview workflow before any batch changes:
+
+- infer candidate rules from the selected transaction's raw fields
+- show matching signals such as raw category, personal finance category, merchant, website, and description
+- preview matching transaction count before applying
+- let the user choose whether the tag applies to only this transaction, past similar transactions, future similar transactions, or both
+
+The most useful raw fields for future rule inference are:
+
+- `personal_finance_category.detailed`
+- `personal_finance_category.primary`
+- `raw.category`
+- `merchant_entity_id`
+- `merchant_name`
+- `name` / normalized transaction description
+- `website`
+- investment fields such as `type`, `symbol`, and settlement-related fields
+
 Verified after this work:
 
 ```text
@@ -190,6 +225,7 @@ The dashboard account query now reads only each account's latest balance snapsho
 Recent project milestones:
 
 ```text
+5b6ed62 Add self-serve finance tagging
 42d620a Refine finance date and lookback filters
 bda5974 Clean up finance account rows
 382eba1 Add finance account detail and transaction modal
