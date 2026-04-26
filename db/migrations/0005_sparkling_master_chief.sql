@@ -1,0 +1,1 @@
+DROP INDEX "finance_accounts_user_name_unique";

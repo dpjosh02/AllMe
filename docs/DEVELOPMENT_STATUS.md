@@ -119,6 +119,7 @@ Recent finance dashboard work:
 - Top dashboard transaction metrics are controlled by a `Lookback` popover with manual days, weeks, months, and years inputs.
 - The lookback window applies from the computed past date through today and affects Transactions, Inflows, Outflows, and Categorized counts.
 - The finance page includes a `Sync Fintable` button beside import status. It reads the configured Google Sheet, runs the existing Fintable import pipeline, reruns categorization, and refreshes `/finance`.
+- Account imports are keyed by Fintable source account id. If Fintable changes a source account id for an existing account name, the importer merges into the existing account instead of creating a duplicate or failing on account name uniqueness.
 
 Verified after this work:
 

@@ -36,6 +36,13 @@
       "when": 1777206309676,
       "tag": "0004_bright_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777220452380,
+      "tag": "0005_sparkling_master_chief",
+      "breakpoints": true
     }
   ]
 }

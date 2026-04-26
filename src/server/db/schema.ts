@@ -117,10 +117,6 @@ export const financeAccounts = pgTable(
       table.userId,
       table.sourceAccountId,
     ),
-    userAccountNameUnique: uniqueIndex("finance_accounts_user_name_unique").on(
-      table.userId,
-      table.name,
-    ),
   }),
 );
 

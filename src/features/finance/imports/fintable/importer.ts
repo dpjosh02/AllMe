@@ -106,6 +106,59 @@ export async function importFintableSnapshot({
     const accountIdsByName = new Map<string, string>();
 
     for (const account of plan.accounts) {
+      const [existingAccountBySourceId] = await db
+        .select({
+          id: financeAccounts.id,
+          sourceAccountId: financeAccounts.sourceAccountId,
+          name: financeAccounts.name,
+        })
+        .from(financeAccounts)
+        .where(
+          and(
+            eq(financeAccounts.userId, userId),
+            eq(financeAccounts.sourceAccountId, account.sourceAccountId),
+          ),
+        )
+        .limit(1);
+
+      if (!existingAccountBySourceId) {
+        const [existingAccountByName] = await db
+          .select({
+            id: financeAccounts.id,
+            sourceAccountId: financeAccounts.sourceAccountId,
+            name: financeAccounts.name,
+          })
+          .from(financeAccounts)
+          .where(and(eq(financeAccounts.userId, userId), eq(financeAccounts.name, account.name)))
+          .limit(1);
+
+        if (existingAccountByName) {
+          const [mergedAccount] = await db
+            .update(financeAccounts)
+            .set({
+              connectionId: connection.id,
+              sourceAccountId: account.sourceAccountId,
+              institutionName: account.institutionName,
+              currency: account.currency,
+              isActive: true,
+              updatedAt: new Date(),
+            })
+            .where(eq(financeAccounts.id, existingAccountByName.id))
+            .returning({
+              id: financeAccounts.id,
+              sourceAccountId: financeAccounts.sourceAccountId,
+              name: financeAccounts.name,
+            });
+
+          if (mergedAccount) {
+            accountIdsBySourceId.set(mergedAccount.sourceAccountId, mergedAccount.id);
+            accountIdsByName.set(mergedAccount.name, mergedAccount.id);
+          }
+
+          continue;
+        }
+      }
+
       const [storedAccount] = await db
         .insert(financeAccounts)
         .values({
