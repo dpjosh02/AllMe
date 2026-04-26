@@ -79,7 +79,7 @@ export const financeConnections = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    userProviderIdx: index("finance_connections_user_provider_idx").on(
+    userProviderUnique: uniqueIndex("finance_connections_user_provider_unique").on(
       table.userId,
       table.provider,
     ),

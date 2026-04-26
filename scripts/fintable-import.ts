@@ -1,17 +1,21 @@
-import { eq } from "drizzle-orm";
-
-import { importFintableSnapshot } from "@/features/finance/imports/fintable/importer";
-import { readFintableGoogleSheetsSnapshot } from "@/features/finance/integrations/fintable/google-sheets";
-import { db } from "@/server/db";
-import { users } from "@/server/db/schema";
 import { getFintableSheetConfig } from "@/../scripts/fintable-env";
 
+const config = getFintableSheetConfig();
 const userEmail = process.env.ALLME_IMPORT_USER_EMAIL;
 
 if (!userEmail) {
   console.error("Missing required environment variable: ALLME_IMPORT_USER_EMAIL");
   process.exit(1);
 }
+
+const [{ eq }, { importFintableSnapshot }, { readFintableGoogleSheetsSnapshot }, { db }, { users }] =
+  await Promise.all([
+    import("drizzle-orm"),
+    import("@/features/finance/imports/fintable/importer"),
+    import("@/features/finance/integrations/fintable/google-sheets"),
+    import("@/server/db"),
+    import("@/server/db/schema"),
+  ]);
 
 const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, userEmail));
 
@@ -20,7 +24,6 @@ if (!user) {
   process.exit(1);
 }
 
-const config = getFintableSheetConfig();
 const snapshot = await readFintableGoogleSheetsSnapshot({
   apiKey: config.apiKey,
   credentialsFile: config.credentialsFile,
