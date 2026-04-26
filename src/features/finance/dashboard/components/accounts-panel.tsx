@@ -1,4 +1,4 @@
-import { ArrowRight, CircleDollarSign } from "lucide-react";
+import { CircleDollarSign } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 
@@ -53,22 +53,11 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
                 key={account.id}
               >
                 <div className="min-w-0">
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">{displayName}</p>
-                      <p className="text-sm text-[var(--muted)]">
-                        {formatInstitutionName(account.institutionName)}
-                      </p>
-                      {account.displayName ? (
-                        <p className="truncate text-xs text-[var(--muted)]">
-                          Fintable: {account.name}
-                        </p>
-                      ) : null}
-                    </div>
-                    <ArrowRight
-                      aria-hidden="true"
-                      className="mt-1 h-4 w-4 shrink-0 text-[var(--muted)]"
-                    />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{displayName}</p>
+                    <p className="text-sm text-[var(--muted)]">
+                      {formatInstitutionName(account.institutionName)}
+                    </p>
                   </div>
                 </div>
                 <div className="text-left sm:text-right">
