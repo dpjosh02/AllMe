@@ -17,6 +17,7 @@ import {
   assignFinanceCategoryToTransactions,
   assignFinanceTransactionCategory,
   createFinanceCategory,
+  createFinanceCategoryTextRule,
   deleteFinanceCategory,
   deleteFinanceTransaction,
   updateFinanceCategory,
@@ -824,6 +825,7 @@ function CategoryDetailItem({
   const [similarRuleId, setSimilarRuleId] = useState(
     () => similarRuleCandidates[0]?.id ?? "",
   );
+  const [customMatchText, setCustomMatchText] = useState("");
   const selectedSimilarRule =
     similarRuleCandidates.find((candidate) => candidate.id === similarRuleId) ??
     similarRuleCandidates[0] ??
@@ -832,6 +834,14 @@ function CategoryDetailItem({
     ? transactions.filter((candidate) => selectedSimilarRule.matches(candidate))
     : [];
   const similarMatchIds = similarMatches.map((match) => match.id);
+  const customMatchTerms = parseCustomMatchTerms(customMatchText);
+  const customMatches =
+    customMatchTerms.length > 0
+      ? transactions.filter((candidate) =>
+          doesTransactionMatchCustomTerms(candidate, customMatchTerms),
+        )
+      : [];
+  const customMatchIds = customMatches.map((match) => match.id);
 
   return (
     <div className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3 sm:col-span-2">
@@ -954,6 +964,57 @@ function CategoryDetailItem({
               type="submit"
             >
               Apply to previewed matches
+            </button>
+          </form>
+
+          <form
+            action={createFinanceCategoryTextRule}
+            className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
+          >
+            <input name="accountId" type="hidden" value={transaction.accountId} />
+            <input name="categoryId" type="hidden" value={similarCategoryId} />
+            <input name="matchText" type="hidden" value={customMatchText} />
+            {customMatchIds.map((transactionId) => (
+              <input
+                key={transactionId}
+                name="transactionIds"
+                type="hidden"
+                value={transactionId}
+              />
+            ))}
+            <p className="text-sm font-semibold">Custom text rule</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Enter words from raw descriptions, merchants, provider categories, or raw category
+              paths. The saved rule will help classify future imports.
+            </p>
+            <label className="mt-3 flex flex-col gap-1 text-sm font-semibold">
+              <span>Match words/categories</span>
+              <textarea
+                className="min-h-20 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 py-2 outline-none transition focus:border-[var(--accent)]"
+                onChange={(event) => setCustomMatchText(event.target.value)}
+                placeholder="food, restaurant, beverage, cafe"
+                value={customMatchText}
+              />
+            </label>
+            <div className="mt-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-3 text-sm">
+              <p className="font-semibold">
+                {customMatches.length} transaction
+                {customMatches.length === 1 ? "" : "s"} match
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {customMatchTerms.length > 0
+                  ? `Using ${customMatchTerms.length} term${
+                      customMatchTerms.length === 1 ? "" : "s"
+                    }: ${customMatchTerms.join(", ")}`
+                  : "Separate multiple terms with commas or new lines."}
+              </p>
+            </div>
+            <button
+              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!similarCategoryId || customMatchTerms.length === 0}
+              type="submit"
+            >
+              Save rule and apply preview
             </button>
           </form>
         </div>
@@ -1368,6 +1429,38 @@ function normalizeText(value: string | null) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+function parseCustomMatchTerms(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,\n]/)
+        .map((term) => normalizeText(term))
+        .filter((term) => term.length >= 2),
+    ),
+  );
+}
+
+function doesTransactionMatchCustomTerms(
+  transaction: RecentTransaction,
+  terms: string[],
+) {
+  const searchableText = normalizeText(
+    [
+      transaction.description,
+      transaction.storedCategory,
+      transaction.rawDescription,
+      transaction.rawMerchantName,
+      transaction.rawCategoryPath,
+      transaction.rawPersonalFinancePrimary,
+      transaction.rawPersonalFinanceDetailed,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+
+  return terms.some((term) => searchableText.includes(term));
 }
 
 function DetailItem({

@@ -8,6 +8,8 @@ import { getFintableSheetConfig } from "@/features/finance/integrations/fintable
 import { readFintableGoogleSheetsSnapshot } from "@/features/finance/integrations/fintable/google-sheets";
 import { db } from "@/server/db";
 import {
+  type FinanceCategoryRuleConditions,
+  financeCategoryRules,
   financeAccounts,
   financeTransactionCategoryAssignments,
   financeTransactions,
@@ -234,6 +236,74 @@ export async function assignFinanceCategoryToTransactions(formData: FormData) {
     throw new Error("Missing category id or transaction ids");
   }
 
+  await assignTransactionsToCategory({ accountId, categoryId, transactionIds });
+}
+
+export async function createFinanceCategoryTextRule(formData: FormData) {
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const accountId = String(formData.get("accountId") ?? "");
+  const terms = parseMatchTerms(String(formData.get("matchText") ?? ""));
+  const transactionIds = Array.from(
+    new Set(
+      formData
+        .getAll("transactionIds")
+        .map((value) => String(value))
+        .filter(Boolean),
+    ),
+  );
+
+  if (!categoryId || terms.length === 0) {
+    throw new Error("Missing category id or match terms");
+  }
+
+  const [category] = await db
+    .select({ id: financeUserCategories.id, userId: financeUserCategories.userId })
+    .from(financeUserCategories)
+    .where(eq(financeUserCategories.id, categoryId))
+    .limit(1);
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  const conditions: FinanceCategoryRuleConditions = [
+    { field: "description", operator: "contains_any", value: terms },
+    { field: "merchant", operator: "contains_any", value: terms },
+    { field: "category", operator: "contains_any", value: terms },
+    { field: "personal_finance_category.primary", operator: "contains_any", value: terms },
+    { field: "personal_finance_category.detailed", operator: "contains_any", value: terms },
+    { field: "raw.category", operator: "contains_any", value: terms },
+    { field: "raw.name", operator: "contains_any", value: terms },
+    { field: "raw.merchant_name", operator: "contains_any", value: terms },
+    { field: "raw.website", operator: "contains_any", value: terms },
+  ];
+
+  await db.insert(financeCategoryRules).values({
+    userId: category.userId,
+    categoryId: category.id,
+    name: createTextRuleName(terms),
+    priority: 40,
+    matchLogic: "any",
+    conditions,
+  });
+
+  if (transactionIds.length > 0) {
+    await assignTransactionsToCategory({ accountId, categoryId, transactionIds });
+    return;
+  }
+
+  revalidateFinancePaths(accountId);
+}
+
+async function assignTransactionsToCategory({
+  accountId,
+  categoryId,
+  transactionIds,
+}: {
+  accountId: string;
+  categoryId: string;
+  transactionIds: string[];
+}) {
   const [category] = await db
     .select({ id: financeUserCategories.id, userId: financeUserCategories.userId })
     .from(financeUserCategories)
@@ -284,6 +354,22 @@ export async function assignFinanceCategoryToTransactions(formData: FormData) {
     });
 
   revalidateFinancePaths(accountId);
+}
+
+function parseMatchTerms(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,\n]/)
+        .map((term) => term.trim().toLowerCase())
+        .filter((term) => term.length >= 2),
+    ),
+  ).slice(0, 30);
+}
+
+function createTextRuleName(terms: string[]) {
+  const label = terms.slice(0, 4).join(", ");
+  return `Text match: ${label} (${Date.now()})`;
 }
 
 export async function syncFintableNow() {

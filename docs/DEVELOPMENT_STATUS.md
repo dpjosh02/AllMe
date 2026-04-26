@@ -148,7 +148,9 @@ Recent finance dashboard work:
 - The tag manager can delete tags after an in-modal confirmation. Existing assignments for that tag become uncategorized.
 - Recent Transactions can be filtered by assigned category, including Uncategorized.
 - The transaction detail modal can infer simple matching signals from the selected transaction and preview/apply a tag to similar loaded transactions.
-- Current apply-to-similar is scoped to the transactions loaded into the Recent Transactions component. Full-history server-side rule preview is still a future layer.
+- The transaction detail modal can create custom text rules from user-entered match terms such as `food, restaurant, beverage, cafe`.
+- Custom text rules are saved to `finance_category_rules` and are also applied immediately to matching transactions loaded in the Recent Transactions component.
+- Current custom-rule preview/application is scoped to the transactions loaded into the Recent Transactions component. Full-history server-side rule preview is still a future layer.
 
 ## Current Tagging Architecture
 
@@ -172,6 +174,9 @@ The first inference and preview layer exists in the transaction detail modal:
 - AllMe proposes matching signals from the selected transaction.
 - The preview count is computed from the currently loaded transaction list.
 - Applying to previewed matches writes manual assignments for that previewed set.
+- Users can enter custom comma/newline-separated match terms.
+- Custom text rules match across normalized descriptions, merchants, stored categories, raw category paths, and Plaid/Fintable personal finance category fields.
+- Saving a custom text rule writes a persistent `finance_category_rules` row with `matchLogic = any` and `contains_any` conditions, so future categorization/import runs can reuse the user-defined rule.
 
 The next tagging layer should move this inference and preview workflow server-side for full-history coverage:
 
@@ -271,7 +276,7 @@ aa4df6f Initial project blueprint
 ## Near-Term Next Steps
 
 1. Move category rule preview and apply-to-similar matching server-side for full-history coverage.
-2. Add persistent saved rules for user-created tags after preview approval.
+2. Add rule editing/deletion UI for user-created custom text rules.
 3. Add a dedicated category review workflow for assigning categories to uncategorized transactions.
 4. Consider moving transaction filtering server-side once the dataset grows beyond a few hundred rows.
 5. Add app navigation so `/`, `/finance`, and future sections share one shell.
