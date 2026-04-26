@@ -128,15 +128,17 @@ export function RecentTransactions({
             <button
               aria-expanded={isCalendarOpen}
               aria-label="Filter transactions by date range"
-              className="inline-flex min-h-10 min-w-44 items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+              className="inline-flex h-10 w-44 items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
               onClick={() => {
                 setIsCalendarOpen((current) => !current);
                 setIsAccountFilterOpen(false);
               }}
               type="button"
             >
-              <span>{dateFilterLabel}</span>
-              <CalendarDays aria-hidden="true" className="h-4 w-4" />
+              <span className="min-w-0 truncate text-left text-[0.72rem] leading-none">
+                {dateFilterLabel}
+              </span>
+              <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" />
             </button>
             {isCalendarOpen ? (
               <div className="absolute right-0 z-30 mt-2 w-80 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
@@ -202,7 +204,7 @@ export function RecentTransactions({
           <div className="relative">
             <button
               aria-expanded={isAccountFilterOpen}
-              className="inline-flex min-h-10 min-w-44 items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+              className="inline-flex h-10 min-w-44 items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
               onClick={() => {
                 setIsAccountFilterOpen((current) => !current);
                 setIsCalendarOpen(false);
@@ -210,7 +212,7 @@ export function RecentTransactions({
               type="button"
             >
               <span>{filterLabel}</span>
-              <ChevronDown aria-hidden="true" className="h-4 w-4" />
+              <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />
             </button>
             {isAccountFilterOpen ? (
               <div className="absolute right-0 z-20 mt-2 w-72 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
@@ -240,11 +242,11 @@ export function RecentTransactions({
                     >
                       <input
                         checked={selectedAccounts.has(accountName)}
-                        className="h-4 w-4 accent-[var(--accent)]"
+                        className="h-4 w-4 shrink-0 accent-[var(--accent)]"
                         onChange={() => toggleAccount(accountName)}
                         type="checkbox"
                       />
-                      <span className="truncate">{accountName}</span>
+                      <span className="min-w-0 truncate">{accountName}</span>
                     </label>
                   ))}
                 </div>
