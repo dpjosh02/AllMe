@@ -147,8 +147,8 @@ Recent finance dashboard work:
 - The tag manager can edit tag name, color, and cash-flow behavior.
 - The tag manager can delete tags after an in-modal confirmation. Existing assignments for that tag become uncategorized.
 - Recent Transactions can be filtered by assigned category, including Uncategorized.
-- The transaction detail modal can infer simple matching signals from the selected transaction and preview/apply a tag to similar loaded transactions.
-- The transaction detail modal can create custom text rules from user-entered match terms such as `food, restaurant, beverage, cafe`.
+- The tag manager edit view can preview/apply a tag to loaded transactions by a selected transaction field and match terms.
+- The tag manager edit view can create custom text rules from user-entered match terms such as `food, restaurant, beverage, cafe`.
 - Custom text rules are saved to `finance_category_rules` and are also applied immediately to matching transactions loaded in the Recent Transactions component.
 - Current custom-rule preview/application is scoped to the transactions loaded into the Recent Transactions component. Full-history server-side rule preview is still a future layer.
 
@@ -162,6 +162,7 @@ The finance tagging system is currently built on the existing categorization tab
 - Automated recategorization intentionally does not overwrite manual assignments.
 - The Recent Transactions ellipsis opens tag management.
 - The transaction detail modal's AllMe Category widget opens a tag picker for that individual transaction.
+- Bulk tagging and rule creation live in the tag manager edit view, not the transaction detail modal.
 
 Current tag creation supports:
 
@@ -169,9 +170,9 @@ Current tag creation supports:
 - tag color
 - cash-flow behavior: spending, income, or neutral
 
-The first inference and preview layer exists in the transaction detail modal:
+The first inference and preview layer exists in the tag manager edit view:
 
-- AllMe proposes matching signals from the selected transaction.
+- The user selects a matching field such as provider category, raw category path, merchant, or description.
 - The preview count is computed from the currently loaded transaction list.
 - Applying to previewed matches writes manual assignments for that previewed set.
 - Users can enter custom comma/newline-separated match terms.

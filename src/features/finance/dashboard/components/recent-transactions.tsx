@@ -74,14 +74,47 @@ type RecentTransactionsProps = {
   transactions: RecentTransaction[];
 };
 
-type SimilarRuleCandidate = {
+type ActiveFilterSection = "accounts" | "categories" | "date" | null;
+type TagMatchField =
+  | "description"
+  | "rawCategoryPath"
+  | "rawMerchantName"
+  | "rawPersonalFinanceDetailed"
+  | "rawPersonalFinancePrimary";
+
+type TagMatchFieldOption = {
   description: string;
-  id: string;
+  id: TagMatchField;
   label: string;
-  matches: (transaction: RecentTransaction) => boolean;
 };
 
-type ActiveFilterSection = "accounts" | "categories" | "date" | null;
+const tagMatchFieldOptions: TagMatchFieldOption[] = [
+  {
+    description: "Matches provider detailed category text.",
+    id: "rawPersonalFinanceDetailed",
+    label: "Provider detailed category",
+  },
+  {
+    description: "Matches provider primary category text.",
+    id: "rawPersonalFinancePrimary",
+    label: "Provider primary category",
+  },
+  {
+    description: "Matches the raw category path from the source payload.",
+    id: "rawCategoryPath",
+    label: "Raw category path",
+  },
+  {
+    description: "Matches normalized merchant names.",
+    id: "rawMerchantName",
+    label: "Merchant",
+  },
+  {
+    description: "Matches visible or raw transaction descriptions.",
+    id: "description",
+    label: "Description",
+  },
+];
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -726,7 +759,6 @@ export function RecentTransactions({
         <TransactionDetailModal
           categories={categories}
           onClose={() => setSelectedTransaction(null)}
-          transactions={transactions}
           transaction={selectedTransaction}
         />
       ) : null}
@@ -735,6 +767,7 @@ export function RecentTransactions({
           accountId={showAccountFilter ? null : (accounts[0]?.id ?? null)}
           categories={categories}
           onClose={() => setIsTagManagerOpen(false)}
+          transactions={transactions}
         />
       ) : null}
     </div>
@@ -769,12 +802,10 @@ function CategoryBadge({
 function TransactionDetailModal({
   categories,
   onClose,
-  transactions,
   transaction,
 }: {
   categories: CategoryOption[];
   onClose: () => void;
-  transactions: RecentTransaction[];
   transaction: RecentTransaction;
 }) {
   const deleteFormRef = useRef<HTMLFormElement>(null);
@@ -852,7 +883,6 @@ function TransactionDetailModal({
             categories={categories}
             isOpen={isCategoryPickerOpen}
             onToggle={() => setIsCategoryPickerOpen((current) => !current)}
-            transactions={transactions}
             transaction={transaction}
           />
           <DetailItem
@@ -952,40 +982,13 @@ function CategoryDetailItem({
   categories,
   isOpen,
   onToggle,
-  transactions,
   transaction,
 }: {
   categories: CategoryOption[];
   isOpen: boolean;
   onToggle: () => void;
-  transactions: RecentTransaction[];
   transaction: RecentTransaction;
 }) {
-  const [similarCategoryId, setSimilarCategoryId] = useState(
-    () => transaction.assignedCategoryId ?? categories[0]?.id ?? "",
-  );
-  const similarRuleCandidates = getSimilarRuleCandidates(transaction);
-  const [similarRuleId, setSimilarRuleId] = useState(
-    () => similarRuleCandidates[0]?.id ?? "",
-  );
-  const [customMatchText, setCustomMatchText] = useState("");
-  const selectedSimilarRule =
-    similarRuleCandidates.find((candidate) => candidate.id === similarRuleId) ??
-    similarRuleCandidates[0] ??
-    null;
-  const similarMatches = selectedSimilarRule
-    ? transactions.filter((candidate) => selectedSimilarRule.matches(candidate))
-    : [];
-  const similarMatchIds = similarMatches.map((match) => match.id);
-  const customMatchTerms = parseCustomMatchTerms(customMatchText);
-  const customMatches =
-    customMatchTerms.length > 0
-      ? transactions.filter((candidate) =>
-          doesTransactionMatchCustomTerms(candidate, customMatchTerms),
-        )
-      : [];
-  const customMatchIds = customMatches.map((match) => match.id);
-
   return (
     <div className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3 sm:col-span-2">
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
@@ -1057,134 +1060,6 @@ function CategoryDetailItem({
               );
             })}
           </div>
-
-          <form
-            action={assignFinanceCategoryToTransactions}
-            className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
-          >
-            <input
-              name="accountId"
-              type="hidden"
-              value={transaction.accountId}
-            />
-            {similarMatchIds.map((transactionId) => (
-              <input
-                key={transactionId}
-                name="transactionIds"
-                type="hidden"
-                value={transactionId}
-              />
-            ))}
-            <p className="text-sm font-semibold">Apply to similar</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Preview is based on the transactions currently loaded in this
-              component.
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-sm font-semibold">
-                <span>Tag</span>
-                <select
-                  className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
-                  name="categoryId"
-                  onChange={(event) => setSimilarCategoryId(event.target.value)}
-                  value={similarCategoryId}
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-semibold">
-                <span>Match by</span>
-                <select
-                  className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
-                  onChange={(event) => setSimilarRuleId(event.target.value)}
-                  value={selectedSimilarRule?.id ?? ""}
-                >
-                  {similarRuleCandidates.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="mt-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-3 text-sm">
-              <p className="font-semibold">
-                {similarMatches.length} transaction
-                {similarMatches.length === 1 ? "" : "s"} match
-              </p>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                {selectedSimilarRule?.description ??
-                  "No matching signal available."}
-              </p>
-            </div>
-            <button
-              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!similarCategoryId || similarMatches.length === 0}
-              type="submit"
-            >
-              Apply to previewed matches
-            </button>
-          </form>
-
-          <form
-            action={createFinanceCategoryTextRule}
-            className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
-          >
-            <input
-              name="accountId"
-              type="hidden"
-              value={transaction.accountId}
-            />
-            <input name="categoryId" type="hidden" value={similarCategoryId} />
-            <input name="matchText" type="hidden" value={customMatchText} />
-            {customMatchIds.map((transactionId) => (
-              <input
-                key={transactionId}
-                name="transactionIds"
-                type="hidden"
-                value={transactionId}
-              />
-            ))}
-            <p className="text-sm font-semibold">Custom text rule</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Enter words from raw descriptions, merchants, provider categories,
-              or raw category paths. The saved rule will help classify future
-              imports.
-            </p>
-            <label className="mt-3 flex flex-col gap-1 text-sm font-semibold">
-              <span>Match words/categories</span>
-              <textarea
-                className="min-h-20 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 py-2 outline-none transition focus:border-[var(--accent)]"
-                onChange={(event) => setCustomMatchText(event.target.value)}
-                placeholder="food, restaurant, beverage, cafe"
-                value={customMatchText}
-              />
-            </label>
-            <div className="mt-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-3 text-sm">
-              <p className="font-semibold">
-                {customMatches.length} transaction
-                {customMatches.length === 1 ? "" : "s"} match
-              </p>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                {customMatchTerms.length > 0
-                  ? `Using ${customMatchTerms.length} term${
-                      customMatchTerms.length === 1 ? "" : "s"
-                    }: ${customMatchTerms.join(", ")}`
-                  : "Separate multiple terms with commas or new lines."}
-              </p>
-            </div>
-            <button
-              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!similarCategoryId || customMatchTerms.length === 0}
-              type="submit"
-            >
-              Save rule and apply preview
-            </button>
-          </form>
         </div>
       ) : null}
     </div>
@@ -1195,10 +1070,12 @@ function TagManagerModal({
   accountId,
   categories,
   onClose,
+  transactions,
 }: {
   accountId: string | null;
   categories: CategoryOption[];
   onClose: () => void;
+  transactions: RecentTransaction[];
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
@@ -1207,6 +1084,16 @@ function TagManagerModal({
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(
     null,
   );
+
+  async function createCategoryAndCloseEditor(formData: FormData) {
+    await createFinanceCategory(formData);
+    setIsCreating(false);
+  }
+
+  async function updateCategoryAndCloseEditor(formData: FormData) {
+    await updateFinanceCategory(formData);
+    setEditingCategoryId(null);
+  }
 
   return (
     <div
@@ -1227,8 +1114,7 @@ function TagManagerModal({
             </p>
             <h3 className="mt-1 text-2xl font-semibold">Manage Categories</h3>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Create personal tags now. Rule previews for similar transactions
-              come next.
+              Edit tag details and build match rules for similar transactions.
             </p>
           </div>
           <button
@@ -1248,79 +1134,89 @@ function TagManagerModal({
 
             if (isEditing) {
               return (
-                <form
-                  action={updateFinanceCategory}
+                <div
                   className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3"
                   key={category.id}
                 >
-                  <input name="categoryId" type="hidden" value={category.id} />
-                  {accountId ? (
-                    <input name="accountId" type="hidden" value={accountId} />
-                  ) : null}
-                  <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                    <label className="flex flex-col gap-1 text-sm font-semibold">
-                      <span>Tag name</span>
-                      <input
-                        className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
-                        defaultValue={category.name}
-                        name="name"
-                        required
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm font-semibold">
-                      <span>Color</span>
-                      <input
-                        className="h-10 w-20 rounded-md border border-[var(--line)] bg-[var(--input)] p-1"
-                        defaultValue={category.color}
-                        name="color"
-                        type="color"
-                      />
-                    </label>
-                  </div>
-                  <fieldset className="mt-3">
-                    <legend className="mb-2 text-sm font-semibold">
-                      Cash-flow behavior
-                    </legend>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <CashFlowRadio
-                        defaultChecked={category.includeInSpending}
-                        description="Counts as spending."
-                        label="Spending"
-                        value="spending"
-                      />
-                      <CashFlowRadio
-                        defaultChecked={category.includeInIncome}
-                        description="Counts as income."
-                        label="Income"
-                        value="income"
-                      />
-                      <CashFlowRadio
-                        defaultChecked={
-                          !category.includeInSpending &&
-                          !category.includeInIncome
-                        }
-                        description="Excluded from cash flow."
-                        label="Neutral"
-                        value="neutral"
-                      />
+                  <form action={updateCategoryAndCloseEditor}>
+                    <input
+                      name="categoryId"
+                      type="hidden"
+                      value={category.id}
+                    />
+                    {accountId ? (
+                      <input name="accountId" type="hidden" value={accountId} />
+                    ) : null}
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                      <label className="flex flex-col gap-1 text-sm font-semibold">
+                        <span>Tag name</span>
+                        <input
+                          className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
+                          defaultValue={category.name}
+                          name="name"
+                          required
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-sm font-semibold">
+                        <span>Color</span>
+                        <input
+                          className="h-10 w-20 rounded-md border border-[var(--line)] bg-[var(--input)] p-1"
+                          defaultValue={category.color}
+                          name="color"
+                          type="color"
+                        />
+                      </label>
                     </div>
-                  </fieldset>
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                    <button
-                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold transition hover:border-[var(--accent)]"
-                      onClick={() => setEditingCategoryId(null)}
-                      type="button"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)]"
-                      type="submit"
-                    >
-                      Save tag
-                    </button>
-                  </div>
-                </form>
+                    <fieldset className="mt-3">
+                      <legend className="mb-2 text-sm font-semibold">
+                        Cash-flow behavior
+                      </legend>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <CashFlowRadio
+                          defaultChecked={category.includeInSpending}
+                          description="Counts as spending."
+                          label="Spending"
+                          value="spending"
+                        />
+                        <CashFlowRadio
+                          defaultChecked={category.includeInIncome}
+                          description="Counts as income."
+                          label="Income"
+                          value="income"
+                        />
+                        <CashFlowRadio
+                          defaultChecked={
+                            !category.includeInSpending &&
+                            !category.includeInIncome
+                          }
+                          description="Excluded from cash flow."
+                          label="Neutral"
+                          value="neutral"
+                        />
+                      </div>
+                    </fieldset>
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <button
+                        className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold transition hover:border-[var(--accent)]"
+                        onClick={() => setEditingCategoryId(null)}
+                        type="button"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)]"
+                        type="submit"
+                      >
+                        Save tag
+                      </button>
+                    </div>
+                  </form>
+                  <TagRuleTools
+                    accountId={accountId}
+                    category={category}
+                    transactions={transactions}
+                  />
+                </div>
               );
             }
 
@@ -1416,7 +1312,7 @@ function TagManagerModal({
 
         {isCreating ? (
           <form
-            action={createFinanceCategory}
+            action={createCategoryAndCloseEditor}
             className="mt-5 rounded-md border border-[var(--line)] bg-[var(--empty)] p-4"
           >
             {accountId ? (
@@ -1498,6 +1394,166 @@ function TagManagerModal({
   );
 }
 
+function TagRuleTools({
+  accountId,
+  category,
+  transactions,
+}: {
+  accountId: string | null;
+  category: CategoryOption;
+  transactions: RecentTransaction[];
+}) {
+  const [customMatchText, setCustomMatchText] = useState("");
+  const [matchField, setMatchField] = useState<TagMatchField>(
+    "rawPersonalFinanceDetailed",
+  );
+  const [matchValue, setMatchValue] = useState("");
+  const selectedField =
+    tagMatchFieldOptions.find((option) => option.id === matchField) ??
+    tagMatchFieldOptions[0];
+  const matchTerms = parseCustomMatchTerms(matchValue);
+  const fieldMatches =
+    matchTerms.length > 0
+      ? transactions.filter((transaction) =>
+          doesTransactionMatchField(transaction, matchField, matchTerms),
+        )
+      : [];
+  const fieldMatchIds = fieldMatches.map((transaction) => transaction.id);
+  const customMatchTerms = parseCustomMatchTerms(customMatchText);
+  const customMatches =
+    customMatchTerms.length > 0
+      ? transactions.filter((transaction) =>
+          doesTransactionMatchCustomTerms(transaction, customMatchTerms),
+        )
+      : [];
+  const customMatchIds = customMatches.map((transaction) => transaction.id);
+
+  return (
+    <div className="mt-4 space-y-3 border-t border-[var(--line)] pt-4">
+      <div>
+        <p className="text-sm font-semibold">Tag automation</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Preview is based on the transactions currently loaded in Recent
+          Transactions. Applied matches become manual assignments.
+        </p>
+      </div>
+
+      <form
+        action={assignFinanceCategoryToTransactions}
+        className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
+      >
+        <input name="accountId" type="hidden" value={accountId ?? ""} />
+        <input name="categoryId" type="hidden" value={category.id} />
+        {fieldMatchIds.map((transactionId) => (
+          <input
+            key={transactionId}
+            name="transactionIds"
+            type="hidden"
+            value={transactionId}
+          />
+        ))}
+        <p className="text-sm font-semibold">Match by</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1.1fr]">
+          <label className="flex flex-col gap-1 text-sm font-semibold">
+            <span>Field</span>
+            <select
+              className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
+              onChange={(event) =>
+                setMatchField(event.target.value as TagMatchField)
+              }
+              value={matchField}
+            >
+              {tagMatchFieldOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-semibold">
+            <span>Contains</span>
+            <input
+              className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
+              onChange={(event) => setMatchValue(event.target.value)}
+              placeholder="restaurant, food, cafe"
+              value={matchValue}
+            />
+          </label>
+        </div>
+        <div className="mt-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-3 text-sm">
+          <p className="font-semibold">
+            {fieldMatches.length} transaction
+            {fieldMatches.length === 1 ? "" : "s"} match
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {matchTerms.length > 0
+              ? `${selectedField.description} Terms: ${matchTerms.join(", ")}`
+              : "Enter one or more comma-separated values to preview matches."}
+          </p>
+        </div>
+        <button
+          className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={fieldMatches.length === 0}
+          type="submit"
+        >
+          Apply tag to previewed matches
+        </button>
+      </form>
+
+      <form
+        action={createFinanceCategoryTextRule}
+        className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
+      >
+        <input name="accountId" type="hidden" value={accountId ?? ""} />
+        <input name="categoryId" type="hidden" value={category.id} />
+        <input name="matchText" type="hidden" value={customMatchText} />
+        {customMatchIds.map((transactionId) => (
+          <input
+            key={transactionId}
+            name="transactionIds"
+            type="hidden"
+            value={transactionId}
+          />
+        ))}
+        <p className="text-sm font-semibold">Custom text rule</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Save reusable terms for future imports and apply them to the loaded
+          preview.
+        </p>
+        <label className="mt-3 flex flex-col gap-1 text-sm font-semibold">
+          <span>Match words/categories</span>
+          <textarea
+            className="min-h-20 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 py-2 outline-none transition focus:border-[var(--accent)]"
+            onChange={(event) => setCustomMatchText(event.target.value)}
+            placeholder="food, restaurant, beverage, cafe"
+            value={customMatchText}
+          />
+        </label>
+        <div className="mt-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-3 text-sm">
+          <p className="font-semibold">
+            {customMatches.length} transaction
+            {customMatches.length === 1 ? "" : "s"} match
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {customMatchTerms.length > 0
+              ? `Using ${customMatchTerms.length} term${
+                  customMatchTerms.length === 1 ? "" : "s"
+                }: ${customMatchTerms.join(", ")}`
+              : "Separate multiple terms with commas or new lines."}
+          </p>
+        </div>
+        <button
+          className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={customMatchTerms.length === 0}
+          type="submit"
+        >
+          Save rule and apply preview
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function CashFlowRadio({
   defaultChecked = false,
   description,
@@ -1538,84 +1594,6 @@ function formatCategoryBehavior(category: CategoryOption) {
   return "Neutral";
 }
 
-function getSimilarRuleCandidates(
-  transaction: RecentTransaction,
-): SimilarRuleCandidate[] {
-  const candidates: SimilarRuleCandidate[] = [];
-
-  if (transaction.rawPersonalFinanceDetailed) {
-    const value = transaction.rawPersonalFinanceDetailed;
-    candidates.push({
-      id: `pfc-detailed:${value}`,
-      label: "Provider detailed category",
-      description: `Matches transactions whose detailed provider category is ${value}.`,
-      matches: (candidate) => candidate.rawPersonalFinanceDetailed === value,
-    });
-  }
-
-  if (transaction.rawPersonalFinancePrimary) {
-    const value = transaction.rawPersonalFinancePrimary;
-    candidates.push({
-      id: `pfc-primary:${value}`,
-      label: "Provider primary category",
-      description: `Matches transactions whose primary provider category is ${value}.`,
-      matches: (candidate) => candidate.rawPersonalFinancePrimary === value,
-    });
-  }
-
-  const categoryLeaf = transaction.rawCategoryPath?.split(">").pop()?.trim();
-  if (categoryLeaf) {
-    candidates.push({
-      id: `raw-category:${categoryLeaf}`,
-      label: "Raw category path",
-      description: `Matches transactions whose raw category path contains ${categoryLeaf}.`,
-      matches: (candidate) =>
-        normalizeText(candidate.rawCategoryPath).includes(
-          normalizeText(categoryLeaf),
-        ),
-    });
-  }
-
-  if (transaction.rawMerchantName) {
-    const value = transaction.rawMerchantName;
-    candidates.push({
-      id: `merchant:${value}`,
-      label: "Merchant",
-      description: `Matches transactions from merchant ${value}.`,
-      matches: (candidate) =>
-        normalizeText(candidate.rawMerchantName) === normalizeText(value),
-    });
-  }
-
-  const rawDescription = transaction.rawDescription ?? transaction.description;
-  if (rawDescription) {
-    const value = normalizeText(rawDescription);
-    candidates.push({
-      id: `description:${value}`,
-      label: "Description",
-      description: `Matches transactions with the same normalized description.`,
-      matches: (candidate) =>
-        normalizeText(candidate.rawDescription ?? candidate.description) ===
-        value,
-    });
-  }
-
-  return dedupeSimilarRuleCandidates(candidates);
-}
-
-function dedupeSimilarRuleCandidates(candidates: SimilarRuleCandidate[]) {
-  const seen = new Set<string>();
-
-  return candidates.filter((candidate) => {
-    if (seen.has(candidate.id)) {
-      return false;
-    }
-
-    seen.add(candidate.id);
-    return true;
-  });
-}
-
 function normalizeText(value: string | null) {
   return String(value ?? "")
     .toLowerCase()
@@ -1632,6 +1610,18 @@ function parseCustomMatchTerms(value: string) {
         .filter((term) => term.length >= 2),
     ),
   );
+}
+
+function doesTransactionMatchField(
+  transaction: RecentTransaction,
+  field: TagMatchField,
+  terms: string[],
+) {
+  const searchableText = normalizeText(
+    getTransactionFieldValue(transaction, field),
+  );
+
+  return terms.some((term) => searchableText.includes(term));
 }
 
 function doesTransactionMatchCustomTerms(
@@ -1653,6 +1643,24 @@ function doesTransactionMatchCustomTerms(
   );
 
   return terms.some((term) => searchableText.includes(term));
+}
+
+function getTransactionFieldValue(
+  transaction: RecentTransaction,
+  field: TagMatchField,
+) {
+  switch (field) {
+    case "description":
+      return transaction.rawDescription ?? transaction.description;
+    case "rawCategoryPath":
+      return transaction.rawCategoryPath;
+    case "rawMerchantName":
+      return transaction.rawMerchantName;
+    case "rawPersonalFinanceDetailed":
+      return transaction.rawPersonalFinanceDetailed;
+    case "rawPersonalFinancePrimary":
+      return transaction.rawPersonalFinancePrimary;
+  }
 }
 
 function DetailItem({
