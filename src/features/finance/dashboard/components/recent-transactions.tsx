@@ -673,10 +673,6 @@ export function RecentTransactions({
       </div>
       <div className="relative">
         <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[var(--panel)] to-transparent"
-        />
-        <div
           className="max-h-[22rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
           ref={transactionListRef}
         >
