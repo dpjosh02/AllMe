@@ -81,6 +81,8 @@ type SimilarRuleCandidate = {
   matches: (transaction: RecentTransaction) => boolean;
 };
 
+type ActiveFilterSection = "accounts" | "categories" | "date" | null;
+
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -112,6 +114,8 @@ export function RecentTransactions({
   showAccountFilter = true,
   transactions,
 }: RecentTransactionsProps) {
+  const [activeFilterSection, setActiveFilterSection] =
+    useState<ActiveFilterSection>(null);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const [afterDate, setAfterDate] = useState<string | null>(() =>
@@ -282,6 +286,10 @@ export function RecentTransactions({
     setBeforeDate(null);
   }
 
+  function toggleFilterSection(section: Exclude<ActiveFilterSection, null>) {
+    setActiveFilterSection((current) => (current === section ? null : section));
+  }
+
   return (
     <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
       <div className="mb-5 flex flex-col gap-4">
@@ -330,7 +338,10 @@ export function RecentTransactions({
               aria-expanded={isFilterMenuOpen}
               aria-label="Open transaction filters"
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--input)] px-4 text-sm font-semibold transition hover:border-[var(--accent)] md:w-auto"
-              onClick={() => setIsFilterMenuOpen((current) => !current)}
+              onClick={() => {
+                setIsFilterMenuOpen((current) => !current);
+                setActiveFilterSection(null);
+              }}
               type="button"
             >
               <SlidersHorizontal
@@ -341,7 +352,7 @@ export function RecentTransactions({
               <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />
             </button>
             {isFilterMenuOpen ? (
-              <div className="absolute right-0 z-30 mt-2 max-h-[min(42rem,calc(100vh-12rem))] w-[min(46rem,calc(100vw-2rem))] overflow-auto rounded-md border border-[var(--line)] bg-[var(--panel)] p-4 shadow-lg">
+              <div className="absolute right-0 z-30 mt-2 max-h-[min(42rem,calc(100vh-12rem))] w-[min(30rem,calc(100vw-2rem))] overflow-auto rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
                 <div className="mb-4 flex items-start justify-between gap-4 border-b border-[var(--line)] pb-3">
                   <div>
                     <p className="text-sm font-semibold">Transaction Filters</p>
@@ -353,164 +364,134 @@ export function RecentTransactions({
                   <button
                     aria-label="Close transaction filters"
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
-                    onClick={() => setIsFilterMenuOpen(false)}
+                    onClick={() => {
+                      setIsFilterMenuOpen(false);
+                      setActiveFilterSection(null);
+                    }}
                     type="button"
                   >
                     <X aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
-                  <section className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3">
-                    <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="space-y-2">
+                  <section className="rounded-md border border-[var(--line)] bg-[var(--empty)]">
+                    <button
+                      aria-expanded={activeFilterSection === "date"}
+                      className="flex min-h-14 w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-[var(--panel-strong)]"
+                      onClick={() => toggleFilterSection("date")}
+                      type="button"
+                    >
                       <div>
                         <p className="text-sm font-semibold">Date</p>
                         <p className="text-xs text-[var(--muted)]">
                           {dateFilterLabel}
                         </p>
                       </div>
-                      <CalendarDays
-                        aria-hidden="true"
-                        className="h-4 w-4 text-[var(--muted)]"
-                      />
-                    </div>
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <button
-                        aria-label="Previous month"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
-                        onClick={() => moveVisibleMonth(-1)}
-                        type="button"
-                      >
-                        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-                      </button>
-                      <p className="text-sm font-semibold">
-                        {monthFormatter.format(visibleMonth)}
-                      </p>
-                      <button
-                        aria-label="Next month"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
-                        onClick={() => moveVisibleMonth(1)}
-                        type="button"
-                      >
-                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                      </button>
-                    </div>
+                      <span className="inline-flex items-center gap-2 text-[var(--muted)]">
+                        <CalendarDays aria-hidden="true" className="h-4 w-4" />
+                        <ChevronDown
+                          aria-hidden="true"
+                          className={`h-4 w-4 transition ${
+                            activeFilterSection === "date" ? "rotate-180" : ""
+                          }`}
+                        />
+                      </span>
+                    </button>
+                    {activeFilterSection === "date" ? (
+                      <div className="border-t border-[var(--line)] p-3">
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <button
+                            aria-label="Previous month"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+                            onClick={() => moveVisibleMonth(-1)}
+                            type="button"
+                          >
+                            <ChevronLeft
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                          </button>
+                          <p className="text-sm font-semibold">
+                            {monthFormatter.format(visibleMonth)}
+                          </p>
+                          <button
+                            aria-label="Next month"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+                            onClick={() => moveVisibleMonth(1)}
+                            type="button"
+                          >
+                            <ChevronRight
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                          </button>
+                        </div>
 
-                    <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-                      {dayLabels.map((dayLabel) => (
-                        <span key={dayLabel}>{dayLabel}</span>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-1">
-                      {calendarDays.map((day) => (
-                        <button
-                          className={getCalendarDayClassName({
-                            date: day.date,
-                            isCurrentMonth: day.isCurrentMonth,
-                            afterDate,
-                            beforeDate,
-                          })}
-                          key={day.date}
-                          onClick={() => selectDate(day.date)}
-                          type="button"
-                        >
-                          {Number(day.date.slice(-2))}
-                        </button>
-                      ))}
-                    </div>
+                        <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                          {dayLabels.map((dayLabel) => (
+                            <span key={dayLabel}>{dayLabel}</span>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-7 gap-1">
+                          {calendarDays.map((day) => (
+                            <button
+                              className={getCalendarDayClassName({
+                                date: day.date,
+                                isCurrentMonth: day.isCurrentMonth,
+                                afterDate,
+                                beforeDate,
+                              })}
+                              key={day.date}
+                              onClick={() => selectDate(day.date)}
+                              type="button"
+                            >
+                              {Number(day.date.slice(-2))}
+                            </button>
+                          ))}
+                        </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)]">
-                      <span>{dateFilterLabel}</span>
-                      <button
-                        className="font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
-                        onClick={clearDateFilter}
-                        type="button"
-                      >
-                        Clear dates
-                      </button>
-                    </div>
+                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)]">
+                          <span>{dateFilterLabel}</span>
+                          <button
+                            className="font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
+                            onClick={clearDateFilter}
+                            type="button"
+                          >
+                            Clear dates
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </section>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <section className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3">
-                      <div className="mb-3">
+                  <section className="rounded-md border border-[var(--line)] bg-[var(--empty)]">
+                    <button
+                      aria-expanded={activeFilterSection === "categories"}
+                      className="flex min-h-14 w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-[var(--panel-strong)]"
+                      onClick={() => toggleFilterSection("categories")}
+                      type="button"
+                    >
+                      <div>
                         <p className="text-sm font-semibold">Categories</p>
                         <p className="text-xs text-[var(--muted)]">
                           {categoryFilterLabel}
                         </p>
                       </div>
-                      <div className="mb-3 flex gap-2">
-                        <button
-                          className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                          onClick={selectAllCategories}
-                          type="button"
-                        >
-                          <Check aria-hidden="true" className="h-4 w-4" />
-                          Select all
-                        </button>
-                        <button
-                          className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                          onClick={deselectAllCategories}
-                          type="button"
-                        >
-                          <X aria-hidden="true" className="h-4 w-4" />
-                          Deselect all
-                        </button>
-                      </div>
-                      <div className="max-h-72 overflow-auto">
-                        <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]">
-                          <input
-                            checked={isUncategorizedSelected}
-                            className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                            onChange={(event) =>
-                              setIsUncategorizedSelected(event.target.checked)
-                            }
-                            type="checkbox"
-                          />
-                          <span className="h-3 w-3 shrink-0 rounded-full bg-slate-500" />
-                          <span className="min-w-0 truncate">
-                            Uncategorized
-                          </span>
-                        </label>
-                        {categories.map((category) => (
-                          <label
-                            className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
-                            key={category.id}
-                          >
-                            <input
-                              checked={selectedCategoryIds.has(category.id)}
-                              className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                              onChange={() => toggleCategory(category.id)}
-                              type="checkbox"
-                            />
-                            <span
-                              aria-hidden="true"
-                              className="h-3 w-3 shrink-0 rounded-full"
-                              style={{ backgroundColor: category.color }}
-                            />
-                            <span className="min-w-0 truncate">
-                              {category.name}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </section>
-
-                    {showAccountFilter ? (
-                      <section className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3">
-                        <div className="mb-3">
-                          <p className="text-sm font-semibold">Accounts</p>
-                          <p className="text-xs text-[var(--muted)]">
-                            {filterLabel}
-                          </p>
-                        </div>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={`h-4 w-4 text-[var(--muted)] transition ${
+                          activeFilterSection === "categories"
+                            ? "rotate-180"
+                            : ""
+                        }`}
+                      />
+                    </button>
+                    {activeFilterSection === "categories" ? (
+                      <div className="border-t border-[var(--line)] p-3">
                         <div className="mb-3 flex gap-2">
                           <button
                             className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                            onClick={() =>
-                              setSelectedAccountIds(
-                                new Set(accounts.map((account) => account.id)),
-                              )
-                            }
+                            onClick={selectAllCategories}
                             type="button"
                           >
                             <Check aria-hidden="true" className="h-4 w-4" />
@@ -518,7 +499,7 @@ export function RecentTransactions({
                           </button>
                           <button
                             className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                            onClick={() => setSelectedAccountIds(new Set())}
+                            onClick={deselectAllCategories}
                             type="button"
                           >
                             <X aria-hidden="true" className="h-4 w-4" />
@@ -526,31 +507,122 @@ export function RecentTransactions({
                           </button>
                         </div>
                         <div className="max-h-72 overflow-auto">
-                          {accounts.map((account) => {
-                            const accountName =
-                              account.displayName ?? account.name;
-
-                            return (
-                              <label
-                                className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
-                                key={account.id}
-                              >
-                                <input
-                                  checked={selectedAccountIds.has(account.id)}
-                                  className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                                  onChange={() => toggleAccount(account.id)}
-                                  type="checkbox"
-                                />
-                                <span className="min-w-0 truncate">
-                                  {accountName}
-                                </span>
-                              </label>
-                            );
-                          })}
+                          <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]">
+                            <input
+                              checked={isUncategorizedSelected}
+                              className="h-4 w-4 shrink-0 accent-[var(--accent)]"
+                              onChange={(event) =>
+                                setIsUncategorizedSelected(event.target.checked)
+                              }
+                              type="checkbox"
+                            />
+                            <span className="h-3 w-3 shrink-0 rounded-full bg-slate-500" />
+                            <span className="min-w-0 truncate">
+                              Uncategorized
+                            </span>
+                          </label>
+                          {categories.map((category) => (
+                            <label
+                              className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
+                              key={category.id}
+                            >
+                              <input
+                                checked={selectedCategoryIds.has(category.id)}
+                                className="h-4 w-4 shrink-0 accent-[var(--accent)]"
+                                onChange={() => toggleCategory(category.id)}
+                                type="checkbox"
+                              />
+                              <span
+                                aria-hidden="true"
+                                className="h-3 w-3 shrink-0 rounded-full"
+                                style={{ backgroundColor: category.color }}
+                              />
+                              <span className="min-w-0 truncate">
+                                {category.name}
+                              </span>
+                            </label>
+                          ))}
                         </div>
-                      </section>
+                      </div>
                     ) : null}
-                  </div>
+                  </section>
+
+                  {showAccountFilter ? (
+                    <section className="rounded-md border border-[var(--line)] bg-[var(--empty)]">
+                      <button
+                        aria-expanded={activeFilterSection === "accounts"}
+                        className="flex min-h-14 w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-[var(--panel-strong)]"
+                        onClick={() => toggleFilterSection("accounts")}
+                        type="button"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold">Accounts</p>
+                          <p className="text-xs text-[var(--muted)]">
+                            {filterLabel}
+                          </p>
+                        </div>
+                        <ChevronDown
+                          aria-hidden="true"
+                          className={`h-4 w-4 text-[var(--muted)] transition ${
+                            activeFilterSection === "accounts"
+                              ? "rotate-180"
+                              : ""
+                          }`}
+                        />
+                      </button>
+                      {activeFilterSection === "accounts" ? (
+                        <div className="border-t border-[var(--line)] p-3">
+                          <div className="mb-3 flex gap-2">
+                            <button
+                              className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+                              onClick={() =>
+                                setSelectedAccountIds(
+                                  new Set(
+                                    accounts.map((account) => account.id),
+                                  ),
+                                )
+                              }
+                              type="button"
+                            >
+                              <Check aria-hidden="true" className="h-4 w-4" />
+                              Select all
+                            </button>
+                            <button
+                              className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+                              onClick={() => setSelectedAccountIds(new Set())}
+                              type="button"
+                            >
+                              <X aria-hidden="true" className="h-4 w-4" />
+                              Deselect all
+                            </button>
+                          </div>
+                          <div className="max-h-72 overflow-auto">
+                            {accounts.map((account) => {
+                              const accountName =
+                                account.displayName ?? account.name;
+
+                              return (
+                                <label
+                                  className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
+                                  key={account.id}
+                                >
+                                  <input
+                                    checked={selectedAccountIds.has(account.id)}
+                                    className="h-4 w-4 shrink-0 accent-[var(--accent)]"
+                                    onChange={() => toggleAccount(account.id)}
+                                    type="checkbox"
+                                  />
+                                  <span className="min-w-0 truncate">
+                                    {accountName}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+                    </section>
+                  ) : null}
                 </div>
               </div>
             ) : null}
