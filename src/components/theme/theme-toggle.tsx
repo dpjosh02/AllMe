@@ -7,7 +7,7 @@ type Theme = "light" | "dark";
 
 const storageKey = "allme-theme";
 const themeChangeEvent = "allme-theme-change";
-const defaultTheme: Theme = "light";
+const defaultTheme: Theme = "dark";
 
 let currentTheme: Theme = defaultTheme;
 
@@ -20,7 +20,7 @@ export function ThemeToggle() {
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem(storageKey);
-    const initialTheme = storedTheme === "dark" ? "dark" : "light";
+    const initialTheme = storedTheme === "light" ? "light" : "dark";
     setTheme(initialTheme);
   }, []);
 
@@ -31,7 +31,7 @@ export function ThemeToggle() {
   return (
     <button
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-      className="fixed right-4 top-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--panel)] text-[var(--foreground)] shadow-sm transition hover:border-[var(--accent)]"
+      className="fixed right-4 top-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--panel)] text-[var(--foreground)] shadow-sm transition hover:border-[var(--accent)]"
       onClick={toggleTheme}
       title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
       type="button"

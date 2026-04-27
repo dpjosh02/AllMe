@@ -8,7 +8,7 @@ export function SyncFintableButton() {
 
   return (
     <button
-      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:cursor-wait disabled:opacity-70"
+      className="allme-control inline-flex min-h-10 items-center justify-center gap-2 px-3 text-sm font-semibold text-[var(--foreground)] disabled:cursor-wait disabled:opacity-70"
       disabled={pending}
       type="submit"
     >

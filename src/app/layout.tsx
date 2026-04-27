@@ -6,7 +6,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AllMe",
-  description: "Personal operating system for notes, calendar, finance, and progress.",
+  description:
+    "Personal operating system for notes, calendar, finance, and progress.",
 };
 
 type RootLayoutProps = Readonly<{
@@ -15,7 +16,7 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html data-theme="dark" lang="en" suppressHydrationWarning>
       <body>
         <ThemeToggle />
         {children}

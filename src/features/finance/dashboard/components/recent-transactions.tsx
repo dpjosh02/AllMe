@@ -305,12 +305,15 @@ export function RecentTransactions({
   }
 
   return (
-    <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+    <div className="allme-card p-5">
       <div className="mb-5 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Recent Transactions</h2>
-            <p className="text-sm text-[var(--muted)]">
+            <p className="allme-kicker">Ledger</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
+              Recent Transactions
+            </h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
               Most recent normalized Fintable transactions.
             </p>
             {isReviewingUncategorized ? (
@@ -325,7 +328,7 @@ export function RecentTransactions({
           </div>
           <button
             aria-label="Manage transaction tags"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[var(--line)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+            className="allme-control inline-flex h-9 w-9 shrink-0 items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)]"
             onClick={() => setIsTagManagerOpen(true)}
             type="button"
           >
@@ -340,7 +343,7 @@ export function RecentTransactions({
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
             />
             <input
-              className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--input)] pl-9 pr-3 text-sm font-semibold outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
+              className="allme-control h-10 w-full pl-9 pr-3 text-sm font-semibold outline-none placeholder:text-[var(--muted)]"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search name"
               type="search"
@@ -351,7 +354,7 @@ export function RecentTransactions({
             <button
               aria-expanded={isFilterMenuOpen}
               aria-label="Open transaction filters"
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--input)] px-4 text-sm font-semibold transition hover:border-[var(--accent)] md:w-auto"
+              className="allme-control inline-flex h-10 w-full items-center justify-center gap-2 px-4 text-sm font-semibold md:w-auto"
               onClick={() => {
                 setIsFilterMenuOpen((current) => !current);
                 setActiveFilterSection(null);
@@ -366,7 +369,7 @@ export function RecentTransactions({
               <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />
             </button>
             {isFilterMenuOpen ? (
-              <div className="absolute right-0 z-30 mt-2 max-h-[min(42rem,calc(100vh-12rem))] w-[min(30rem,calc(100vw-2rem))] overflow-auto rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
+              <div className="allme-card absolute right-0 z-30 mt-2 max-h-[min(42rem,calc(100vh-12rem))] w-[min(30rem,calc(100vw-2rem))] overflow-auto p-3">
                 <div className="mb-4 flex items-start justify-between gap-4 border-b border-[var(--line)] pb-3">
                   <div>
                     <p className="text-sm font-semibold">Transaction Filters</p>
@@ -377,7 +380,7 @@ export function RecentTransactions({
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-md border border-[var(--line)] px-3 text-xs font-semibold transition hover:border-[var(--accent)]"
+                      className="allme-control inline-flex min-h-8 items-center justify-center px-3 text-xs font-semibold"
                       onClick={resetAllFilters}
                       type="button"
                     >
@@ -385,7 +388,7 @@ export function RecentTransactions({
                     </button>
                     <button
                       aria-label="Close transaction filters"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+                      className="allme-control inline-flex h-8 w-8 items-center justify-center"
                       onClick={() => {
                         setIsFilterMenuOpen(false);
                         setActiveFilterSection(null);
@@ -397,7 +400,7 @@ export function RecentTransactions({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <section className="rounded-md border border-[var(--line)] bg-[var(--empty)]">
+                  <section className="allme-card-subtle">
                     <button
                       aria-expanded={activeFilterSection === "date"}
                       className="flex min-h-14 w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-[var(--panel-strong)]"
@@ -487,7 +490,7 @@ export function RecentTransactions({
                     ) : null}
                   </section>
 
-                  <section className="rounded-md border border-[var(--line)] bg-[var(--empty)]">
+                  <section className="allme-card-subtle">
                     <button
                       aria-expanded={activeFilterSection === "categories"}
                       className="flex min-h-14 w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-[var(--panel-strong)]"
@@ -571,7 +574,7 @@ export function RecentTransactions({
                   </section>
 
                   {showAccountFilter ? (
-                    <section className="rounded-md border border-[var(--line)] bg-[var(--empty)]">
+                    <section className="allme-card-subtle">
                       <button
                         aria-expanded={activeFilterSection === "accounts"}
                         className="flex min-h-14 w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-[var(--panel-strong)]"
@@ -653,13 +656,13 @@ export function RecentTransactions({
         </div>
       </div>
       <div className="max-h-[min(34rem,calc(100vh-19rem))] overflow-y-auto pr-2">
-        <div className="divide-y divide-[var(--line)]">
+        <div className="space-y-1">
           {filteredTransactions.length === 0 ? (
             <EmptyState label="No transactions match the selected filters." />
           ) : (
             filteredTransactions.map((transaction) => (
               <button
-                className="grid w-full gap-2 py-4 text-left transition first:pt-0 last:pb-0 hover:text-[var(--accent-strong)] sm:grid-cols-[minmax(0,1fr)_auto]"
+                className="grid w-full gap-2 rounded-xl px-3 py-3 text-left transition hover:bg-[var(--empty)] hover:text-[var(--accent-strong)] sm:grid-cols-[minmax(0,1fr)_auto]"
                 data-testid="transaction-row"
                 key={transaction.id}
                 onClick={() => setSelectedTransaction(transaction)}
@@ -1663,7 +1666,7 @@ function formatRawPersonalFinanceCategory(transaction: RecentTransaction) {
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-4 text-sm text-[var(--muted)]">
+    <div className="allme-card-subtle border-dashed p-4 text-sm text-[var(--muted)]">
       {label}
     </div>
   );

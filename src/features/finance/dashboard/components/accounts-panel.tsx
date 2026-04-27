@@ -28,17 +28,23 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 
 export function AccountsPanel({ accounts }: AccountsPanelProps) {
   return (
-    <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+    <div className="allme-card p-5">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Accounts</h2>
-          <p className="text-sm text-[var(--muted)]">
+          <p className="allme-kicker">Balance Sheet</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
+            Accounts
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
             Latest balance snapshots from Fintable.
           </p>
         </div>
-        <CircleDollarSign aria-hidden="true" className="h-6 w-6 text-[var(--accent)]" />
+        <CircleDollarSign
+          aria-hidden="true"
+          className="h-6 w-6 text-[var(--accent)]"
+        />
       </div>
-      <div className="divide-y divide-[var(--line)]">
+      <div className="space-y-2">
         {accounts.length === 0 ? (
           <EmptyState label="No accounts imported yet." />
         ) : (
@@ -48,7 +54,7 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
 
             return (
               <Link
-                className="grid gap-3 py-4 transition first:pt-0 last:pb-0 hover:text-[var(--accent-strong)] sm:grid-cols-[1fr_auto]"
+                className="grid gap-3 rounded-xl border border-transparent bg-[var(--empty)] px-3 py-3 transition hover:border-[var(--accent)] hover:bg-[var(--panel-strong)] sm:grid-cols-[1fr_auto]"
                 href={accountHref}
                 key={account.id}
               >
@@ -61,7 +67,9 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
                   </div>
                 </div>
                 <div className="text-left sm:text-right">
-                  <p className={`font-semibold ${getAmountClass(account.balance ?? "0")}`}>
+                  <p
+                    className={`font-semibold tracking-[-0.02em] ${getAmountClass(account.balance ?? "0")}`}
+                  >
                     {account.balance ? formatCurrency(account.balance) : "--"}
                   </p>
                   <p className="text-sm text-[var(--muted)]">
@@ -83,7 +91,7 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-4 text-sm text-[var(--muted)]">
+    <div className="allme-card-subtle border-dashed p-4 text-sm text-[var(--muted)]">
       {label}
     </div>
   );

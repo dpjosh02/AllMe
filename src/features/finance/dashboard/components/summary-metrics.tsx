@@ -18,7 +18,12 @@ type MetricTransaction = {
   postedDate: string;
   amount: string;
   assignedCategoryName: string | null;
-  categoryAssignmentSource: "manual" | "rule" | "system" | "uncategorized" | null;
+  categoryAssignmentSource:
+    | "manual"
+    | "rule"
+    | "system"
+    | "uncategorized"
+    | null;
   includeInIncome: boolean | null;
   includeInSpending: boolean | null;
 };
@@ -53,15 +58,21 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsProps) {
+export function SummaryMetrics({
+  accountCount,
+  transactions,
+}: SummaryMetricsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const lookbackRef = useRef<HTMLDivElement>(null);
   const [lookback, setLookback] = useState<LookbackInput>(emptyLookback);
-  const [draftLookback, setDraftLookback] = useState<LookbackInput>(emptyLookback);
+  const [draftLookback, setDraftLookback] =
+    useState<LookbackInput>(emptyLookback);
   const sinceDate = getSinceDate(lookback);
   const sinceDateKey = sinceDate ? toDateKey(sinceDate) : null;
   const filteredTransactions = sinceDateKey
-    ? transactions.filter((transaction) => transaction.postedDate >= sinceDateKey)
+    ? transactions.filter(
+        (transaction) => transaction.postedDate >= sinceDateKey,
+      )
     : transactions;
   const totalInflow = filteredTransactions.reduce(
     (sum, transaction) =>
@@ -126,17 +137,16 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            Dashboard Window
-          </p>
-          <p className="text-sm text-[var(--muted)]">
-            Transaction metrics update from the selected lookback date through today.
+          <p className="allme-kicker">Dashboard Window</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Transaction metrics update from the selected lookback date through
+            today.
           </p>
         </div>
         <div className="relative" ref={lookbackRef}>
           <button
             aria-expanded={isOpen}
-            className="inline-flex h-10 min-w-52 items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+            className="allme-control inline-flex h-10 min-w-52 items-center justify-between gap-3 px-3 text-sm font-semibold"
             onClick={() => {
               setDraftLookback(lookback);
               setIsOpen((current) => !current);
@@ -147,7 +157,7 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
             <Clock3 aria-hidden="true" className="h-4 w-4 shrink-0" />
           </button>
           {isOpen ? (
-            <div className="absolute right-0 z-30 mt-2 w-80 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
+            <div className="allme-card absolute right-0 z-30 mt-2 w-80 p-3">
               <p className="mb-3 text-sm font-semibold">Lookback</p>
               <div className="grid grid-cols-2 gap-2">
                 <LookbackField
@@ -172,18 +182,19 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
                 />
               </div>
               <p className="mt-3 text-xs text-[var(--muted)]">
-                Example: 1 month and 2 weeks means transactions from that date through today.
+                Example: 1 month and 2 weeks means transactions from that date
+                through today.
               </p>
               <div className="mt-4 flex gap-2">
                 <button
-                  className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+                  className="allme-control inline-flex min-h-10 flex-1 items-center justify-center px-3 text-sm font-semibold"
                   onClick={clearLookback}
                   type="button"
                 >
                   All time
                 </button>
                 <button
-                  className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--panel)] transition hover:bg-[var(--accent-strong)]"
+                  className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)]"
                   onClick={applyLookback}
                   type="button"
                 >
@@ -230,7 +241,9 @@ export function SummaryMetrics({ accountCount, transactions }: SummaryMetricsPro
                 <button
                   className="inline-flex min-h-8 items-center rounded-full border border-[var(--accent-strong)] bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--panel)] shadow-sm transition hover:bg-[var(--accent-strong)]"
                   onClick={() =>
-                    window.dispatchEvent(new Event(reviewUncategorizedTransactionsEvent))
+                    window.dispatchEvent(
+                      new Event(reviewUncategorizedTransactionsEvent),
+                    )
                   }
                   type="button"
                 >
@@ -261,7 +274,7 @@ function LookbackField({
     <label className="flex flex-col gap-1 text-sm font-semibold">
       <span>{label}</span>
       <input
-        className="min-h-10 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 outline-none transition focus:border-[var(--accent)]"
+        className="allme-control min-h-10 px-3 outline-none"
         inputMode="numeric"
         onChange={(event) => onChange(event.target.value)}
         pattern="[0-9]*"
@@ -286,14 +299,16 @@ function MetricCard({
   valueClassName?: string;
 }) {
   return (
-    <article className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between text-[var(--accent)]">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-          {label}
-        </h2>
+    <article className="allme-card p-5">
+      <div className="mb-5 flex items-center justify-between text-[var(--accent)]">
+        <h2 className="allme-kicker">{label}</h2>
         {icon}
       </div>
-      <p className={`text-3xl font-semibold ${valueClassName ?? ""}`}>{value}</p>
+      <p
+        className={`text-3xl font-semibold tracking-[-0.04em] ${valueClassName ?? ""}`}
+      >
+        {value}
+      </p>
       <p className="mt-2 text-sm text-[var(--muted)]">{detail}</p>
     </article>
   );
