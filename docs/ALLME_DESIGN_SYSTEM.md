@@ -39,7 +39,7 @@ Core dark tokens:
 - `--panel-strong`: selected/hover card surface.
 - `--empty`: recessed surface for row hovers and secondary containers.
 - `--line`: low-contrast divider and border.
-- `--accent`: electric ledger green used for primary focus, not decoration.
+- `--accent`: glacier blue used for primary focus and icon emphasis, not decoration.
 - `--success`: positive money/inflow.
 - `--danger`: negative money/outflow/destructive.
 - `--warn`: review-needed and caution states.
@@ -49,6 +49,13 @@ Rules:
 - Accent is for current focus, primary actions, and selected affordances.
 - Money never depends on color alone; keep sign/direction visible in text.
 - Avoid more than one saturated non-semantic accent in a single viewport.
+- Avoid neon yellow in dark mode unless it is a deliberate warning/highlight state; it competes too aggressively with money colors.
+
+Accent directions considered:
+
+- `Glacier blue` current: calm, technical, crisp against dark green-black.
+- `Mineral teal`: closer to finance/productivity conventions, slightly safer but less distinctive.
+- `Soft copper`: warm and premium, but risks colliding with warning/review states.
 - Borders should define structure before shadows do.
 
 ## Typography
