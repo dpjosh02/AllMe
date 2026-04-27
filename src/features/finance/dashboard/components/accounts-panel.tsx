@@ -98,9 +98,6 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-[var(--panel)] to-transparent"
         />
-        <p className="mt-3 text-xs font-semibold text-[var(--muted)]">
-          Scroll balance sheet for more accounts
-        </p>
       </div>
     </div>
   );
