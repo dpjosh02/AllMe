@@ -706,7 +706,7 @@ export function RecentTransactions({
       </div>
       <div className="relative">
         <div
-          className="max-h-[22rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
+          className="max-h-[34rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
           ref={transactionListRef}
         >
           <div className="space-y-1">
