@@ -92,7 +92,7 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
         </div>
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-[var(--panel)] to-transparent"
+          className="pointer-events-none absolute inset-x-0 -bottom-3 z-10 h-8 bg-gradient-to-t from-[var(--panel)] to-transparent"
         />
       </div>
     </div>
