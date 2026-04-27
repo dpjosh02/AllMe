@@ -118,6 +118,7 @@ export function RecentTransactions({
     useState<ActiveFilterSection>(null);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
+  const transactionListRef = useRef<HTMLDivElement>(null);
   const [afterDate, setAfterDate] = useState<string | null>(() =>
     toDateKey(addMonths(new Date(), -1)),
   );
@@ -221,6 +222,18 @@ export function RecentTransactions({
       document.removeEventListener("pointerdown", closeOpenFilters);
     };
   }, []);
+
+  useEffect(() => {
+    transactionListRef.current?.scrollTo({ top: 0 });
+  }, [
+    afterDate,
+    beforeDate,
+    isReviewingUncategorized,
+    isUncategorizedSelected,
+    searchQuery,
+    selectedAccountIds,
+    selectedCategoryIds,
+  ]);
 
   function toggleAccount(accountId: string) {
     setSelectedAccountIds((current) => {
@@ -663,7 +676,10 @@ export function RecentTransactions({
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[var(--panel)] to-transparent"
         />
-        <div className="max-h-[22rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]">
+        <div
+          className="max-h-[22rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
+          ref={transactionListRef}
+        >
           <div className="space-y-1">
             {filteredTransactions.length === 0 ? (
               <EmptyState label="No transactions match the selected filters." />
