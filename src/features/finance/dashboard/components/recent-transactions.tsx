@@ -351,7 +351,7 @@ export function RecentTransactions({
   }
 
   return (
-    <div className="allme-card p-5">
+    <div className="allme-card flex min-h-[38rem] flex-col p-5 xl:min-h-[44rem]">
       <div className="mb-5 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -704,9 +704,9 @@ export function RecentTransactions({
           </div>
         </div>
       </div>
-      <div className="relative">
+      <div className="relative min-h-0 flex-1">
         <div
-          className="max-h-[34rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
+          className="h-full min-h-0 overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
           ref={transactionListRef}
         >
           <div className="space-y-1">
