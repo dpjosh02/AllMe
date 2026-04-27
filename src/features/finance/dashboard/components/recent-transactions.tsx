@@ -8,6 +8,7 @@ import {
   ChevronRight,
   MoreHorizontal,
   Search,
+  SlidersHorizontal,
   Tag,
   X,
 } from "lucide-react";
@@ -35,7 +36,12 @@ type RecentTransaction = {
   assignedCategoryId: string | null;
   assignedCategoryName: string | null;
   assignedCategoryColor: string | null;
-  categoryAssignmentSource: "manual" | "rule" | "system" | "uncategorized" | null;
+  categoryAssignmentSource:
+    | "manual"
+    | "rule"
+    | "system"
+    | "uncategorized"
+    | null;
   accountName: string;
   rawDescription: string | null;
   rawMerchantName: string | null;
@@ -106,22 +112,21 @@ export function RecentTransactions({
   showAccountFilter = true,
   transactions,
 }: RecentTransactionsProps) {
-  const [isAccountFilterOpen, setIsAccountFilterOpen] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
-  const accountFilterRef = useRef<HTMLDivElement>(null);
-  const calendarFilterRef = useRef<HTMLDivElement>(null);
-  const categoryFilterRef = useRef<HTMLDivElement>(null);
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
   const [afterDate, setAfterDate] = useState<string | null>(() =>
     toDateKey(addMonths(new Date(), -1)),
   );
   const [beforeDate, setBeforeDate] = useState<string | null>(null);
-  const [isReviewingUncategorized, setIsReviewingUncategorized] = useState(false);
+  const [isReviewingUncategorized, setIsReviewingUncategorized] =
+    useState(false);
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] =
     useState<RecentTransaction | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    startOfMonth(new Date()),
+  );
   const [selectedAccountIds, setSelectedAccountIds] = useState(
     () => new Set(accounts.map((account) => account.id)),
   );
@@ -139,7 +144,9 @@ export function RecentTransactions({
       : isUncategorizedSelected;
     const isSearchMatch =
       searchQuery.trim().length === 0 ||
-      transaction.description.toLowerCase().includes(searchQuery.trim().toLowerCase());
+      transaction.description
+        .toLowerCase()
+        .includes(searchQuery.trim().toLowerCase());
     const isReviewMatch =
       !isReviewingUncategorized ||
       transaction.categoryAssignmentSource === "uncategorized" ||
@@ -199,20 +206,8 @@ export function RecentTransactions({
         return;
       }
 
-      const isInsideAccountFilter = accountFilterRef.current?.contains(target);
-      const isInsideCalendarFilter = calendarFilterRef.current?.contains(target);
-      const isInsideCategoryFilter = categoryFilterRef.current?.contains(target);
-
-      if (!isInsideAccountFilter) {
-        setIsAccountFilterOpen(false);
-      }
-
-      if (!isInsideCalendarFilter) {
-        setIsCalendarOpen(false);
-      }
-
-      if (!isInsideCategoryFilter) {
-        setIsCategoryFilterOpen(false);
+      if (!filterMenuRef.current?.contains(target)) {
+        setIsFilterMenuOpen(false);
       }
     }
 
@@ -277,7 +272,8 @@ export function RecentTransactions({
 
   function moveVisibleMonth(offset: number) {
     setVisibleMonth(
-      (current) => new Date(current.getFullYear(), current.getMonth() + offset, 1),
+      (current) =>
+        new Date(current.getFullYear(), current.getMonth() + offset, 1),
     );
   }
 
@@ -314,7 +310,7 @@ export function RecentTransactions({
             <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
           <label className="relative min-w-0">
             <span className="sr-only">Search transactions</span>
             <Search
@@ -329,218 +325,236 @@ export function RecentTransactions({
               value={searchQuery}
             />
           </label>
-          <div className="relative min-w-0" ref={calendarFilterRef}>
+          <div className="relative min-w-0" ref={filterMenuRef}>
             <button
-              aria-expanded={isCalendarOpen}
-              aria-label="Filter transactions by date range"
-              className="inline-flex h-10 w-full items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-              onClick={() => {
-                setIsCalendarOpen((current) => !current);
-                setIsAccountFilterOpen(false);
-                setIsCategoryFilterOpen(false);
-              }}
+              aria-expanded={isFilterMenuOpen}
+              aria-label="Open transaction filters"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--input)] px-4 text-sm font-semibold transition hover:border-[var(--accent)] md:w-auto"
+              onClick={() => setIsFilterMenuOpen((current) => !current)}
               type="button"
             >
-              <span className="min-w-0 whitespace-nowrap text-left text-[0.72rem] leading-none">
-                {dateFilterLabel}
-              </span>
-              <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" />
-            </button>
-            {isCalendarOpen ? (
-              <div className="absolute right-0 z-30 mt-2 w-80 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <button
-                    aria-label="Previous month"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
-                    onClick={() => moveVisibleMonth(-1)}
-                    type="button"
-                  >
-                    <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-                  </button>
-                  <p className="text-sm font-semibold">
-                    {monthFormatter.format(visibleMonth)}
-                  </p>
-                  <button
-                    aria-label="Next month"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
-                    onClick={() => moveVisibleMonth(1)}
-                    type="button"
-                  >
-                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-                  {dayLabels.map((dayLabel) => (
-                    <span key={dayLabel}>{dayLabel}</span>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {calendarDays.map((day) => (
-                    <button
-                      className={getCalendarDayClassName({
-                        date: day.date,
-                        isCurrentMonth: day.isCurrentMonth,
-                        afterDate,
-                        beforeDate,
-                      })}
-                      key={day.date}
-                      onClick={() => selectDate(day.date)}
-                      type="button"
-                    >
-                      {Number(day.date.slice(-2))}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)]">
-                  <span>{dateFilterLabel}</span>
-                  <button
-                    className="font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
-                    onClick={clearDateFilter}
-                    type="button"
-                  >
-                    Clear dates
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="relative min-w-0" ref={categoryFilterRef}>
-            <button
-              aria-expanded={isCategoryFilterOpen}
-              className="inline-flex h-10 w-full items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-              onClick={() => {
-                setIsCategoryFilterOpen((current) => !current);
-                setIsAccountFilterOpen(false);
-                setIsCalendarOpen(false);
-              }}
-              type="button"
-            >
-              <span className="min-w-0 truncate">{categoryFilterLabel}</span>
+              <SlidersHorizontal
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0"
+              />
+              Filters
               <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />
             </button>
-            {isCategoryFilterOpen ? (
-              <div className="absolute right-0 z-20 mt-2 w-80 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
-                <div className="mb-3 flex gap-2">
+            {isFilterMenuOpen ? (
+              <div className="absolute right-0 z-30 mt-2 max-h-[min(42rem,calc(100vh-12rem))] w-[min(46rem,calc(100vw-2rem))] overflow-auto rounded-md border border-[var(--line)] bg-[var(--panel)] p-4 shadow-lg">
+                <div className="mb-4 flex items-start justify-between gap-4 border-b border-[var(--line)] pb-3">
+                  <div>
+                    <p className="text-sm font-semibold">Transaction Filters</p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {dateFilterLabel} · {categoryFilterLabel}
+                      {showAccountFilter ? ` · ${filterLabel}` : ""}
+                    </p>
+                  </div>
                   <button
-                    className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                    onClick={selectAllCategories}
-                    type="button"
-                  >
-                    <Check aria-hidden="true" className="h-4 w-4" />
-                    Select all
-                  </button>
-                  <button
-                    className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                    onClick={deselectAllCategories}
+                    aria-label="Close transaction filters"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+                    onClick={() => setIsFilterMenuOpen(false)}
                     type="button"
                   >
                     <X aria-hidden="true" className="h-4 w-4" />
-                    Deselect all
                   </button>
                 </div>
-                <div className="max-h-72 overflow-auto">
-                  <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]">
-                    <input
-                      checked={isUncategorizedSelected}
-                      className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                      onChange={(event) =>
-                        setIsUncategorizedSelected(event.target.checked)
-                      }
-                      type="checkbox"
-                    />
-                    <span className="h-3 w-3 shrink-0 rounded-full bg-slate-500" />
-                    <span className="min-w-0 truncate">Uncategorized</span>
-                  </label>
-                  {categories.map((category) => (
-                    <label
-                      className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
-                      key={category.id}
-                    >
-                      <input
-                        checked={selectedCategoryIds.has(category.id)}
-                        className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                        onChange={() => toggleCategory(category.id)}
-                        type="checkbox"
-                      />
-                      <span
+                <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+                  <section className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold">Date</p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {dateFilterLabel}
+                        </p>
+                      </div>
+                      <CalendarDays
                         aria-hidden="true"
-                        className="h-3 w-3 shrink-0 rounded-full"
-                        style={{ backgroundColor: category.color }}
+                        className="h-4 w-4 text-[var(--muted)]"
                       />
-                      <span className="min-w-0 truncate">{category.name}</span>
-                    </label>
-                  ))}
+                    </div>
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <button
+                        aria-label="Previous month"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+                        onClick={() => moveVisibleMonth(-1)}
+                        type="button"
+                      >
+                        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                      <p className="text-sm font-semibold">
+                        {monthFormatter.format(visibleMonth)}
+                      </p>
+                      <button
+                        aria-label="Next month"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+                        onClick={() => moveVisibleMonth(1)}
+                        type="button"
+                      >
+                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                      {dayLabels.map((dayLabel) => (
+                        <span key={dayLabel}>{dayLabel}</span>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {calendarDays.map((day) => (
+                        <button
+                          className={getCalendarDayClassName({
+                            date: day.date,
+                            isCurrentMonth: day.isCurrentMonth,
+                            afterDate,
+                            beforeDate,
+                          })}
+                          key={day.date}
+                          onClick={() => selectDate(day.date)}
+                          type="button"
+                        >
+                          {Number(day.date.slice(-2))}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)]">
+                      <span>{dateFilterLabel}</span>
+                      <button
+                        className="font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
+                        onClick={clearDateFilter}
+                        type="button"
+                      >
+                        Clear dates
+                      </button>
+                    </div>
+                  </section>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <section className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3">
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold">Categories</p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {categoryFilterLabel}
+                        </p>
+                      </div>
+                      <div className="mb-3 flex gap-2">
+                        <button
+                          className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+                          onClick={selectAllCategories}
+                          type="button"
+                        >
+                          <Check aria-hidden="true" className="h-4 w-4" />
+                          Select all
+                        </button>
+                        <button
+                          className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+                          onClick={deselectAllCategories}
+                          type="button"
+                        >
+                          <X aria-hidden="true" className="h-4 w-4" />
+                          Deselect all
+                        </button>
+                      </div>
+                      <div className="max-h-72 overflow-auto">
+                        <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]">
+                          <input
+                            checked={isUncategorizedSelected}
+                            className="h-4 w-4 shrink-0 accent-[var(--accent)]"
+                            onChange={(event) =>
+                              setIsUncategorizedSelected(event.target.checked)
+                            }
+                            type="checkbox"
+                          />
+                          <span className="h-3 w-3 shrink-0 rounded-full bg-slate-500" />
+                          <span className="min-w-0 truncate">
+                            Uncategorized
+                          </span>
+                        </label>
+                        {categories.map((category) => (
+                          <label
+                            className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
+                            key={category.id}
+                          >
+                            <input
+                              checked={selectedCategoryIds.has(category.id)}
+                              className="h-4 w-4 shrink-0 accent-[var(--accent)]"
+                              onChange={() => toggleCategory(category.id)}
+                              type="checkbox"
+                            />
+                            <span
+                              aria-hidden="true"
+                              className="h-3 w-3 shrink-0 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <span className="min-w-0 truncate">
+                              {category.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </section>
+
+                    {showAccountFilter ? (
+                      <section className="rounded-md border border-[var(--line)] bg-[var(--empty)] p-3">
+                        <div className="mb-3">
+                          <p className="text-sm font-semibold">Accounts</p>
+                          <p className="text-xs text-[var(--muted)]">
+                            {filterLabel}
+                          </p>
+                        </div>
+                        <div className="mb-3 flex gap-2">
+                          <button
+                            className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+                            onClick={() =>
+                              setSelectedAccountIds(
+                                new Set(accounts.map((account) => account.id)),
+                              )
+                            }
+                            type="button"
+                          >
+                            <Check aria-hidden="true" className="h-4 w-4" />
+                            Select all
+                          </button>
+                          <button
+                            className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
+                            onClick={() => setSelectedAccountIds(new Set())}
+                            type="button"
+                          >
+                            <X aria-hidden="true" className="h-4 w-4" />
+                            Deselect all
+                          </button>
+                        </div>
+                        <div className="max-h-72 overflow-auto">
+                          {accounts.map((account) => {
+                            const accountName =
+                              account.displayName ?? account.name;
+
+                            return (
+                              <label
+                                className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
+                                key={account.id}
+                              >
+                                <input
+                                  checked={selectedAccountIds.has(account.id)}
+                                  className="h-4 w-4 shrink-0 accent-[var(--accent)]"
+                                  onChange={() => toggleAccount(account.id)}
+                                  type="checkbox"
+                                />
+                                <span className="min-w-0 truncate">
+                                  {accountName}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             ) : null}
           </div>
-
-          {showAccountFilter ? (
-            <div className="relative min-w-0" ref={accountFilterRef}>
-              <button
-                aria-expanded={isAccountFilterOpen}
-                className="inline-flex h-10 w-full items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                onClick={() => {
-                setIsAccountFilterOpen((current) => !current);
-                setIsCalendarOpen(false);
-                setIsCategoryFilterOpen(false);
-              }}
-                type="button"
-              >
-                <span>{filterLabel}</span>
-                <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />
-              </button>
-              {isAccountFilterOpen ? (
-                <div className="absolute right-0 z-20 mt-2 w-72 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 shadow-lg">
-                  <div className="mb-3 flex gap-2">
-                    <button
-                      className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                      onClick={() =>
-                        setSelectedAccountIds(
-                          new Set(accounts.map((account) => account.id)),
-                        )
-                      }
-                      type="button"
-                    >
-                      <Check aria-hidden="true" className="h-4 w-4" />
-                      Select all
-                    </button>
-                    <button
-                      className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                      onClick={() => setSelectedAccountIds(new Set())}
-                      type="button"
-                    >
-                      <X aria-hidden="true" className="h-4 w-4" />
-                      Deselect all
-                    </button>
-                  </div>
-                  <div className="max-h-72 overflow-auto">
-                    {accounts.map((account) => {
-                      const accountName = account.displayName ?? account.name;
-
-                      return (
-                        <label
-                          className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-[var(--panel-strong)]"
-                          key={account.id}
-                        >
-                          <input
-                            checked={selectedAccountIds.has(account.id)}
-                            className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                            onChange={() => toggleAccount(account.id)}
-                            type="checkbox"
-                          />
-                          <span className="min-w-0 truncate">{accountName}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       </div>
       <div className="max-h-[min(34rem,calc(100vh-19rem))] overflow-y-auto pr-2">
@@ -557,7 +571,9 @@ export function RecentTransactions({
                 type="button"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{transaction.description}</p>
+                  <p className="truncate font-semibold">
+                    {transaction.description}
+                  </p>
                   <p className="truncate text-sm text-[var(--muted)]">
                     {transaction.accountName}
                   </p>
@@ -567,7 +583,9 @@ export function RecentTransactions({
                   />
                 </div>
                 <div className="text-left sm:text-right">
-                  <p className={`font-semibold ${getAmountClass(transaction.amount)}`}>
+                  <p
+                    className={`font-semibold ${getAmountClass(transaction.amount)}`}
+                  >
                     {formatCurrency(transaction.amount)}
                   </p>
                   <p className="text-sm text-[var(--muted)]">
@@ -591,7 +609,7 @@ export function RecentTransactions({
       ) : null}
       {isTagManagerOpen ? (
         <TagManagerModal
-          accountId={showAccountFilter ? null : accounts[0]?.id ?? null}
+          accountId={showAccountFilter ? null : (accounts[0]?.id ?? null)}
           categories={categories}
           onClose={() => setIsTagManagerOpen(false)}
         />
@@ -766,7 +784,9 @@ function TransactionDetailModal({
 
           {isConfirmingDelete ? (
             <div className="mt-4 rounded-md border border-[var(--danger)] bg-[var(--panel)] p-3">
-              <p className="font-semibold text-[var(--danger)]">Are you sure?</p>
+              <p className="font-semibold text-[var(--danger)]">
+                Are you sure?
+              </p>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 This action deletes this transaction from the local database.
               </p>
@@ -857,7 +877,9 @@ function CategoryDetailItem({
           <span
             aria-hidden="true"
             className="h-3 w-3 shrink-0 rounded-full"
-            style={{ backgroundColor: transaction.assignedCategoryColor ?? "#64748b" }}
+            style={{
+              backgroundColor: transaction.assignedCategoryColor ?? "#64748b",
+            }}
           />
           <span className="truncate">
             {transaction.assignedCategoryName ?? "Uncategorized"}
@@ -873,9 +895,20 @@ function CategoryDetailItem({
               const isSelected = category.id === transaction.assignedCategoryId;
 
               return (
-                <form action={assignFinanceTransactionCategory} key={category.id}>
-                  <input name="transactionId" type="hidden" value={transaction.id} />
-                  <input name="accountId" type="hidden" value={transaction.accountId} />
+                <form
+                  action={assignFinanceTransactionCategory}
+                  key={category.id}
+                >
+                  <input
+                    name="transactionId"
+                    type="hidden"
+                    value={transaction.id}
+                  />
+                  <input
+                    name="accountId"
+                    type="hidden"
+                    value={transaction.accountId}
+                  />
                   <input name="categoryId" type="hidden" value={category.id} />
                   <button
                     className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md border px-3 text-left text-sm font-semibold transition hover:border-[var(--accent)] ${
@@ -906,7 +939,11 @@ function CategoryDetailItem({
             action={assignFinanceCategoryToTransactions}
             className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
           >
-            <input name="accountId" type="hidden" value={transaction.accountId} />
+            <input
+              name="accountId"
+              type="hidden"
+              value={transaction.accountId}
+            />
             {similarMatchIds.map((transactionId) => (
               <input
                 key={transactionId}
@@ -917,7 +954,8 @@ function CategoryDetailItem({
             ))}
             <p className="text-sm font-semibold">Apply to similar</p>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              Preview is based on the transactions currently loaded in this component.
+              Preview is based on the transactions currently loaded in this
+              component.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm font-semibold">
@@ -952,10 +990,12 @@ function CategoryDetailItem({
             </div>
             <div className="mt-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--empty)] p-3 text-sm">
               <p className="font-semibold">
-                {similarMatches.length} transaction{similarMatches.length === 1 ? "" : "s"} match
+                {similarMatches.length} transaction
+                {similarMatches.length === 1 ? "" : "s"} match
               </p>
               <p className="mt-1 text-xs text-[var(--muted)]">
-                {selectedSimilarRule?.description ?? "No matching signal available."}
+                {selectedSimilarRule?.description ??
+                  "No matching signal available."}
               </p>
             </div>
             <button
@@ -971,7 +1011,11 @@ function CategoryDetailItem({
             action={createFinanceCategoryTextRule}
             className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
           >
-            <input name="accountId" type="hidden" value={transaction.accountId} />
+            <input
+              name="accountId"
+              type="hidden"
+              value={transaction.accountId}
+            />
             <input name="categoryId" type="hidden" value={similarCategoryId} />
             <input name="matchText" type="hidden" value={customMatchText} />
             {customMatchIds.map((transactionId) => (
@@ -984,8 +1028,9 @@ function CategoryDetailItem({
             ))}
             <p className="text-sm font-semibold">Custom text rule</p>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              Enter words from raw descriptions, merchants, provider categories, or raw category
-              paths. The saved rule will help classify future imports.
+              Enter words from raw descriptions, merchants, provider categories,
+              or raw category paths. The saved rule will help classify future
+              imports.
             </p>
             <label className="mt-3 flex flex-col gap-1 text-sm font-semibold">
               <span>Match words/categories</span>
@@ -1033,8 +1078,12 @@ function TagManagerModal({
   onClose: () => void;
 }) {
   const [isCreating, setIsCreating] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+    null,
+  );
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(
+    null,
+  );
 
   return (
     <div
@@ -1055,7 +1104,8 @@ function TagManagerModal({
             </p>
             <h3 className="mt-1 text-2xl font-semibold">Manage Categories</h3>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Create personal tags now. Rule previews for similar transactions come next.
+              Create personal tags now. Rule previews for similar transactions
+              come next.
             </p>
           </div>
           <button
@@ -1123,7 +1173,8 @@ function TagManagerModal({
                       />
                       <CashFlowRadio
                         defaultChecked={
-                          !category.includeInSpending && !category.includeInIncome
+                          !category.includeInSpending &&
+                          !category.includeInIncome
                         }
                         description="Excluded from cash flow."
                         label="Neutral"
@@ -1163,9 +1214,12 @@ function TagManagerModal({
                       style={{ backgroundColor: category.color }}
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{category.name}</p>
+                      <p className="truncate text-sm font-semibold">
+                        {category.name}
+                      </p>
                       <p className="text-xs text-[var(--muted)]">
-                        {formatCategoryBehavior(category)} · {category.transactionCount} tagged
+                        {formatCategoryBehavior(category)} ·{" "}
+                        {category.transactionCount} tagged
                       </p>
                     </div>
                   </div>
@@ -1200,7 +1254,11 @@ function TagManagerModal({
                     action={deleteFinanceCategory}
                     className="mt-3 rounded-md border border-[var(--danger)] bg-[var(--panel)] p-3"
                   >
-                    <input name="categoryId" type="hidden" value={category.id} />
+                    <input
+                      name="categoryId"
+                      type="hidden"
+                      value={category.id}
+                    />
                     {accountId ? (
                       <input name="accountId" type="hidden" value={accountId} />
                     ) : null}
@@ -1208,7 +1266,8 @@ function TagManagerModal({
                       Delete this tag?
                     </p>
                     <p className="mt-1 text-xs text-[var(--muted)]">
-                      Existing transactions using this tag will become uncategorized.
+                      Existing transactions using this tag will become
+                      uncategorized.
                     </p>
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
                       <button
@@ -1233,8 +1292,13 @@ function TagManagerModal({
         </div>
 
         {isCreating ? (
-          <form action={createFinanceCategory} className="mt-5 rounded-md border border-[var(--line)] bg-[var(--empty)] p-4">
-            {accountId ? <input name="accountId" type="hidden" value={accountId} /> : null}
+          <form
+            action={createFinanceCategory}
+            className="mt-5 rounded-md border border-[var(--line)] bg-[var(--empty)] p-4"
+          >
+            {accountId ? (
+              <input name="accountId" type="hidden" value={accountId} />
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
               <label className="flex flex-col gap-1 text-sm font-semibold">
                 <span>Tag name</span>
@@ -1258,7 +1322,9 @@ function TagManagerModal({
             </div>
 
             <fieldset className="mt-3">
-              <legend className="mb-2 text-sm font-semibold">Cash-flow behavior</legend>
+              <legend className="mb-2 text-sm font-semibold">
+                Cash-flow behavior
+              </legend>
               <div className="grid gap-2 sm:grid-cols-3">
                 <CashFlowRadio
                   defaultChecked
@@ -1381,7 +1447,9 @@ function getSimilarRuleCandidates(
       label: "Raw category path",
       description: `Matches transactions whose raw category path contains ${categoryLeaf}.`,
       matches: (candidate) =>
-        normalizeText(candidate.rawCategoryPath).includes(normalizeText(categoryLeaf)),
+        normalizeText(candidate.rawCategoryPath).includes(
+          normalizeText(categoryLeaf),
+        ),
     });
   }
 
@@ -1404,7 +1472,8 @@ function getSimilarRuleCandidates(
       label: "Description",
       description: `Matches transactions with the same normalized description.`,
       matches: (candidate) =>
-        normalizeText(candidate.rawDescription ?? candidate.description) === value,
+        normalizeText(candidate.rawDescription ?? candidate.description) ===
+        value,
     });
   }
 
@@ -1509,7 +1578,10 @@ function formatCurrency(value: string) {
   return currencyFormatter.format(Number(value));
 }
 
-function formatDateFilterLabel(afterDate: string | null, beforeDate: string | null) {
+function formatDateFilterLabel(
+  afterDate: string | null,
+  beforeDate: string | null,
+) {
   if (!afterDate) {
     return "All dates";
   }
@@ -1535,7 +1607,8 @@ function formatCategoryFilterLabel({
   selectedCategoryCount: number;
 }) {
   const totalOptions = categoryCount + 1;
-  const selectedOptions = selectedCategoryCount + (isUncategorizedSelected ? 1 : 0);
+  const selectedOptions =
+    selectedCategoryCount + (isUncategorizedSelected ? 1 : 0);
 
   if (selectedOptions === totalOptions) {
     return "All categories";
@@ -1628,11 +1701,14 @@ function getCalendarDayClassName({
 }) {
   const isStart = date === afterDate;
   const isEnd = date === beforeDate;
-  const isInRange = afterDate && beforeDate && date > afterDate && date < beforeDate;
+  const isInRange =
+    afterDate && beforeDate && date > afterDate && date < beforeDate;
 
   const classes = [
     "flex h-9 items-center justify-center rounded-md text-sm font-semibold transition",
-    isCurrentMonth ? "text-[var(--foreground)]" : "text-[var(--muted)] opacity-50",
+    isCurrentMonth
+      ? "text-[var(--foreground)]"
+      : "text-[var(--muted)] opacity-50",
     "hover:bg-[var(--panel-strong)]",
   ];
 
@@ -1641,7 +1717,9 @@ function getCalendarDayClassName({
   }
 
   if (isStart || isEnd) {
-    classes.push("bg-[var(--accent)] text-[var(--panel)] hover:bg-[var(--accent)]");
+    classes.push(
+      "bg-[var(--accent)] text-[var(--panel)] hover:bg-[var(--accent)]",
+    );
   }
 
   return classes.join(" ");
