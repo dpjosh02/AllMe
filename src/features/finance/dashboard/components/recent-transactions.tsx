@@ -286,6 +286,20 @@ export function RecentTransactions({
     setBeforeDate(null);
   }
 
+  function resetAllFilters() {
+    const defaultDate = new Date();
+
+    setSearchQuery("");
+    setIsReviewingUncategorized(false);
+    setAfterDate(toDateKey(addMonths(defaultDate, -1)));
+    setBeforeDate(null);
+    setVisibleMonth(startOfMonth(defaultDate));
+    setSelectedCategoryIds(new Set(categories.map((category) => category.id)));
+    setIsUncategorizedSelected(true);
+    setSelectedAccountIds(new Set(accounts.map((account) => account.id)));
+    setActiveFilterSection(null);
+  }
+
   function toggleFilterSection(section: Exclude<ActiveFilterSection, null>) {
     setActiveFilterSection((current) => (current === section ? null : section));
   }
@@ -361,17 +375,26 @@ export function RecentTransactions({
                       {showAccountFilter ? ` · ${filterLabel}` : ""}
                     </p>
                   </div>
-                  <button
-                    aria-label="Close transaction filters"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
-                    onClick={() => {
-                      setIsFilterMenuOpen(false);
-                      setActiveFilterSection(null);
-                    }}
-                    type="button"
-                  >
-                    <X aria-hidden="true" className="h-4 w-4" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-md border border-[var(--line)] px-3 text-xs font-semibold transition hover:border-[var(--accent)]"
+                      onClick={resetAllFilters}
+                      type="button"
+                    >
+                      Clear all
+                    </button>
+                    <button
+                      aria-label="Close transaction filters"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--line)] transition hover:border-[var(--accent)]"
+                      onClick={() => {
+                        setIsFilterMenuOpen(false);
+                        setActiveFilterSection(null);
+                      }}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <section className="rounded-md border border-[var(--line)] bg-[var(--empty)]">
