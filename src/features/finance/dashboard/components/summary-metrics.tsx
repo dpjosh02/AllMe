@@ -235,22 +235,21 @@ export function SummaryMetrics({
         />
         <MetricCard
           detail={
-            <span className="flex flex-wrap items-center gap-2">
+            uncategorizedCount > 0 ? (
+              <button
+                className="inline-flex min-h-8 items-center rounded-full border border-[var(--accent)] bg-[var(--empty)] px-3 text-sm font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--panel-strong)]"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new Event(reviewUncategorizedTransactionsEvent),
+                  )
+                }
+                type="button"
+              >
+                {uncategorizedCount} need review
+              </button>
+            ) : (
               <span>{uncategorizedCount} need review</span>
-              {uncategorizedCount > 0 ? (
-                <button
-                  className="inline-flex min-h-8 items-center rounded-full border border-[var(--accent-strong)] bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--panel)] shadow-sm transition hover:bg-[var(--accent-strong)]"
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new Event(reviewUncategorizedTransactionsEvent),
-                    )
-                  }
-                  type="button"
-                >
-                  Review
-                </button>
-              ) : null}
-            </span>
+            )
           }
           icon={<CircleDollarSign aria-hidden="true" className="h-5 w-5" />}
           label="Categorized"

@@ -317,13 +317,16 @@ export function RecentTransactions({
               Most recent normalized Fintable transactions.
             </p>
             {isReviewingUncategorized ? (
-              <button
-                className="mt-2 inline-flex text-sm font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
-                onClick={() => setIsReviewingUncategorized(false)}
-                type="button"
-              >
-                Reviewing uncategorized only · Clear
-              </button>
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--empty)] px-3 py-1.5 text-sm text-[var(--muted)]">
+                <span>Reviewing uncategorized only</span>
+                <button
+                  className="inline-flex min-h-7 items-center rounded-full border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--panel-strong)]"
+                  onClick={() => setIsReviewingUncategorized(false)}
+                  type="button"
+                >
+                  Clear
+                </button>
+              </div>
             ) : null}
           </div>
           <button
@@ -655,47 +658,60 @@ export function RecentTransactions({
           </div>
         </div>
       </div>
-      <div className="max-h-[min(34rem,calc(100vh-19rem))] overflow-y-auto pr-2">
-        <div className="space-y-1">
-          {filteredTransactions.length === 0 ? (
-            <EmptyState label="No transactions match the selected filters." />
-          ) : (
-            filteredTransactions.map((transaction) => (
-              <button
-                className="grid w-full gap-2 rounded-xl px-3 py-3 text-left transition hover:bg-[var(--empty)] hover:text-[var(--accent-strong)] sm:grid-cols-[minmax(0,1fr)_auto]"
-                data-testid="transaction-row"
-                key={transaction.id}
-                onClick={() => setSelectedTransaction(transaction)}
-                type="button"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">
-                    {transaction.description}
-                  </p>
-                  <p className="truncate text-sm text-[var(--muted)]">
-                    {transaction.accountName}
-                  </p>
-                  <CategoryBadge
-                    color={transaction.assignedCategoryColor}
-                    name={transaction.assignedCategoryName}
-                  />
-                </div>
-                <div className="text-left sm:text-right">
-                  <p
-                    className={`font-semibold ${getAmountClass(transaction.amount)}`}
-                  >
-                    {formatCurrency(transaction.amount)}
-                  </p>
-                  <p className="text-sm text-[var(--muted)]">
-                    {dateFormatter.format(
-                      new Date(`${transaction.postedDate}T00:00:00`),
-                    )}
-                  </p>
-                </div>
-              </button>
-            ))
-          )}
+      <div className="relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[var(--panel)] to-transparent"
+        />
+        <div className="max-h-[22rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]">
+          <div className="space-y-1">
+            {filteredTransactions.length === 0 ? (
+              <EmptyState label="No transactions match the selected filters." />
+            ) : (
+              filteredTransactions.map((transaction) => (
+                <button
+                  className="grid w-full gap-2 rounded-xl px-3 py-3 text-left transition hover:bg-[var(--empty)] hover:text-[var(--accent-strong)] sm:grid-cols-[minmax(0,1fr)_auto]"
+                  data-testid="transaction-row"
+                  key={transaction.id}
+                  onClick={() => setSelectedTransaction(transaction)}
+                  type="button"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">
+                      {transaction.description}
+                    </p>
+                    <p className="truncate text-sm text-[var(--muted)]">
+                      {transaction.accountName}
+                    </p>
+                    <CategoryBadge
+                      color={transaction.assignedCategoryColor}
+                      name={transaction.assignedCategoryName}
+                    />
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p
+                      className={`font-semibold ${getAmountClass(transaction.amount)}`}
+                    >
+                      {formatCurrency(transaction.amount)}
+                    </p>
+                    <p className="text-sm text-[var(--muted)]">
+                      {dateFormatter.format(
+                        new Date(`${transaction.postedDate}T00:00:00`),
+                      )}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
         </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-[var(--panel)] to-transparent"
+        />
+        <p className="mt-3 text-xs font-semibold text-[var(--muted)]">
+          Scroll ledger for more transactions
+        </p>
       </div>
       {selectedTransaction ? (
         <TransactionDetailModal

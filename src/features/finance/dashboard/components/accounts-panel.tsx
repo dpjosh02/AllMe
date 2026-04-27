@@ -44,46 +44,63 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
           className="h-6 w-6 text-[var(--accent)]"
         />
       </div>
-      <div className="space-y-2">
-        {accounts.length === 0 ? (
-          <EmptyState label="No accounts imported yet." />
-        ) : (
-          accounts.map((account) => {
-            const displayName = account.displayName ?? account.name;
-            const accountHref = `/finance/accounts/${account.id}` as Route;
+      <div className="relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[var(--panel)] to-transparent"
+        />
+        <div className="max-h-[22rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]">
+          <div className="space-y-2">
+            {accounts.length === 0 ? (
+              <EmptyState label="No accounts imported yet." />
+            ) : (
+              accounts.map((account) => {
+                const displayName = account.displayName ?? account.name;
+                const accountHref = `/finance/accounts/${account.id}` as Route;
 
-            return (
-              <Link
-                className="grid gap-3 rounded-xl border border-transparent bg-[var(--empty)] px-3 py-3 transition hover:border-[var(--accent)] hover:bg-[var(--panel-strong)] sm:grid-cols-[1fr_auto]"
-                href={accountHref}
-                key={account.id}
-              >
-                <div className="min-w-0">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{displayName}</p>
-                    <p className="text-sm text-[var(--muted)]">
-                      {formatInstitutionName(account.institutionName)}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-left sm:text-right">
-                  <p
-                    className={`font-semibold tracking-[-0.02em] ${getAmountClass(account.balance ?? "0")}`}
+                return (
+                  <Link
+                    className="grid gap-3 rounded-xl border border-transparent bg-[var(--empty)] px-3 py-3 transition hover:border-[var(--accent)] hover:bg-[var(--panel-strong)] sm:grid-cols-[1fr_auto]"
+                    href={accountHref}
+                    key={account.id}
                   >
-                    {account.balance ? formatCurrency(account.balance) : "--"}
-                  </p>
-                  <p className="text-sm text-[var(--muted)]">
-                    {account.snapshotDate
-                      ? dateFormatter.format(
-                          new Date(`${account.snapshotDate}T00:00:00`),
-                        )
-                      : "No snapshot"}
-                  </p>
-                </div>
-              </Link>
-            );
-          })
-        )}
+                    <div className="min-w-0">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{displayName}</p>
+                        <p className="text-sm text-[var(--muted)]">
+                          {formatInstitutionName(account.institutionName)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <p
+                        className={`font-semibold tracking-[-0.02em] ${getAmountClass(account.balance ?? "0")}`}
+                      >
+                        {account.balance
+                          ? formatCurrency(account.balance)
+                          : "--"}
+                      </p>
+                      <p className="text-sm text-[var(--muted)]">
+                        {account.snapshotDate
+                          ? dateFormatter.format(
+                              new Date(`${account.snapshotDate}T00:00:00`),
+                            )
+                          : "No snapshot"}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })
+            )}
+          </div>
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-[var(--panel)] to-transparent"
+        />
+        <p className="mt-3 text-xs font-semibold text-[var(--muted)]">
+          Scroll balance sheet for more accounts
+        </p>
       </div>
     </div>
   );
