@@ -45,7 +45,7 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
         />
       </div>
       <div className="relative">
-        <div className="max-h-[22rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]">
+        <div className="max-h-[34rem] overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]">
           <div className="space-y-2">
             {accounts.length === 0 ? (
               <EmptyState label="No accounts imported yet." />
