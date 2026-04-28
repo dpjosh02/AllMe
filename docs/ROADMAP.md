@@ -53,9 +53,9 @@ Ship:
 
 - owner settings page `(first slice shipped)`
 - timezone and preferred currency view/edit flow `(first slice shipped)`
-- Fintable integration status page
-- Google Sheets/Fintable sync health display
-- route protection/auth decision for local owner mode vs future hosted mode
+- Fintable integration status page `(first slice shipped)`
+- Google Sheets/Fintable sync health display `(first slice shipped)`
+- route protection/auth decision for local owner mode vs future hosted mode `(decision slice shipped; enforcement pending)`
 
 Acceptance criteria:
 

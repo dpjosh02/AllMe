@@ -34,7 +34,8 @@ Implemented:
 - First self-serve transaction tagging flow.
 - Revised roadmap captured in `docs/ROADMAP.md`.
 - First app shell slice with persistent navigation and intentional placeholder routes for Today, Notes, Calendar, Progress, and Settings.
-- First Settings foundation slice with owner preferences, timezone/currency persistence, and read-only Fintable/Auth integration status.
+- First Settings foundation slice with owner preferences, timezone/currency persistence, read-only Fintable/Auth integration status, and Fintable sync health visibility.
+- First auth-boundary decision slice documented in `docs/architecture/AUTH_BOUNDARY.md` and surfaced in Settings.
 
 ## Verified Local Import
 
@@ -178,9 +179,12 @@ The Settings route has started moving from placeholder to product surface:
 - ensures a `user_settings` row exists for the owner user
 - lets the owner update timezone and preferred currency
 - shows Fintable readiness without exposing spreadsheet id, credential file paths, API keys, or secrets
+- shows recent Fintable import-run health without exposing raw error details or provider identifiers
 - shows current identity/auth readiness for local owner mode vs future Google OAuth
+- treats local owner mode as intentional instead of warning-level auth failure
+- shows the current access-boundary decision for local owner mode vs future hosted Google sign-in
 
-This is the first Milestone 2 slice. It does not yet implement route protection, hosted onboarding, or editable integration credentials.
+This is the first Milestone 2 slice. It does not yet implement route-protection middleware, hosted onboarding, or editable integration credentials.
 
 ## Current Tagging Architecture
 

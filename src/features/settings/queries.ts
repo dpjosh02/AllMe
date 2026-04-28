@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import { serverEnv } from "@/lib/env";
+import { resolveAuthBoundary } from "@/server/auth/access-control";
 import { db } from "@/server/db";
-import { userSettings, users } from "@/server/db/schema";
+import { financeImportRuns, userSettings, users } from "@/server/db/schema";
 
 export const timezoneOptions = [
   "America/Chicago",
@@ -15,6 +16,7 @@ export const timezoneOptions = [
 export const currencyOptions = ["USD", "EUR", "GBP", "CAD"] as const;
 
 export type SettingsPageData = Awaited<ReturnType<typeof getSettingsPageData>>;
+export type SettingsStatusTone = "attention" | "neutral" | "ready";
 
 export async function getSettingsPageData() {
   const ownerEmail = serverEnv.ALLME_IMPORT_USER_EMAIL ?? null;
@@ -43,7 +45,9 @@ export async function getSettingsPageData() {
 
   return {
     auth: getAuthStatus(),
+    authBoundary: getAuthBoundaryStatus(Boolean(ownerEmail)),
     fintable: getFintableStatus(),
+    importHealth: owner ? await getImportHealth(owner.id) : null,
     owner: {
       email: owner?.email ?? ownerEmail,
       emailConfigured: Boolean(ownerEmail),
@@ -68,15 +72,39 @@ export async function getOwnerByEmail(email: string) {
   return owner ?? null;
 }
 
+function getAuthBoundaryStatus(ownerEmailConfigured: boolean) {
+  return resolveAuthBoundary({
+    authSecretConfigured: Boolean(serverEnv.AUTH_SECRET),
+    googleProviderConfigured: Boolean(
+      serverEnv.AUTH_GOOGLE_ID && serverEnv.AUTH_GOOGLE_SECRET,
+    ),
+    ownerEmailConfigured,
+  });
+}
+
 function getAuthStatus() {
   const googleProviderConfigured = Boolean(
     serverEnv.AUTH_GOOGLE_ID && serverEnv.AUTH_GOOGLE_SECRET,
   );
+  const authSecretConfigured = Boolean(serverEnv.AUTH_SECRET);
+  const hostedAuthReady = googleProviderConfigured && authSecretConfigured;
+  const authNeedsAttention = googleProviderConfigured && !authSecretConfigured;
+  const tone: SettingsStatusTone = hostedAuthReady
+    ? "ready"
+    : authNeedsAttention
+      ? "attention"
+      : "neutral";
 
   return {
-    authSecretConfigured: Boolean(serverEnv.AUTH_SECRET),
+    authSecretConfigured,
+    badgeLabel: hostedAuthReady
+      ? "Ready"
+      : authNeedsAttention
+        ? "Needs attention"
+        : "Owner mode",
     googleProviderConfigured,
-    status: googleProviderConfigured ? "Configured" : "Local owner mode",
+    status: googleProviderConfigured ? "Google OAuth" : "Local owner mode",
+    tone,
   };
 }
 
@@ -90,14 +118,45 @@ function getFintableStatus() {
     : serverEnv.GOOGLE_SHEETS_API_KEY
       ? "API key"
       : "Missing";
+  const ready = hasSpreadsheet && hasGoogleAccess;
+  const tone: SettingsStatusTone = ready ? "ready" : "attention";
 
   return {
     accessMode,
     accountsRange: serverEnv.FINTABLE_ACCOUNTS_RANGE ?? "Accounts!A:H",
+    badgeLabel: ready ? "Ready" : "Needs setup",
     hasGoogleAccess,
     hasSpreadsheet,
-    ready: hasSpreadsheet && hasGoogleAccess,
+    ready,
+    tone,
     transactionsRange:
       serverEnv.FINTABLE_TRANSACTIONS_RANGE ?? "Transactions!A:H",
+  };
+}
+
+async function getImportHealth(userId: string) {
+  const runs = await db
+    .select({
+      createdAt: financeImportRuns.createdAt,
+      finishedAt: financeImportRuns.finishedAt,
+      hasErrorSummary: sql<boolean>`${financeImportRuns.errorSummary} is not null`,
+      id: financeImportRuns.id,
+      rowsInserted: financeImportRuns.rowsInserted,
+      rowsScanned: financeImportRuns.rowsScanned,
+      rowsSkipped: financeImportRuns.rowsSkipped,
+      rowsUpdated: financeImportRuns.rowsUpdated,
+      startedAt: financeImportRuns.startedAt,
+      status: financeImportRuns.status,
+    })
+    .from(financeImportRuns)
+    .where(eq(financeImportRuns.userId, userId))
+    .orderBy(desc(financeImportRuns.createdAt))
+    .limit(5);
+
+  const latest = runs[0] ?? null;
+
+  return {
+    latest,
+    recent: runs,
   };
 }

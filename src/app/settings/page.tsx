@@ -5,6 +5,7 @@ import {
   Clock3,
   KeyRound,
   PlugZap,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 
@@ -112,28 +113,32 @@ export default async function SettingsPage() {
             <StatusCard
               detail={
                 data.fintable.ready
-                  ? "Google Sheets access and spreadsheet configuration are present."
+                  ? "Google Sheets access and spreadsheet configuration are present. Secret values and identifiers are intentionally hidden."
                   : "Fintable needs spreadsheet and Google access configuration."
               }
               icon={<PlugZap aria-hidden="true" className="h-5 w-5" />}
-              isReady={data.fintable.ready}
               label="Fintable"
+              statusLabel={data.fintable.badgeLabel}
+              tone={data.fintable.tone}
               rows={[
                 ["Spreadsheet", data.fintable.hasSpreadsheet ? "Configured" : "Missing"],
                 ["Google access", data.fintable.hasGoogleAccess ? data.fintable.accessMode : "Missing"],
                 ["Accounts range", data.fintable.accountsRange],
                 ["Transactions range", data.fintable.transactionsRange],
+                ["Secret values", "Hidden"],
               ]}
             />
+            <ImportHealthCard importHealth={data.importHealth} />
             <StatusCard
               detail={
                 data.auth.googleProviderConfigured
-                  ? "Google sign-in credentials are configured."
-                  : "The app is currently operating as a local owner-mode build."
+                  ? "Google sign-in credential presence is visible here, but client ids and secrets are hidden."
+                  : "Local owner mode is intentional for this phase. Google OAuth is not required until hosted auth is enabled."
               }
               icon={<KeyRound aria-hidden="true" className="h-5 w-5" />}
-              isReady={data.auth.googleProviderConfigured}
               label="Identity"
+              statusLabel={data.auth.badgeLabel}
+              tone={data.auth.tone}
               rows={[
                 ["Mode", data.auth.status],
                 [
@@ -142,10 +147,43 @@ export default async function SettingsPage() {
                 ],
                 [
                   "Google OAuth",
-                  data.auth.googleProviderConfigured ? "Configured" : "Missing",
+                  data.auth.googleProviderConfigured ? "Configured" : "Not configured",
                 ],
+                ["Secret values", "Hidden"],
               ]}
             />
+            <StatusCard
+              detail={data.authBoundary.routePolicy}
+              icon={<ShieldCheck aria-hidden="true" className="h-5 w-5" />}
+              label="Access Boundary"
+              statusLabel={data.authBoundary.statusLabel}
+              tone={data.authBoundary.tone}
+              rows={[
+                ["Mode", data.authBoundary.modeLabel],
+                ["Enforcement", data.authBoundary.enforcementLabel],
+                ["Product routes", "App shell routes"],
+                ["Public routes", "Auth and assets"],
+              ]}
+            >
+              <div className="mt-4 grid gap-3 border-t border-[var(--line)] pt-4 text-sm">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                    Routes covered
+                  </p>
+                  <p className="mt-1 leading-6 text-[var(--foreground)]">
+                    {data.authBoundary.productRoutesSummary}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                    Next boundary step
+                  </p>
+                  <p className="mt-1 leading-6 text-[var(--muted)]">
+                    {data.authBoundary.nextStep}
+                  </p>
+                </div>
+              </div>
+            </StatusCard>
           </section>
         </section>
       </div>
@@ -226,18 +264,24 @@ function MissingOwnerNotice({
 }
 
 function StatusCard({
+  children,
   detail,
   icon,
-  isReady,
   label,
   rows,
+  statusLabel,
+  tone,
 }: {
+  children?: React.ReactNode;
   detail: string;
   icon: React.ReactNode;
-  isReady: boolean;
   label: string;
   rows: Array<[string, string]>;
+  statusLabel: string;
+  tone: StatusTone;
 }) {
+  const statusStyle = getStatusStyle(tone);
+
   return (
     <article className="allme-card p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -250,18 +294,18 @@ function StatusCard({
         <div className="text-[var(--accent)]">{icon}</div>
       </div>
       <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--empty)] px-3 py-1 text-xs font-semibold">
-        {isReady ? (
-          <CheckCircle2
-            aria-hidden="true"
-            className="h-4 w-4 text-[var(--success)]"
-          />
-        ) : (
+        {tone === "attention" ? (
           <CircleAlert
             aria-hidden="true"
-            className="h-4 w-4 text-[var(--warn)]"
+            className={`h-4 w-4 ${statusStyle.iconClassName}`}
+          />
+        ) : (
+          <CheckCircle2
+            aria-hidden="true"
+            className={`h-4 w-4 ${statusStyle.iconClassName}`}
           />
         )}
-        {isReady ? "Ready" : "Needs attention"}
+        {statusLabel}
       </div>
       <dl className="grid gap-2">
         {rows.map(([rowLabel, value]) => (
@@ -278,8 +322,124 @@ function StatusCard({
           </div>
         ))}
       </dl>
+      {children}
     </article>
   );
+}
+
+function ImportHealthCard({
+  importHealth,
+}: {
+  importHealth: Awaited<
+    ReturnType<typeof getSettingsPageData>
+  >["importHealth"];
+}) {
+  const latest = importHealth?.latest ?? null;
+  const tone = getImportHealthTone(latest?.status);
+  const statusLabel = getImportStatusLabel(latest?.status);
+
+  return (
+    <StatusCard
+      detail={
+        latest
+          ? "Latest import-run health from AllMe's local database. Error text is hidden here to avoid exposing provider details."
+          : "No Fintable import run has been recorded for this owner yet."
+      }
+      icon={<PlugZap aria-hidden="true" className="h-5 w-5" />}
+      label="Sync Health"
+      rows={[
+        ["Last status", formatImportStatus(latest?.status)],
+        ["Last finished", latest?.finishedAt ? dateFormatter.format(latest.finishedAt) : "Not finished"],
+        ["Rows scanned", latest ? String(latest.rowsScanned) : "--"],
+        ["Rows inserted", latest ? String(latest.rowsInserted) : "--"],
+        ["Rows updated", latest ? String(latest.rowsUpdated) : "--"],
+        ["Rows skipped", latest ? String(latest.rowsSkipped) : "--"],
+        ["Failure detail", latest?.hasErrorSummary ? "Stored, hidden" : "None"],
+      ]}
+      statusLabel={statusLabel}
+      tone={tone}
+    >
+      {importHealth && importHealth.recent.length > 1 ? (
+        <div className="mt-4 border-t border-[var(--line)] pt-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+            Recent runs
+          </p>
+          <div className="grid gap-2">
+            {importHealth.recent.slice(0, 3).map((run) => (
+              <div
+                className="flex items-center justify-between gap-3 rounded-xl bg-[var(--empty)] px-3 py-2 text-sm"
+                key={run.id}
+              >
+                <span className="font-semibold">
+                  {formatImportStatus(run.status)}
+                </span>
+                <span className="text-right text-xs text-[var(--muted)]">
+                  {dateFormatter.format(run.createdAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </StatusCard>
+  );
+}
+
+type StatusTone = "attention" | "neutral" | "ready";
+
+function getImportHealthTone(status: string | null | undefined): StatusTone {
+  if (status === "succeeded") {
+    return "ready";
+  }
+
+  if (status === "failed") {
+    return "attention";
+  }
+
+  return status ? "neutral" : "attention";
+}
+
+function getImportStatusLabel(status: string | null | undefined) {
+  if (status === "succeeded") {
+    return "Last sync succeeded";
+  }
+
+  if (status === "failed") {
+    return "Last sync failed";
+  }
+
+  if (status === "running") {
+    return "Sync running";
+  }
+
+  if (status === "pending") {
+    return "Sync pending";
+  }
+
+  return "No sync runs";
+}
+
+function formatImportStatus(status: string | null | undefined) {
+  if (!status) {
+    return "No runs";
+  }
+
+  return status
+    .split("_")
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getStatusStyle(tone: StatusTone) {
+  if (tone === "ready") {
+    return { iconClassName: "text-[var(--success)]" };
+  }
+
+  if (tone === "attention") {
+    return { iconClassName: "text-[var(--warn)]" };
+  }
+
+  return { iconClassName: "text-[var(--accent)]" };
 }
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
