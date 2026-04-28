@@ -51,8 +51,8 @@ Goal: stop hiding core configuration in local env and scripts.
 
 Ship:
 
-- owner settings page
-- timezone and preferred currency view/edit flow
+- owner settings page `(first slice shipped)`
+- timezone and preferred currency view/edit flow `(first slice shipped)`
 - Fintable integration status page
 - Google Sheets/Fintable sync health display
 - route protection/auth decision for local owner mode vs future hosted mode

@@ -34,6 +34,7 @@ Implemented:
 - First self-serve transaction tagging flow.
 - Revised roadmap captured in `docs/ROADMAP.md`.
 - First app shell slice with persistent navigation and intentional placeholder routes for Today, Notes, Calendar, Progress, and Settings.
+- First Settings foundation slice with owner preferences, timezone/currency persistence, and read-only Fintable/Auth integration status.
 
 ## Verified Local Import
 
@@ -168,6 +169,18 @@ The architecture reset has started. The app now has a persistent shell around ev
 - intentional placeholder pages that define planned scope instead of returning 404s
 
 This establishes the cross-product structure needed before adding more deep finance features.
+
+## Settings Foundation
+
+The Settings route has started moving from placeholder to product surface:
+
+- reads the owner user from `ALLME_IMPORT_USER_EMAIL`
+- ensures a `user_settings` row exists for the owner user
+- lets the owner update timezone and preferred currency
+- shows Fintable readiness without exposing spreadsheet id, credential file paths, API keys, or secrets
+- shows current identity/auth readiness for local owner mode vs future Google OAuth
+
+This is the first Milestone 2 slice. It does not yet implement route protection, hosted onboarding, or editable integration credentials.
 
 ## Current Tagging Architecture
 

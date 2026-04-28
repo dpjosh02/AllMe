@@ -1,19 +1,36 @@
 import { z } from "zod";
 
+const optionalNonEmptyString = z.preprocess(
+  emptyStringToUndefined,
+  z.string().min(1).optional(),
+);
+
+const optionalUrl = z.preprocess(
+  emptyStringToUndefined,
+  z.string().url().optional(),
+);
+
+const optionalEmail = z.preprocess(
+  emptyStringToUndefined,
+  z.string().email().optional(),
+);
+
 const serverEnvSchema = z.object({
-  DATABASE_URL: z.string().url().optional(),
-  AUTH_SECRET: z.string().min(1).optional(),
-  AUTH_GOOGLE_ID: z.string().min(1).optional(),
-  AUTH_GOOGLE_SECRET: z.string().min(1).optional(),
-  GOOGLE_SHEETS_API_KEY: z.string().min(1).optional(),
-  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1).optional(),
-  FINTABLE_SPREADSHEET_ID: z.string().min(1).optional(),
-  FINTABLE_ACCOUNTS_RANGE: z.string().min(1).optional(),
-  FINTABLE_TRANSACTIONS_RANGE: z.string().min(1).optional(),
+  DATABASE_URL: optionalUrl,
+  ALLME_IMPORT_USER_EMAIL: optionalEmail,
+  AUTH_SECRET: optionalNonEmptyString,
+  AUTH_GOOGLE_ID: optionalNonEmptyString,
+  AUTH_GOOGLE_SECRET: optionalNonEmptyString,
+  GOOGLE_SHEETS_API_KEY: optionalNonEmptyString,
+  GOOGLE_APPLICATION_CREDENTIALS: optionalNonEmptyString,
+  FINTABLE_SPREADSHEET_ID: optionalNonEmptyString,
+  FINTABLE_ACCOUNTS_RANGE: optionalNonEmptyString,
+  FINTABLE_TRANSACTIONS_RANGE: optionalNonEmptyString,
 });
 
 export const serverEnv = serverEnvSchema.parse({
   DATABASE_URL: process.env.DATABASE_URL,
+  ALLME_IMPORT_USER_EMAIL: process.env.ALLME_IMPORT_USER_EMAIL,
   AUTH_SECRET: process.env.AUTH_SECRET,
   AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
   AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
@@ -23,3 +40,7 @@ export const serverEnv = serverEnvSchema.parse({
   FINTABLE_ACCOUNTS_RANGE: process.env.FINTABLE_ACCOUNTS_RANGE,
   FINTABLE_TRANSACTIONS_RANGE: process.env.FINTABLE_TRANSACTIONS_RANGE,
 });
+
+function emptyStringToUndefined(value: unknown) {
+  return value === "" ? undefined : value;
+}
