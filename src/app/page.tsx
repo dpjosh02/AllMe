@@ -7,6 +7,10 @@ import {
   RefreshCcw,
 } from "lucide-react";
 
+import { requirePageUser } from "@/server/auth/guards";
+
+export const dynamic = "force-dynamic";
+
 const agenda = [
   { time: "8:30 AM", title: "Review today", tone: "Focus" },
   { time: "12:00 PM", title: "Finance import check", tone: "Admin" },
@@ -26,7 +30,9 @@ const progressItems = [
   { label: "Finance sync", done: false },
 ];
 
-export default function Home() {
+export default async function Home() {
+  await requirePageUser("/");
+
   return (
     <main className="min-h-screen px-5 py-5 sm:px-8 lg:px-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">

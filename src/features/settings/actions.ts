@@ -4,25 +4,14 @@ import { revalidatePath } from "next/cache";
 
 import {
   currencyOptions,
-  getOwnerByEmail,
   timezoneOptions,
 } from "@/features/settings/queries";
-import { serverEnv } from "@/lib/env";
+import { requireOwnerUser } from "@/server/auth/guards";
 import { db } from "@/server/db";
 import { userSettings } from "@/server/db/schema";
 
 export async function updateOwnerSettings(formData: FormData) {
-  const ownerEmail = serverEnv.ALLME_IMPORT_USER_EMAIL;
-
-  if (!ownerEmail) {
-    throw new Error("Missing ALLME_IMPORT_USER_EMAIL");
-  }
-
-  const owner = await getOwnerByEmail(ownerEmail);
-
-  if (!owner) {
-    throw new Error("Owner user does not exist yet");
-  }
+  const owner = await requireOwnerUser();
 
   const timezone = normalizeOption({
     fallback: "America/Chicago",

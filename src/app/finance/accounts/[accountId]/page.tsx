@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { renameFinanceAccount } from "@/features/finance/dashboard/actions";
 import { RecentTransactions } from "@/features/finance/dashboard/components/recent-transactions";
 import { getFinanceAccountDetail } from "@/features/finance/dashboard/queries";
+import { requirePageUser } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,11 @@ export default async function FinanceAccountPage({
   params: Promise<{ accountId: string }>;
 }) {
   const { accountId } = await params;
-  const account = await getFinanceAccountDetail(accountId);
+  const currentUser = await requirePageUser(`/finance/accounts/${accountId}`);
+  const account = await getFinanceAccountDetail({
+    accountId,
+    userId: currentUser.id,
+  });
 
   if (!account) {
     notFound();

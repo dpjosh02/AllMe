@@ -13,13 +13,13 @@ import {
 
 export type FinanceDashboardData = Awaited<ReturnType<typeof getFinanceDashboardData>>;
 
-export async function getFinanceDashboardData() {
+export async function getFinanceDashboardData(userId: string) {
   const [accountSummary] = await db
     .select({
       accountCount: sql<number>`count(*)::int`,
     })
     .from(financeAccounts)
-    .where(eq(financeAccounts.isActive, true));
+    .where(and(eq(financeAccounts.userId, userId), eq(financeAccounts.isActive, true)));
 
   const [transactionSummary] = await db
     .select({
@@ -29,7 +29,8 @@ export async function getFinanceDashboardData() {
       totalInflow:
         sql<string>`coalesce(sum(case when ${financeTransactions.amount}::numeric > 0 then ${financeTransactions.amount}::numeric else 0 end), 0)::text`,
     })
-    .from(financeTransactions);
+    .from(financeTransactions)
+    .where(eq(financeTransactions.userId, userId));
 
   const [categorizationSummary] = await db
     .select({
@@ -42,7 +43,8 @@ export async function getFinanceDashboardData() {
     .leftJoin(
       financeTransactionCategoryAssignments,
       eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
-    );
+    )
+    .where(eq(financeTransactions.userId, userId));
 
   const activeAccounts = await db
     .select({
@@ -54,7 +56,7 @@ export async function getFinanceDashboardData() {
       currency: financeAccounts.currency,
     })
     .from(financeAccounts)
-    .where(eq(financeAccounts.isActive, true))
+    .where(and(eq(financeAccounts.userId, userId), eq(financeAccounts.isActive, true)))
     .orderBy(financeAccounts.institutionName, financeAccounts.name);
 
   const accounts = await Promise.all(
@@ -65,7 +67,12 @@ export async function getFinanceDashboardData() {
           snapshotDate: financeBalanceSnapshots.snapshotDate,
         })
         .from(financeBalanceSnapshots)
-        .where(eq(financeBalanceSnapshots.accountId, account.id))
+        .where(
+          and(
+            eq(financeBalanceSnapshots.userId, userId),
+            eq(financeBalanceSnapshots.accountId, account.id),
+          ),
+        )
         .orderBy(desc(financeBalanceSnapshots.snapshotDate))
         .limit(1);
 
@@ -77,7 +84,7 @@ export async function getFinanceDashboardData() {
     }),
   );
 
-  const recentTransactions = await getRecentFinanceTransactions({ limit: 1000 });
+  const recentTransactions = await getRecentFinanceTransactions({ limit: 1000, userId });
 
   const metricTransactions = await db
     .select({
@@ -97,7 +104,8 @@ export async function getFinanceDashboardData() {
     .leftJoin(
       financeUserCategories,
       eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
-    );
+    )
+    .where(eq(financeTransactions.userId, userId));
 
   const [latestImport] = await db
     .select({
@@ -111,6 +119,7 @@ export async function getFinanceDashboardData() {
       errorSummary: financeImportRuns.errorSummary,
     })
     .from(financeImportRuns)
+    .where(eq(financeImportRuns.userId, userId))
     .orderBy(desc(financeImportRuns.createdAt))
     .limit(1);
 
@@ -124,14 +133,20 @@ export async function getFinanceDashboardData() {
       uncategorizedCount: categorizationSummary?.uncategorizedCount ?? 0,
     },
     accounts,
-    categories: await getFinanceCategoryOptions(),
+    categories: await getFinanceCategoryOptions(userId),
     metricTransactions,
     recentTransactions,
     latestImport: latestImport ?? null,
   };
 }
 
-export async function getFinanceAccountDetail(accountId: string) {
+export async function getFinanceAccountDetail({
+  accountId,
+  userId,
+}: {
+  accountId: string;
+  userId: string;
+}) {
   const [account] = await db
     .select({
       id: financeAccounts.id,
@@ -144,7 +159,13 @@ export async function getFinanceAccountDetail(accountId: string) {
       sourceAccountId: financeAccounts.sourceAccountId,
     })
     .from(financeAccounts)
-    .where(and(eq(financeAccounts.id, accountId), eq(financeAccounts.isActive, true)))
+    .where(
+      and(
+        eq(financeAccounts.id, accountId),
+        eq(financeAccounts.userId, userId),
+        eq(financeAccounts.isActive, true),
+      ),
+    )
     .limit(1);
 
   if (!account) {
@@ -157,25 +178,31 @@ export async function getFinanceAccountDetail(accountId: string) {
       snapshotDate: financeBalanceSnapshots.snapshotDate,
     })
     .from(financeBalanceSnapshots)
-    .where(eq(financeBalanceSnapshots.accountId, account.id))
+    .where(
+      and(
+        eq(financeBalanceSnapshots.userId, userId),
+        eq(financeBalanceSnapshots.accountId, account.id),
+      ),
+    )
     .orderBy(desc(financeBalanceSnapshots.snapshotDate))
     .limit(1);
 
   const transactions = await getRecentFinanceTransactions({
     accountId: account.id,
     limit: 1000,
+    userId,
   });
 
   return {
     ...account,
     balance: latestBalance?.balance ?? null,
-    categories: await getFinanceCategoryOptions(),
+    categories: await getFinanceCategoryOptions(userId),
     snapshotDate: latestBalance?.snapshotDate ?? null,
     transactions,
   };
 }
 
-async function getFinanceCategoryOptions() {
+async function getFinanceCategoryOptions(userId: string) {
   return db
     .select({
       id: financeUserCategories.id,
@@ -192,6 +219,7 @@ async function getFinanceCategoryOptions() {
       financeTransactionCategoryAssignments,
       eq(financeTransactionCategoryAssignments.categoryId, financeUserCategories.id),
     )
+    .where(eq(financeUserCategories.userId, userId))
     .groupBy(financeUserCategories.id)
     .orderBy(financeUserCategories.sortOrder, financeUserCategories.name);
 }
@@ -199,9 +227,11 @@ async function getFinanceCategoryOptions() {
 async function getRecentFinanceTransactions({
   accountId,
   limit,
+  userId,
 }: {
   accountId?: string;
   limit: number;
+  userId: string;
 }) {
   const rows = await db
     .select({
@@ -230,7 +260,14 @@ async function getRecentFinanceTransactions({
       eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
     )
     .leftJoin(financeRawRecords, eq(financeRawRecords.id, financeTransactions.rawRecordId))
-    .where(accountId ? eq(financeTransactions.accountId, accountId) : undefined)
+    .where(
+      accountId
+        ? and(
+            eq(financeTransactions.userId, userId),
+            eq(financeTransactions.accountId, accountId),
+          )
+        : eq(financeTransactions.userId, userId),
+    )
     .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
     .limit(limit);
 

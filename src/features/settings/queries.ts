@@ -18,9 +18,9 @@ export const currencyOptions = ["USD", "EUR", "GBP", "CAD"] as const;
 export type SettingsPageData = Awaited<ReturnType<typeof getSettingsPageData>>;
 export type SettingsStatusTone = "attention" | "neutral" | "ready";
 
-export async function getSettingsPageData() {
+export async function getSettingsPageData(userId: string) {
   const ownerEmail = serverEnv.ALLME_IMPORT_USER_EMAIL ?? null;
-  const owner = ownerEmail ? await getOwnerByEmail(ownerEmail) : null;
+  const owner = await getUserById(userId);
 
   if (owner) {
     await db
@@ -72,8 +72,23 @@ export async function getOwnerByEmail(email: string) {
   return owner ?? null;
 }
 
+export async function getUserById(userId: string) {
+  const [user] = await db
+    .select({
+      email: users.email,
+      id: users.id,
+      name: users.name,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user ?? null;
+}
+
 function getAuthBoundaryStatus(ownerEmailConfigured: boolean) {
   return resolveAuthBoundary({
+    authMode: serverEnv.ALLME_AUTH_MODE,
     authSecretConfigured: Boolean(serverEnv.AUTH_SECRET),
     googleProviderConfigured: Boolean(
       serverEnv.AUTH_GOOGLE_ID && serverEnv.AUTH_GOOGLE_SECRET,

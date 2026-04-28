@@ -182,9 +182,10 @@ The Settings route has started moving from placeholder to product surface:
 - shows recent Fintable import-run health without exposing raw error details or provider identifiers
 - shows current identity/auth readiness for local owner mode vs future Google OAuth
 - treats local owner mode as intentional instead of warning-level auth failure
-- shows the current access-boundary decision for local owner mode vs future hosted Google sign-in
+- enforces hosted-first access boundaries with `proxy.ts`, Auth.js callbacks, and server-side guards
+- keeps local-owner mode available for development only
 
-This is the first Milestone 2 slice. It does not yet implement route-protection middleware, hosted onboarding, or editable integration credentials.
+This is the first Milestone 2 implementation slice. It does not yet implement hosted onboarding or editable integration credentials.
 
 ## Current Tagging Architecture
 

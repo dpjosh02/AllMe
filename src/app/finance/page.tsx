@@ -6,11 +6,13 @@ import { RecentTransactions } from "@/features/finance/dashboard/components/rece
 import { SummaryMetrics } from "@/features/finance/dashboard/components/summary-metrics";
 import { SyncFintableButton } from "@/features/finance/dashboard/components/sync-fintable-button";
 import { getFinanceDashboardData } from "@/features/finance/dashboard/queries";
+import { requirePageUser } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 export default async function FinancePage() {
-  const data = await getFinanceDashboardData();
+  const currentUser = await requirePageUser("/finance");
+  const data = await getFinanceDashboardData(currentUser.id);
 
   return (
     <main className="allme-page min-h-screen px-5 py-6 sm:px-8 lg:px-10">

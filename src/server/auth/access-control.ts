@@ -3,9 +3,11 @@ export type AuthBoundaryMode =
   | "hosted-google-incomplete"
   | "local-owner";
 
+export type AllMeAuthMode = "hosted" | "local-owner";
 export type AuthBoundaryTone = "attention" | "neutral" | "ready";
 
 export type AuthBoundaryInput = {
+  authMode: AllMeAuthMode;
   authSecretConfigured: boolean;
   googleProviderConfigured: boolean;
   ownerEmailConfigured: boolean;
@@ -23,6 +25,18 @@ export type AuthBoundaryStatus = {
   tone: AuthBoundaryTone;
 };
 
+export type AuthModeInput = {
+  configuredMode?: AllMeAuthMode;
+  nodeEnv: string;
+};
+
+export type AuthorizationDecision =
+  | { reason: "local-owner-mode"; status: "authorized" }
+  | { reason: "missing-session"; status: "unauthenticated" }
+  | { reason: "owner-match"; status: "authorized" }
+  | { reason: "owner-missing"; status: "forbidden" }
+  | { reason: "owner-mismatch"; status: "forbidden" };
+
 export const productRoutes = [
   { href: "/", label: "Home" },
   { href: "/today", label: "Today" },
@@ -34,14 +48,42 @@ export const productRoutes = [
 ] as const;
 
 export const publicAuthRoutes = [
+  "/signin",
+  "/unauthorized",
   "/api/auth/*",
   "/_next/*",
   "/favicon.ico",
+  "/robots.txt",
+  "/sitemap.xml",
+] as const;
+
+export const authProxyMatcher = [
+  "/((?!api/auth|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|signin|unauthorized).*)",
 ] as const;
 
 export function resolveAuthBoundary(
   input: AuthBoundaryInput,
 ): AuthBoundaryStatus {
+  if (input.authMode === "local-owner") {
+    return {
+      enforcementLabel: input.ownerEmailConfigured
+        ? "Local owner only"
+        : "Owner email missing",
+      mode: "local-owner",
+      modeLabel: "Local owner mode",
+      nextStep:
+        "Keep local-owner mode for development only; use hosted Google sign-in before public deployment.",
+      productRoutesSummary: summarizeProductRoutes(),
+      publicRoutesSummary: summarizePublicRoutes(),
+      routePolicy:
+        "Product routes are available to the local owner process; this mode is not a public deployment boundary.",
+      statusLabel: input.ownerEmailConfigured
+        ? "Owner mode"
+        : "Needs owner email",
+      tone: input.ownerEmailConfigured ? "neutral" : "attention",
+    };
+  }
+
   const hostedReady =
     input.authSecretConfigured && input.googleProviderConfigured;
 
@@ -51,7 +93,7 @@ export function resolveAuthBoundary(
       mode: "hosted-google" satisfies AuthBoundaryMode,
       modeLabel: "Hosted Google sign-in",
       nextStep:
-        "Enable middleware/page guards and map signed-in Google users to app users before public deployment.",
+        "Protected routes now require signed-in Google access and server-side owner authorization.",
       productRoutesSummary: summarizeProductRoutes(),
       publicRoutesSummary: summarizePublicRoutes(),
       routePolicy:
@@ -67,7 +109,7 @@ export function resolveAuthBoundary(
       mode: "hosted-google-incomplete" satisfies AuthBoundaryMode,
       modeLabel: "Hosted Google sign-in incomplete",
       nextStep:
-        "Set AUTH_SECRET before enforcing protected routes or deploying beyond local development.",
+        "Set AUTH_SECRET and Google OAuth before using hosted mode beyond local verification.",
       productRoutesSummary: summarizeProductRoutes(),
       publicRoutesSummary: summarizePublicRoutes(),
       routePolicy:
@@ -78,21 +120,17 @@ export function resolveAuthBoundary(
   }
 
   return {
-    enforcementLabel: input.ownerEmailConfigured
-      ? "Local owner only"
-      : "Owner email missing",
-    mode: "local-owner" satisfies AuthBoundaryMode,
-    modeLabel: "Local owner mode",
+    enforcementLabel: "Blocked by missing Google OAuth",
+    mode: "hosted-google-incomplete",
+    modeLabel: "Hosted Google sign-in incomplete",
     nextStep:
-      "Keep the app local-only, then add Google OAuth plus middleware before hosting it publicly.",
+      "Configure Google OAuth before relying on hosted route protection.",
     productRoutesSummary: summarizeProductRoutes(),
     publicRoutesSummary: summarizePublicRoutes(),
     routePolicy:
-      "Product routes are available to the local owner process; this mode is not a public deployment boundary.",
-    statusLabel: input.ownerEmailConfigured ? "Owner mode" : "Needs owner email",
-    tone: input.ownerEmailConfigured
-      ? ("neutral" satisfies AuthBoundaryTone)
-      : ("attention" satisfies AuthBoundaryTone),
+      "Hosted mode is selected, but Google OAuth is not configured enough to authenticate users.",
+    statusLabel: "Hosted auth incomplete",
+    tone: "attention",
   };
 }
 
@@ -104,6 +142,80 @@ export function isProductRoute(pathname: string) {
 
     return pathname === route.href || pathname.startsWith(`${route.href}/`);
   });
+}
+
+export function isPublicRoute(pathname: string) {
+  return publicAuthRoutes.some((route) => {
+    if (route.endsWith("/*")) {
+      const prefix = route.slice(0, -1);
+      return pathname.startsWith(prefix);
+    }
+
+    return pathname === route;
+  });
+}
+
+export function resolveAuthMode({
+  configuredMode,
+  nodeEnv,
+}: AuthModeInput): AllMeAuthMode {
+  if (configuredMode) {
+    return configuredMode;
+  }
+
+  return nodeEnv === "production" ? "hosted" : "local-owner";
+}
+
+export function assertValidAuthMode({
+  configuredMode,
+  nodeEnv,
+}: AuthModeInput) {
+  const authMode = resolveAuthMode({ configuredMode, nodeEnv });
+
+  if (nodeEnv === "production" && authMode === "local-owner") {
+    throw new Error("ALLME_AUTH_MODE=local-owner is not allowed in production");
+  }
+
+  return authMode;
+}
+
+export function isOwnerEmail(
+  email: string | null | undefined,
+  ownerEmail: string | null | undefined,
+) {
+  return Boolean(
+    email &&
+      ownerEmail &&
+      email.trim().toLowerCase() === ownerEmail.trim().toLowerCase(),
+  );
+}
+
+export function resolveAuthorizationDecision({
+  authMode,
+  ownerEmail,
+  sessionEmail,
+}: {
+  authMode: AllMeAuthMode;
+  ownerEmail: string | null | undefined;
+  sessionEmail: string | null | undefined;
+}): AuthorizationDecision {
+  if (authMode === "local-owner") {
+    return { reason: "local-owner-mode", status: "authorized" };
+  }
+
+  if (!sessionEmail) {
+    return { reason: "missing-session", status: "unauthenticated" };
+  }
+
+  if (!ownerEmail) {
+    return { reason: "owner-missing", status: "forbidden" };
+  }
+
+  if (!isOwnerEmail(sessionEmail, ownerEmail)) {
+    return { reason: "owner-mismatch", status: "forbidden" };
+  }
+
+  return { reason: "owner-match", status: "authorized" };
 }
 
 function summarizeProductRoutes() {

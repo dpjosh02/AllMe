@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { importFintableSnapshot } from "@/features/finance/imports/fintable/importer";
 import { getFintableSheetConfig } from "@/features/finance/integrations/fintable/config";
 import { readFintableGoogleSheetsSnapshot } from "@/features/finance/integrations/fintable/google-sheets";
+import { requireCurrentUser } from "@/server/auth/guards";
 import { db } from "@/server/db";
 import {
   type FinanceCategoryRuleConditions,
@@ -14,10 +15,10 @@ import {
   financeTransactionCategoryAssignments,
   financeTransactions,
   financeUserCategories,
-  users,
 } from "@/server/db/schema";
 
 export async function renameFinanceAccount(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const accountId = String(formData.get("accountId") ?? "");
   const displayName = String(formData.get("displayName") ?? "").trim();
 
@@ -31,13 +32,16 @@ export async function renameFinanceAccount(formData: FormData) {
       displayName: displayName.length > 0 ? displayName : null,
       updatedAt: new Date(),
     })
-    .where(eq(financeAccounts.id, accountId));
+    .where(
+      and(eq(financeAccounts.id, accountId), eq(financeAccounts.userId, currentUser.id)),
+    );
 
   revalidatePath("/finance");
   revalidatePath(`/finance/accounts/${accountId}`);
 }
 
 export async function deleteFinanceTransaction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const transactionId = String(formData.get("transactionId") ?? "");
   const accountId = String(formData.get("accountId") ?? "");
 
@@ -47,7 +51,12 @@ export async function deleteFinanceTransaction(formData: FormData) {
 
   await db
     .delete(financeTransactions)
-    .where(eq(financeTransactions.id, transactionId));
+    .where(
+      and(
+        eq(financeTransactions.id, transactionId),
+        eq(financeTransactions.userId, currentUser.id),
+      ),
+    );
 
   revalidatePath("/finance");
 
@@ -57,6 +66,7 @@ export async function deleteFinanceTransaction(formData: FormData) {
 }
 
 export async function createFinanceCategory(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const name = String(formData.get("name") ?? "").trim();
   const color = normalizeHexColor(String(formData.get("color") ?? ""));
   const cashFlowType = String(formData.get("cashFlowType") ?? "spending");
@@ -66,7 +76,7 @@ export async function createFinanceCategory(formData: FormData) {
     throw new Error("Missing category name");
   }
 
-  const userId = await getDefaultFinanceUserId();
+  const userId = currentUser.id;
   const slug = await createUniqueCategorySlug({ name, userId });
   const includeInIncome = cashFlowType === "income";
   const includeInSpending = cashFlowType === "spending";
@@ -90,6 +100,7 @@ export async function createFinanceCategory(formData: FormData) {
 }
 
 export async function updateFinanceCategory(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const categoryId = String(formData.get("categoryId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const color = normalizeHexColor(String(formData.get("color") ?? ""));
@@ -100,7 +111,7 @@ export async function updateFinanceCategory(formData: FormData) {
     throw new Error("Missing category id/name");
   }
 
-  const userId = await getDefaultFinanceUserId();
+  const userId = currentUser.id;
   const includeInIncome = cashFlowType === "income";
   const includeInSpending = cashFlowType === "spending";
 
@@ -121,6 +132,7 @@ export async function updateFinanceCategory(formData: FormData) {
 }
 
 export async function deleteFinanceCategory(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const categoryId = String(formData.get("categoryId") ?? "");
   const returnAccountId = String(formData.get("accountId") ?? "");
 
@@ -128,7 +140,7 @@ export async function deleteFinanceCategory(formData: FormData) {
     throw new Error("Missing category id");
   }
 
-  const userId = await getDefaultFinanceUserId();
+  const userId = currentUser.id;
 
   await db
     .update(financeTransactionCategoryAssignments)
@@ -156,6 +168,7 @@ export async function deleteFinanceCategory(formData: FormData) {
 }
 
 export async function assignFinanceTransactionCategory(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const transactionId = String(formData.get("transactionId") ?? "");
   const categoryId = String(formData.get("categoryId") ?? "");
   const accountId = String(formData.get("accountId") ?? "");
@@ -171,7 +184,12 @@ export async function assignFinanceTransactionCategory(formData: FormData) {
       accountId: financeTransactions.accountId,
     })
     .from(financeTransactions)
-    .where(eq(financeTransactions.id, transactionId))
+    .where(
+      and(
+        eq(financeTransactions.id, transactionId),
+        eq(financeTransactions.userId, currentUser.id),
+      ),
+    )
     .limit(1);
 
   if (!transaction) {
@@ -184,7 +202,7 @@ export async function assignFinanceTransactionCategory(formData: FormData) {
     .where(
       and(
         eq(financeUserCategories.id, categoryId),
-        eq(financeUserCategories.userId, transaction.userId),
+        eq(financeUserCategories.userId, currentUser.id),
       ),
     )
     .limit(1);
@@ -221,6 +239,7 @@ export async function assignFinanceTransactionCategory(formData: FormData) {
 }
 
 export async function assignFinanceCategoryToTransactions(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const categoryId = String(formData.get("categoryId") ?? "");
   const accountId = String(formData.get("accountId") ?? "");
   const transactionIds = Array.from(
@@ -236,10 +255,16 @@ export async function assignFinanceCategoryToTransactions(formData: FormData) {
     throw new Error("Missing category id or transaction ids");
   }
 
-  await assignTransactionsToCategory({ accountId, categoryId, transactionIds });
+  await assignTransactionsToCategory({
+    accountId,
+    categoryId,
+    transactionIds,
+    userId: currentUser.id,
+  });
 }
 
 export async function createFinanceCategoryTextRule(formData: FormData) {
+  const currentUser = await requireCurrentUser();
   const categoryId = String(formData.get("categoryId") ?? "");
   const accountId = String(formData.get("accountId") ?? "");
   const terms = parseMatchTerms(String(formData.get("matchText") ?? ""));
@@ -259,7 +284,12 @@ export async function createFinanceCategoryTextRule(formData: FormData) {
   const [category] = await db
     .select({ id: financeUserCategories.id, userId: financeUserCategories.userId })
     .from(financeUserCategories)
-    .where(eq(financeUserCategories.id, categoryId))
+    .where(
+      and(
+        eq(financeUserCategories.id, categoryId),
+        eq(financeUserCategories.userId, currentUser.id),
+      ),
+    )
     .limit(1);
 
   if (!category) {
@@ -288,7 +318,12 @@ export async function createFinanceCategoryTextRule(formData: FormData) {
   });
 
   if (transactionIds.length > 0) {
-    await assignTransactionsToCategory({ accountId, categoryId, transactionIds });
+    await assignTransactionsToCategory({
+      accountId,
+      categoryId,
+      transactionIds,
+      userId: currentUser.id,
+    });
     return;
   }
 
@@ -299,15 +334,22 @@ async function assignTransactionsToCategory({
   accountId,
   categoryId,
   transactionIds,
+  userId,
 }: {
   accountId: string;
   categoryId: string;
   transactionIds: string[];
+  userId: string;
 }) {
   const [category] = await db
     .select({ id: financeUserCategories.id, userId: financeUserCategories.userId })
     .from(financeUserCategories)
-    .where(eq(financeUserCategories.id, categoryId))
+    .where(
+      and(
+        eq(financeUserCategories.id, categoryId),
+        eq(financeUserCategories.userId, userId),
+      ),
+    )
     .limit(1);
 
   if (!category) {
@@ -373,20 +415,7 @@ function createTextRuleName(terms: string[]) {
 }
 
 export async function syncFintableNow() {
-  const userEmail = process.env.ALLME_IMPORT_USER_EMAIL;
-
-  if (!userEmail) {
-    throw new Error("Missing required environment variable: ALLME_IMPORT_USER_EMAIL");
-  }
-
-  const [user] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, userEmail));
-
-  if (!user) {
-    throw new Error(`No AllMe user found for ALLME_IMPORT_USER_EMAIL=${userEmail}`);
-  }
+  const user = await requireCurrentUser();
 
   const config = getFintableSheetConfig();
   const snapshot = await readFintableGoogleSheetsSnapshot({
@@ -412,25 +441,6 @@ function revalidateFinancePaths(accountId: string) {
   if (accountId) {
     revalidatePath(`/finance/accounts/${accountId}`);
   }
-}
-
-async function getDefaultFinanceUserId() {
-  const userEmail = process.env.ALLME_IMPORT_USER_EMAIL;
-
-  if (!userEmail) {
-    throw new Error("Missing required environment variable: ALLME_IMPORT_USER_EMAIL");
-  }
-
-  const [user] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, userEmail));
-
-  if (!user) {
-    throw new Error(`No AllMe user found for ALLME_IMPORT_USER_EMAIL=${userEmail}`);
-  }
-
-  return user.id;
 }
 
 async function createUniqueCategorySlug({

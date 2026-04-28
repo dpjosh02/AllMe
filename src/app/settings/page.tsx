@@ -15,11 +15,13 @@ import {
   getSettingsPageData,
   timezoneOptions,
 } from "@/features/settings/queries";
+import { requirePageUser } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const data = await getSettingsPageData();
+  const currentUser = await requirePageUser("/settings");
+  const data = await getSettingsPageData(currentUser.id);
 
   return (
     <main className="allme-page min-h-screen px-5 py-6 sm:px-8 lg:px-10">
