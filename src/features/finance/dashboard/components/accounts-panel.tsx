@@ -30,7 +30,7 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
   return (
     <div className="allme-card flex h-[36rem] flex-col p-5 xl:h-[40rem]">
       <div className="mb-5 flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="allme-kicker">Balance Sheet</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
             Accounts
@@ -39,10 +39,15 @@ export function AccountsPanel({ accounts }: AccountsPanelProps) {
             Latest balance snapshots from Fintable.
           </p>
         </div>
-        <CircleDollarSign
-          aria-hidden="true"
-          className="h-6 w-6 text-[var(--accent)]"
-        />
+        <div className="shrink-0 text-right">
+          <CircleDollarSign
+            aria-hidden="true"
+            className="ml-auto h-6 w-6 text-[var(--accent)]"
+          />
+          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+            {accounts.length} accounts
+          </p>
+        </div>
       </div>
       <div className="relative min-h-0 flex-1">
         <div className="h-full min-h-0 overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]">

@@ -7,9 +7,9 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
+  Pencil,
   Search,
   SlidersHorizontal,
-  Tag,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -203,6 +203,16 @@ export function RecentTransactions({
       isInDateRange
     );
   });
+  const filteredNetAmount = filteredTransactions.reduce(
+    (sum, transaction) => sum + Number(transaction.amount),
+    0,
+  );
+  const filteredNetLabel =
+    filteredNetAmount > 0
+      ? "Net income"
+      : filteredNetAmount < 0
+        ? "Net spend"
+        : "Net even";
   const selectedCount = selectedAccountIds.size;
   const filterLabel =
     selectedCount === accounts.length
@@ -706,7 +716,7 @@ export function RecentTransactions({
       </div>
       <div className="relative min-h-0 flex-1">
         <div
-          className="h-full min-h-0 overflow-y-auto pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
+          className="h-full min-h-0 overflow-y-auto pb-3 pr-2 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
           ref={transactionListRef}
         >
           <div className="space-y-1">
@@ -752,8 +762,21 @@ export function RecentTransactions({
         </div>
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 -bottom-3 z-10 h-8 bg-gradient-to-t from-[var(--panel)] to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-[var(--panel)] to-transparent"
         />
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-4 border-t border-[var(--line)] pt-3">
+        <div>
+          <p className="text-sm font-semibold">{filteredNetLabel}</p>
+          <p className="text-xs text-[var(--muted)]">
+            Current ledger filters · {filteredTransactions.length} transactions
+          </p>
+        </div>
+        <p
+          className={`text-xl font-semibold tracking-[-0.03em] ${getAmountClass(String(filteredNetAmount))}`}
+        >
+          {formatCurrency(String(filteredNetAmount))}
+        </p>
       </div>
       {selectedTransaction ? (
         <TransactionDetailModal
@@ -1242,31 +1265,29 @@ function TagManagerModal({
                       </p>
                     </div>
                   </div>
-                  <Tag
-                    aria-hidden="true"
-                    className="h-4 w-4 shrink-0 text-[var(--muted)]"
-                  />
-                </div>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <button
-                    className="inline-flex min-h-9 flex-1 items-center justify-center rounded-md border border-[var(--line)] px-3 text-sm font-semibold transition hover:border-[var(--accent)]"
-                    onClick={() => {
-                      setDeletingCategoryId(null);
-                      setEditingCategoryId(category.id);
-                    }}
-                    type="button"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="inline-flex min-h-9 flex-1 items-center justify-center rounded-md border border-[var(--danger)] px-3 text-sm font-semibold text-[var(--danger)] transition hover:bg-[var(--danger)] hover:text-[var(--panel)]"
-                    onClick={() =>
-                      setDeletingCategoryId(isDeleting ? null : category.id)
-                    }
-                    type="button"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      aria-label={`Edit ${category.name}`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+                      onClick={() => {
+                        setDeletingCategoryId(null);
+                        setEditingCategoryId(category.id);
+                      }}
+                      type="button"
+                    >
+                      <Pencil aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                    <button
+                      aria-label={`Delete ${category.name}`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--danger)] text-[var(--danger)] transition hover:bg-[var(--danger)] hover:text-[var(--panel)]"
+                      onClick={() =>
+                        setDeletingCategoryId(isDeleting ? null : category.id)
+                      }
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 {isDeleting ? (
                   <form

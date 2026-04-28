@@ -135,6 +135,9 @@ Recent finance dashboard work:
 - Recent Transactions includes a search input for finding transactions by description/name.
 - The Categorized metric card includes a `Review` action when uncategorized transactions exist. Clicking it switches Recent Transactions into an uncategorized-only review mode.
 - Recent Transactions filter controls render as a dedicated row under the section header so the header does not collapse awkwardly beside Accounts.
+- The Balance Sheet panel owns the active account count in its header; the top dashboard metric strip excludes the former Accounts card.
+- The Recent Transactions ledger includes a fixed footer showing net spend/income for the currently filtered transaction set.
+- The Manage Tags modal uses inline icon actions for edit and delete on each tag row.
 - Recent Transactions rows open a detail modal that shows displayed transaction information plus selected raw response category and description fields.
 - The transaction detail modal includes a local database delete action with an in-modal confirmation warning and a browser-local "do not show again" preference.
 - Current delete behavior removes the local transaction row only. A future Fintable sync can re-import the row unless a persistent ignore/blocklist table is added.

@@ -3,7 +3,6 @@
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  Banknote,
   CircleDollarSign,
   Clock3,
   Database,
@@ -29,7 +28,6 @@ type MetricTransaction = {
 };
 
 type SummaryMetricsProps = {
-  accountCount: number;
   transactions: MetricTransaction[];
 };
 
@@ -58,10 +56,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export function SummaryMetrics({
-  accountCount,
-  transactions,
-}: SummaryMetricsProps) {
+export function SummaryMetrics({ transactions }: SummaryMetricsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const lookbackRef = useRef<HTMLDivElement>(null);
   const [lookback, setLookback] = useState<LookbackInput>(emptyLookback);
@@ -218,13 +213,7 @@ export function SummaryMetrics({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-        <MetricCard
-          detail="Imported active accounts"
-          icon={<Banknote aria-hidden="true" className="h-5 w-5" />}
-          label="Accounts"
-          value={String(accountCount)}
-        />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <MetricCard
           detail={lookbackLabel}
           icon={<Database aria-hidden="true" className="h-5 w-5" />}

@@ -41,10 +41,7 @@ export default async function FinancePage() {
           </div>
         </header>
 
-        <SummaryMetrics
-          accountCount={data.summary.accountCount}
-          transactions={data.metricTransactions}
-        />
+        <SummaryMetrics transactions={data.metricTransactions} />
 
         <section className="grid items-stretch gap-5 xl:grid-cols-[0.9fr_1.35fr]">
           <AccountsPanel accounts={data.accounts} />
