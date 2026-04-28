@@ -28,7 +28,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 
 export function AccountsPanel({ accounts }: AccountsPanelProps) {
   return (
-    <div className="allme-card flex min-h-[38rem] flex-col p-5 xl:min-h-[44rem]">
+    <div className="allme-card flex h-[36rem] flex-col p-5 xl:h-[40rem]">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <p className="allme-kicker">Balance Sheet</p>

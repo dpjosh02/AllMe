@@ -351,7 +351,7 @@ export function RecentTransactions({
   }
 
   return (
-    <div className="allme-card flex min-h-[38rem] flex-col p-5 xl:min-h-[44rem]">
+    <div className="allme-card flex h-[36rem] flex-col p-5 xl:h-[40rem]">
       <div className="mb-5 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div>
