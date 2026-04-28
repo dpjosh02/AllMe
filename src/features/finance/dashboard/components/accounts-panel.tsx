@@ -29,22 +29,22 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 export function AccountsPanel({ accounts }: AccountsPanelProps) {
   return (
     <div className="allme-card flex h-[36rem] flex-col p-5 xl:h-[40rem]">
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="mb-5">
+        <div className="flex items-center justify-between gap-4">
           <p className="allme-kicker">Balance Sheet</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
-            Accounts
-          </h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Latest balance snapshots from Fintable.
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
           <CircleDollarSign
             aria-hidden="true"
-            className="ml-auto h-6 w-6 text-[var(--accent)]"
+            className="h-6 w-6 shrink-0 text-[var(--accent)]"
           />
-          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+        </div>
+        <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
+          Accounts
+        </h2>
+        <div className="mt-1 flex items-center justify-between gap-4">
+          <p className="min-w-0 text-sm text-[var(--muted)]">
+            Latest balance snapshots from Fintable.
+          </p>
+          <p className="shrink-0 text-right text-sm font-semibold text-[var(--foreground)]">
             {accounts.length} accounts
           </p>
         </div>
