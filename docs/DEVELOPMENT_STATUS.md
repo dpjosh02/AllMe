@@ -4,7 +4,7 @@ This document records project-facing progress and workflow decisions. It should 
 
 ## Current State
 
-AllMe has a working foundation and a first finance read path.
+AllMe has a working foundation and a substantial finance-first prototype. The project is now entering an architecture reset to establish the full personal operating-system shell before Finance expands further.
 
 Implemented:
 
@@ -32,6 +32,8 @@ Implemented:
 - Account detail pages at `/finance/accounts/[accountId]`.
 - Transaction detail modal with raw Fintable/Plaid category context.
 - First self-serve transaction tagging flow.
+- Revised roadmap captured in `docs/ROADMAP.md`.
+- First app shell slice with persistent navigation and intentional placeholder routes for Today, Notes, Calendar, Progress, and Settings.
 
 ## Verified Local Import
 
@@ -155,6 +157,17 @@ Recent finance dashboard work:
 - The tag manager edit view can create custom text rules from user-entered match terms such as `food, restaurant, beverage, cafe`.
 - Custom text rules are saved to `finance_category_rules` and are also applied immediately to matching transactions loaded in the Recent Transactions component.
 - Current custom-rule preview/application is scoped to the transactions loaded into the Recent Transactions component. Full-history server-side rule preview is still a future layer.
+
+## App Shell Reset
+
+The architecture reset has started. The app now has a persistent shell around every route:
+
+- desktop sidebar navigation
+- mobile horizontal navigation
+- routes for `/today`, `/notes`, `/calendar`, `/progress`, and `/settings`
+- intentional placeholder pages that define planned scope instead of returning 404s
+
+This establishes the cross-product structure needed before adding more deep finance features.
 
 ## Current Tagging Architecture
 

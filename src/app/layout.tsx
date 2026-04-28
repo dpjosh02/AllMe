@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AppShell } from "@/components/layout/app-shell";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 import "./globals.css";
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html data-theme="dark" lang="en" suppressHydrationWarning>
       <body>
         <ThemeToggle />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

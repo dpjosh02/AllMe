@@ -1,5 +1,11 @@
 # AllMe Project Blueprint
 
+## Current Planning Note
+
+The original blueprint remains directionally correct, but the build order changed in practice. The project now has a working foundation and a substantial finance prototype before the broader app shell, notes, calendar, and progress surfaces exist.
+
+The current roadmap is tracked in `docs/ROADMAP.md`. Treat that roadmap as the active delivery plan and this blueprint as the product architecture reference.
+
 ## Product Definition
 
 AllMe is a personal operating system for:
@@ -360,6 +366,8 @@ AllMe/
 ```
 
 ## Delivery Plan
+
+This original delivery plan is preserved for context. The active revised plan lives in `docs/ROADMAP.md`.
 
 ### Milestone 0: Repo Foundation
 
