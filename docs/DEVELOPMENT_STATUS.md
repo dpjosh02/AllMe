@@ -24,7 +24,7 @@ Implemented:
 - Finance display cleanup for institution labels and category badges.
 - Local synthetic finance test-data scripts for stress testing transactions and balance history.
 - Persistent account display names that survive future Fintable imports.
-- Dashboard metric lookback control for Transactions, Inflows, Outflows, and Categorized cards.
+- Dashboard metric lookback control for Transactions, Credits, Debits, Income, Spending, and Categorized cards.
 - In-app Fintable sync button on `/finance`.
 - Transaction search in Recent Transactions.
 - Uncategorized review entry point from the Categorized metric card.
@@ -128,7 +128,8 @@ Recent finance dashboard work:
 - Fintable imports continue updating source account names but do not overwrite local display aliases.
 - Recent Transactions account filtering uses account ids, not display names, so renaming accounts does not break filters.
 - Top dashboard transaction metrics are controlled by a `Lookback` popover with manual days, weeks, months, and years inputs.
-- The lookback window applies from the computed past date through today and affects Transactions, Inflows, Outflows, and Categorized counts.
+- The lookback window applies from the computed past date through today and affects Transactions, Credits, Debits, Income, Spending, and Categorized counts.
+- Credits and Debits are raw sign-based transaction movement. Income and Spending are category-aware cash-flow totals based on each AllMe tag's behavior.
 - The finance page includes a `Sync Fintable` button beside import status. It reads the configured Google Sheet, runs the existing Fintable import pipeline, reruns categorization, and refreshes `/finance`.
 - Account imports are keyed by Fintable source account id. If Fintable changes a source account id for an existing account name, the importer merges into the existing account instead of creating a duplicate or failing on account name uniqueness.
 - Recent Transactions includes a search input for finding transactions by description/name.

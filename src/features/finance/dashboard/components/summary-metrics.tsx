@@ -74,14 +74,26 @@ export function SummaryMetrics({
         (transaction) => transaction.postedDate >= sinceDateKey,
       )
     : transactions;
-  const totalInflow = filteredTransactions.reduce(
+  const totalCredits = filteredTransactions.reduce(
+    (sum, transaction) =>
+      Number(transaction.amount) > 0 ? sum + Number(transaction.amount) : sum,
+    0,
+  );
+  const totalDebits = filteredTransactions.reduce(
+    (sum, transaction) =>
+      Number(transaction.amount) < 0
+        ? sum + Math.abs(Number(transaction.amount))
+        : sum,
+    0,
+  );
+  const totalIncome = filteredTransactions.reduce(
     (sum, transaction) =>
       Number(transaction.amount) > 0 && transaction.includeInIncome
         ? sum + Number(transaction.amount)
         : sum,
     0,
   );
-  const totalOutflow = filteredTransactions.reduce(
+  const totalSpending = filteredTransactions.reduce(
     (sum, transaction) =>
       Number(transaction.amount) < 0 && transaction.includeInSpending
         ? sum + Math.abs(Number(transaction.amount))
@@ -206,7 +218,7 @@ export function SummaryMetrics({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
         <MetricCard
           detail="Imported active accounts"
           icon={<Banknote aria-hidden="true" className="h-5 w-5" />}
@@ -220,17 +232,31 @@ export function SummaryMetrics({
           value={String(filteredTransactions.length)}
         />
         <MetricCard
-          detail="Income categories"
+          detail="All positive transactions"
           icon={<ArrowDownLeft aria-hidden="true" className="h-5 w-5" />}
-          label="Inflows"
-          value={formatCurrency(totalInflow)}
+          label="Credits"
+          value={formatCurrency(totalCredits)}
           valueClassName="money-positive"
         />
         <MetricCard
-          detail="Spending categories"
+          detail="All negative transactions"
           icon={<ArrowUpRight aria-hidden="true" className="h-5 w-5" />}
-          label="Outflows"
-          value={`-${formatCurrency(totalOutflow)}`}
+          label="Debits"
+          value={`-${formatCurrency(totalDebits)}`}
+          valueClassName="money-negative"
+        />
+        <MetricCard
+          detail="Tagged as income"
+          icon={<ArrowDownLeft aria-hidden="true" className="h-5 w-5" />}
+          label="Income"
+          value={formatCurrency(totalIncome)}
+          valueClassName="money-positive"
+        />
+        <MetricCard
+          detail="Tagged as spending"
+          icon={<ArrowUpRight aria-hidden="true" className="h-5 w-5" />}
+          label="Spending"
+          value={`-${formatCurrency(totalSpending)}`}
           valueClassName="money-negative"
         />
         <MetricCard
