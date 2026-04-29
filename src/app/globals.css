@@ -80,6 +80,17 @@ select {
   background: rgb(139 182 255 / 26%);
 }
 
+@keyframes allme-saved-fade {
+  0%,
+  72% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
 .money-positive,
 [data-money="positive"] {
   color: var(--success) !important;

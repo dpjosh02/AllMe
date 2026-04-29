@@ -14,7 +14,8 @@ import {
   PageSection,
   StatusPill,
 } from "@/components/layout/page-scaffold";
-import { updateDailyNote } from "@/features/today/actions";
+import { DailyNoteForm } from "@/features/today/components/daily-note-form";
+import { QuickCaptureForm } from "@/features/today/components/quick-capture-form";
 import { getTodayPageData } from "@/features/today/queries";
 import { requirePageUser } from "@/server/auth/guards";
 
@@ -52,27 +53,11 @@ export default async function TodayPage() {
               icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
               title={data.dailyNote.title}
             >
-              <form action={updateDailyNote} className="grid gap-4">
-                <input name="noteId" type="hidden" value={data.dailyNote.id} />
-                <textarea
-                  aria-label="Daily note body"
-                  className="min-h-[24rem] w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-4 text-base leading-7 outline-none transition focus:border-[var(--accent)]"
-                  name="body"
-                  placeholder="What matters today?"
-                  defaultValue={data.dailyNote.body}
-                />
-                <div className="flex flex-col gap-3 border-t border-[var(--line)] pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs text-[var(--muted)]">
-                    Last saved {dateTimeFormatter.format(data.dailyNote.updatedAt)}
-                  </p>
-                  <button
-                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)]"
-                    type="submit"
-                  >
-                    Save daily note
-                  </button>
-                </div>
-              </form>
+              <DailyNoteForm
+                body={data.dailyNote.body}
+                lastSavedLabel={`Last saved ${dateTimeFormatter.format(data.dailyNote.updatedAt)}`}
+                noteId={data.dailyNote.id}
+              />
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -92,12 +77,31 @@ export default async function TodayPage() {
 
             <AllMeCard variant="status">
               <PageSection
-                description="Quick capture will become the low-friction inbox for tasks, thoughts, errands, and follow-ups."
+                description="Low-friction inbox for tasks, thoughts, errands, and follow-ups before they are organized."
                 eyebrow="Capture"
                 icon={<Inbox aria-hidden="true" className="h-6 w-6" />}
                 title="Inbox layer"
               >
-                <StatusPill label="Next slice" tone="neutral" />
+                <QuickCaptureForm />
+                {data.quickCaptures.length > 0 ? (
+                  <div className="mt-4 grid gap-2 border-t border-[var(--line)] pt-4">
+                    {data.quickCaptures.map((capture) => (
+                      <article
+                        className="rounded-xl bg-[var(--empty)] px-3 py-2 text-sm"
+                        key={capture.id}
+                      >
+                        <p className="font-semibold">{capture.title}</p>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--muted)]">
+                          {capture.body}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-sm text-[var(--muted)]">
+                    No captures yet.
+                  </p>
+                )}
               </PageSection>
             </AllMeCard>
 

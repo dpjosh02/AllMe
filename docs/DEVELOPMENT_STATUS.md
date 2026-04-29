@@ -267,15 +267,18 @@ Implemented behavior:
 - A daily note is auto-created in the existing `notes` table for the user's local date.
 - The daily note is scoped by `user_id` and `note_date`.
 - The note body can be edited and saved through a server action.
+- The daily note form shows temporary `Saved!` feedback after a successful save.
 - Saving revalidates `/today` and `/` so future home dashboard summaries can reflect note state.
-- Supporting cards for Agenda, Capture, and Daily Closeout remain intentionally marked as planned/next-slice surfaces.
+- The Capture card now supports quick capture into the existing `notes` table by creating undated notes.
+- `/today` shows the five most recent quick captures in the support column.
+- Supporting cards for Agenda and Daily Closeout remain intentionally marked as planned surfaces.
 
 This is a vertical slice because it crosses the real app layers: auth guard, settings lookup, Postgres persistence, server-rendered page, server action mutation, scaffold UI, and unit-tested timezone date handling.
 
 Next Today layers should stay similarly narrow:
 
-- quick capture inbox
-- note autosave or save-state feedback
+- capture organization and completion flow
+- note autosave or stronger save-state feedback
 - daily note archive/navigation
 - small finance snapshot
 - calendar-backed agenda

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { getLocalDateKey, formatDisplayDate } from "@/features/today/date";
 import { db } from "@/server/db";
@@ -17,6 +17,7 @@ export async function getTodayPageData(userId: string) {
     dateKey,
     displayDate: formatDisplayDate(dateKey),
     dailyNote,
+    quickCaptures: await getQuickCaptures(userId),
     timezone,
   };
 }
@@ -73,4 +74,18 @@ async function ensureDailyNote({
     });
 
   return createdNote;
+}
+
+async function getQuickCaptures(userId: string) {
+  return db
+    .select({
+      body: notes.body,
+      createdAt: notes.createdAt,
+      id: notes.id,
+      title: notes.title,
+    })
+    .from(notes)
+    .where(and(eq(notes.userId, userId), isNull(notes.noteDate)))
+    .orderBy(desc(notes.createdAt))
+    .limit(5);
 }
