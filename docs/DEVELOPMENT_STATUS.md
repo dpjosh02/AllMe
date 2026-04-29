@@ -171,6 +171,32 @@ The architecture reset has started. The app now has a persistent shell around ev
 
 This establishes the cross-product structure needed before adding more deep finance features.
 
+## Desktop Page Scaffold
+
+The app now has reusable desktop-first page layout primitives in `src/components/layout/page-scaffold.tsx`.
+
+Current scaffold rules:
+
+- `AppPageShell` owns the content canvas, desktop width, background grid participation, and page spacing.
+- `PageHero` standardizes compact page headers with optional right-side status or action content.
+- `PageGrid` uses a 12-column desktop grid and stretches same-row grid items to equal height by default.
+- `PageGridItem` exposes reusable spans for full-width, 7/5, 6/6, 4/8, and 5/7 page compositions.
+- `AllMeCard`, `PageSection`, `StatusPill`, `KeyValueRow`, and `MetricGrid` standardize card rhythm, section headers, status badges, and system key-value rows.
+- Same-row cards that occupy comparable grid space should share height unless a page intentionally opts out.
+- Finance dashboard metrics intentionally cap at three columns on desktop, forcing two rows: Transactions/Credits/Debits first, Income/Spending/Categorized second. This prevents wide-screen metric value clipping and keeps the dashboard window scannable.
+
+Routes currently using the scaffold:
+
+- `/`
+- `/finance`
+- `/settings`
+- `/today`
+- `/notes`
+- `/calendar`
+- `/progress`
+
+Future page work should start from these primitives instead of creating one-off `main`, hero, card, or grid wrappers.
+
 ## Settings Foundation
 
 The Settings route has started moving from placeholder to product surface:

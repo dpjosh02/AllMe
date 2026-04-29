@@ -213,7 +213,7 @@ export function SummaryMetrics({ transactions }: SummaryMetricsProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricCard
           detail={lookbackLabel}
           icon={<Database aria-hidden="true" className="h-5 w-5" />}
@@ -313,17 +313,17 @@ function MetricCard({
   valueClassName?: string;
 }) {
   return (
-    <article className="allme-card p-5">
+    <article className="allme-card flex h-full min-h-40 flex-col p-5">
       <div className="mb-5 flex items-center justify-between text-[var(--accent)]">
         <h2 className="allme-kicker">{label}</h2>
         {icon}
       </div>
       <p
-        className={`text-3xl font-semibold tracking-[-0.04em] ${valueClassName ?? ""}`}
+        className={`text-[clamp(1.75rem,2.2vw,2.25rem)] font-semibold leading-tight tracking-[-0.04em] ${valueClassName ?? ""}`}
       >
         {value}
       </p>
-      <p className="mt-2 text-sm text-[var(--muted)]">{detail}</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</p>
     </article>
   );
 }

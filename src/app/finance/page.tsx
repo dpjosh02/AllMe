@@ -1,5 +1,11 @@
 import Link from "next/link";
 
+import {
+  AppPageShell,
+  PageGrid,
+  PageGridItem,
+  PageHero,
+} from "@/components/layout/page-scaffold";
 import { syncFintableNow } from "@/features/finance/dashboard/actions";
 import { AccountsPanel } from "@/features/finance/dashboard/components/accounts-panel";
 import { RecentTransactions } from "@/features/finance/dashboard/components/recent-transactions";
@@ -15,47 +21,41 @@ export default async function FinancePage() {
   const data = await getFinanceDashboardData(currentUser.id);
 
   return (
-    <main className="allme-page min-h-screen px-5 py-6 sm:px-8 lg:px-10">
-      <div className="mx-auto flex max-w-[92rem] flex-col gap-7">
-        <header className="allme-card overflow-hidden p-5 sm:p-6">
-          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div className="min-w-0">
-              <Link
-                className="allme-kicker mb-3 inline-flex text-[var(--accent)]"
-                href="/"
-              >
-                AllMe / Money
-              </Link>
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-6xl">
-                Finance command ledger.
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)] sm:text-base">
-                A daily operating view for accounts, cash flow, review work, and
-                transaction-level decisions.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:items-end">
-              <ImportStatus latestImport={data.latestImport} />
-              <form action={syncFintableNow}>
-                <SyncFintableButton />
-              </form>
-            </div>
+    <AppPageShell>
+      <PageHero
+        eyebrow={
+          <Link className="inline-flex" href="/">
+            AllMe / Money
+          </Link>
+        }
+        right={
+          <div className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
+            <ImportStatus latestImport={data.latestImport} />
+            <form action={syncFintableNow}>
+              <SyncFintableButton />
+            </form>
           </div>
-        </header>
+        }
+        subtitle="A daily operating view for accounts, cash flow, review work, and transaction-level decisions."
+        title="Finance command ledger"
+      />
 
-        <SummaryMetrics transactions={data.metricTransactions} />
+      <SummaryMetrics transactions={data.metricTransactions} />
 
-        <section className="grid items-stretch gap-5 xl:grid-cols-[0.9fr_1.35fr]">
+      <PageGrid className="items-stretch">
+        <PageGridItem span="five">
           <AccountsPanel accounts={data.accounts} />
+        </PageGridItem>
 
+        <PageGridItem span="seven">
           <RecentTransactions
             accounts={data.accounts}
             categories={data.categories}
             transactions={data.recentTransactions}
           />
-        </section>
-      </div>
-    </main>
+        </PageGridItem>
+      </PageGrid>
+    </AppPageShell>
   );
 }
 
