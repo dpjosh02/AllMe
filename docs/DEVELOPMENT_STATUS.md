@@ -254,6 +254,31 @@ The most useful raw fields for future rule inference are:
 - `raw.category`
 - `merchant_entity_id`
 - `merchant_name`
+
+## Today Vertical Slice
+
+The first real `/today` product slice has shipped.
+
+Implemented behavior:
+
+- `/today` is no longer only a placeholder route.
+- The page resolves the authorized user through the existing page guard.
+- The page reads the user's timezone from `user_settings`, creating default settings if needed.
+- A daily note is auto-created in the existing `notes` table for the user's local date.
+- The daily note is scoped by `user_id` and `note_date`.
+- The note body can be edited and saved through a server action.
+- Saving revalidates `/today` and `/` so future home dashboard summaries can reflect note state.
+- Supporting cards for Agenda, Capture, and Daily Closeout remain intentionally marked as planned/next-slice surfaces.
+
+This is a vertical slice because it crosses the real app layers: auth guard, settings lookup, Postgres persistence, server-rendered page, server action mutation, scaffold UI, and unit-tested timezone date handling.
+
+Next Today layers should stay similarly narrow:
+
+- quick capture inbox
+- note autosave or save-state feedback
+- daily note archive/navigation
+- small finance snapshot
+- calendar-backed agenda
 - `name` / normalized transaction description
 - `website`
 - investment fields such as `type`, `symbol`, and settlement-related fields
