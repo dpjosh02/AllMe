@@ -1,14 +1,19 @@
 import { createRequire } from "node:module";
+import type { loadEnvConfig as loadNextEnvConfig } from "@next/env";
 
 const require = createRequire(import.meta.url);
-const { loadEnvConfig } = require("@next/env") as typeof import("@next/env");
+const { loadEnvConfig } = require("@next/env") as {
+  loadEnvConfig: typeof loadNextEnvConfig;
+};
 
 loadEnvConfig(process.cwd());
 
 const userEmail = process.env.ALLME_IMPORT_USER_EMAIL;
 
 if (!userEmail) {
-  console.error("Missing required environment variable: ALLME_IMPORT_USER_EMAIL");
+  console.error(
+    "Missing required environment variable: ALLME_IMPORT_USER_EMAIL",
+  );
   process.exit(1);
 }
 
@@ -20,7 +25,10 @@ const [{ eq }, { categorizeFinanceTransactions }, { db }, { users }] =
     import("@/server/db/schema"),
   ]);
 
-const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, userEmail));
+const [user] = await db
+  .select({ id: users.id })
+  .from(users)
+  .where(eq(users.email, userEmail));
 
 if (!user) {
   console.error(`No AllMe user found for ALLME_IMPORT_USER_EMAIL=${userEmail}`);

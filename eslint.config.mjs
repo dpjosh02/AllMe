@@ -1,16 +1,10 @@
 import next from "eslint-config-next";
+import { allmeIgnores } from "./config/eslint/shared.mjs";
 
 const config = [
   ...next,
   {
-    ignores: [
-      ".next/**",
-      "coverage/**",
-      "db/migrations/**",
-      "node_modules/**",
-      "playwright-report/**",
-      "test-results/**",
-    ],
+    ignores: allmeIgnores,
   },
 ];
 

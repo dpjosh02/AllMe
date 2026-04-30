@@ -69,15 +69,35 @@ export default async function TodayPage({
               icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
               title={data.dailyNote.title}
             >
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <Link
-                  className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-sm font-semibold"
-                  href={`/today?date=${previousDateKey}`}
-                >
-                  <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-                  Previous day
-                </Link>
-                {data.isViewingToday ? null : (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-sm font-semibold"
+                    href={`/today?date=${previousDateKey}`}
+                  >
+                    <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                    Previous day
+                  </Link>
+                  <Link
+                    className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-sm font-semibold"
+                    href={
+                      nextDateKey === data.localTodayKey
+                        ? "/today"
+                        : `/today?date=${nextDateKey}`
+                    }
+                  >
+                    Next day
+                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
+                </div>
+                {data.isViewingToday ? (
+                  <span
+                    aria-disabled="true"
+                    className="allme-control inline-flex min-h-9 cursor-not-allowed items-center px-3 text-sm font-semibold opacity-45"
+                  >
+                    Back to today
+                  </span>
+                ) : (
                   <Link
                     className="allme-control inline-flex min-h-9 items-center px-3 text-sm font-semibold"
                     href="/today"
@@ -85,17 +105,6 @@ export default async function TodayPage({
                     Back to today
                   </Link>
                 )}
-                <Link
-                  className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-sm font-semibold"
-                  href={
-                    nextDateKey === data.localTodayKey
-                      ? "/today"
-                      : `/today?date=${nextDateKey}`
-                  }
-                >
-                  Next day
-                  <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                </Link>
               </div>
               <DailyNoteForm
                 body={data.dailyNote.body}

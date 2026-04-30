@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
+import type { loadEnvConfig as loadNextEnvConfig } from "@next/env";
 
 const require = createRequire(import.meta.url);
-const { loadEnvConfig } = require("@next/env") as typeof import("@next/env");
+const { loadEnvConfig } = require("@next/env") as {
+  loadEnvConfig: typeof loadNextEnvConfig;
+};
 
 loadEnvConfig(process.cwd());
 
@@ -13,7 +16,9 @@ export function requireImportUserEmail() {
   const userEmail = process.env.ALLME_IMPORT_USER_EMAIL;
 
   if (!userEmail) {
-    console.error("Missing required environment variable: ALLME_IMPORT_USER_EMAIL");
+    console.error(
+      "Missing required environment variable: ALLME_IMPORT_USER_EMAIL",
+    );
     process.exit(1);
   }
 

@@ -2,6 +2,7 @@ import { and, eq, ne } from "drizzle-orm";
 
 import { DEFAULT_FINANCE_CATEGORIES } from "@/features/finance/categorization/defaults";
 import {
+  type CategoryRuleMatch,
   findBestCategoryRuleMatch,
   type CategorizationTransactionInput,
 } from "@/features/finance/categorization/rules";
@@ -15,6 +16,13 @@ import {
 } from "@/server/db/schema";
 
 type Database = typeof appDb;
+type StoredDefaultCategory = {
+  id: string;
+  slug: string;
+};
+type CategorizationTransactionRecord = CategorizationTransactionInput & {
+  id: string;
+};
 
 export async function ensureDefaultFinanceCategories({
   db,
@@ -26,7 +34,7 @@ export async function ensureDefaultFinanceCategories({
   const categoryIdsBySlug = new Map<string, string>();
 
   for (const category of DEFAULT_FINANCE_CATEGORIES) {
-    const [storedCategory] = await db
+    const [storedCategoryResult] = await db
       .insert(financeUserCategories)
       .values({
         userId,
@@ -50,11 +58,15 @@ export async function ensureDefaultFinanceCategories({
           updatedAt: new Date(),
         },
       })
-      .returning({ id: financeUserCategories.id, slug: financeUserCategories.slug });
+      .returning({
+        id: financeUserCategories.id,
+        slug: financeUserCategories.slug,
+      });
 
-    if (!storedCategory) {
-      throw new Error(`Failed to seed finance category ${category.slug}`);
-    }
+    const storedCategory = requireStoredCategory(
+      storedCategoryResult,
+      category.slug,
+    );
 
     categoryIdsBySlug.set(storedCategory.slug, storedCategory.id);
 
@@ -99,7 +111,60 @@ export async function categorizeFinanceTransactions({
 }) {
   await ensureDefaultFinanceCategories({ db, userId });
 
-  const rules = await db
+  const rules = await loadActiveCategoryRules({ db, userId });
+  const transactions = await loadCategorizationTransactions({ db, userId });
+
+  let ruleAssigned = 0;
+  let uncategorized = 0;
+
+  for (const transaction of transactions) {
+    const match = findBestCategoryRuleMatch({ rules, transaction });
+
+    if (match) {
+      ruleAssigned += 1;
+      await assignTransactionRuleCategory({
+        db,
+        match,
+        transactionId: transaction.id,
+        userId,
+      });
+      continue;
+    }
+
+    uncategorized += 1;
+    await assignTransactionUncategorized({
+      db,
+      transactionId: transaction.id,
+      userId,
+    });
+  }
+
+  return {
+    transactionsScanned: transactions.length,
+    ruleAssigned,
+    uncategorized,
+  };
+}
+
+function requireStoredCategory(
+  storedCategory: StoredDefaultCategory | undefined,
+  slug: string,
+) {
+  if (!storedCategory) {
+    throw new Error(`Failed to seed finance category ${slug}`);
+  }
+
+  return storedCategory;
+}
+
+async function loadActiveCategoryRules({
+  db,
+  userId,
+}: {
+  db: Database;
+  userId: string;
+}) {
+  return db
     .select({
       id: financeCategoryRules.id,
       categoryId: financeCategoryRules.categoryId,
@@ -109,10 +174,21 @@ export async function categorizeFinanceTransactions({
     })
     .from(financeCategoryRules)
     .where(
-      and(eq(financeCategoryRules.userId, userId), eq(financeCategoryRules.isActive, true)),
+      and(
+        eq(financeCategoryRules.userId, userId),
+        eq(financeCategoryRules.isActive, true),
+      ),
     );
+}
 
-  const transactions = await db
+async function loadCategorizationTransactions({
+  db,
+  userId,
+}: {
+  db: Database;
+  userId: string;
+}): Promise<CategorizationTransactionRecord[]> {
+  return db
     .select({
       id: financeTransactions.id,
       amount: financeTransactions.amount,
@@ -122,72 +198,71 @@ export async function categorizeFinanceTransactions({
       rawPayload: financeRawRecords.payload,
     })
     .from(financeTransactions)
-    .leftJoin(financeRawRecords, eq(financeRawRecords.id, financeTransactions.rawRecordId))
+    .leftJoin(
+      financeRawRecords,
+      eq(financeRawRecords.id, financeTransactions.rawRecordId),
+    )
     .where(eq(financeTransactions.userId, userId));
+}
 
-  let ruleAssigned = 0;
-  let uncategorized = 0;
+async function assignTransactionRuleCategory({
+  db,
+  match,
+  transactionId,
+  userId,
+}: {
+  db: Database;
+  match: CategoryRuleMatch;
+  transactionId: string;
+  userId: string;
+}) {
+  await db
+    .insert(financeTransactionCategoryAssignments)
+    .values({
+      userId,
+      transactionId,
+      categoryId: match.rule.categoryId,
+      source: "rule",
+      matchedRuleId: match.rule.id,
+      confidence: match.confidence,
+    })
+    .onConflictDoUpdate({
+      target: [
+        financeTransactionCategoryAssignments.userId,
+        financeTransactionCategoryAssignments.transactionId,
+      ],
+      set: {
+        categoryId: match.rule.categoryId,
+        source: "rule",
+        matchedRuleId: match.rule.id,
+        confidence: match.confidence,
+        updatedAt: new Date(),
+      },
+      setWhere: ne(financeTransactionCategoryAssignments.source, "manual"),
+    });
+}
 
-  for (const transaction of transactions) {
-    const input = {
-      amount: transaction.amount,
-      category: transaction.category,
-      description: transaction.description,
-      merchant: transaction.merchant,
-      rawPayload: transaction.rawPayload,
-    } satisfies CategorizationTransactionInput;
-
-    const match = findBestCategoryRuleMatch({ rules, transaction: input });
-
-    if (match) {
-      ruleAssigned += 1;
-      await db
-        .insert(financeTransactionCategoryAssignments)
-        .values({
-          userId,
-          transactionId: transaction.id,
-          categoryId: match.rule.categoryId,
-          source: "rule",
-          matchedRuleId: match.rule.id,
-          confidence: match.confidence,
-        })
-        .onConflictDoUpdate({
-          target: [
-            financeTransactionCategoryAssignments.userId,
-            financeTransactionCategoryAssignments.transactionId,
-          ],
-          set: {
-            categoryId: match.rule.categoryId,
-            source: "rule",
-            matchedRuleId: match.rule.id,
-            confidence: match.confidence,
-            updatedAt: new Date(),
-          },
-          setWhere: ne(financeTransactionCategoryAssignments.source, "manual"),
-        });
-      continue;
-    }
-
-    uncategorized += 1;
-    await db
-      .insert(financeTransactionCategoryAssignments)
-      .values({
-        userId,
-        transactionId: transaction.id,
-        source: "uncategorized",
-        confidence: 0,
-      })
-      .onConflictDoNothing({
-        target: [
-          financeTransactionCategoryAssignments.userId,
-          financeTransactionCategoryAssignments.transactionId,
-        ],
-      });
-  }
-
-  return {
-    transactionsScanned: transactions.length,
-    ruleAssigned,
-    uncategorized,
-  };
+async function assignTransactionUncategorized({
+  db,
+  transactionId,
+  userId,
+}: {
+  db: Database;
+  transactionId: string;
+  userId: string;
+}) {
+  await db
+    .insert(financeTransactionCategoryAssignments)
+    .values({
+      userId,
+      transactionId,
+      source: "uncategorized",
+      confidence: 0,
+    })
+    .onConflictDoNothing({
+      target: [
+        financeTransactionCategoryAssignments.userId,
+        financeTransactionCategoryAssignments.transactionId,
+      ],
+    });
 }

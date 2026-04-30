@@ -38,11 +38,11 @@ export function findBestCategoryRuleMatch({
       return getRuleSpecificity(right) - getRuleSpecificity(left);
     });
 
-  const bestRule = matches[0];
-
-  if (!bestRule) {
+  if (matches.length === 0) {
     return null;
   }
+
+  const bestRule = matches[0];
 
   return {
     rule: bestRule,
@@ -62,7 +62,9 @@ export function doesRuleMatch(
     doesConditionMatch(condition, transaction),
   );
 
-  return rule.matchLogic === "any" ? results.some(Boolean) : results.every(Boolean);
+  return rule.matchLogic === "any"
+    ? results.some(Boolean)
+    : results.every(Boolean);
 }
 
 export function doesConditionMatch(
@@ -71,17 +73,75 @@ export function doesConditionMatch(
 ) {
   const actual = getFieldValue(condition.field, transaction);
 
+  if (isComparableOperator(condition.operator)) {
+    return matchesComparableOperator(condition, actual);
+  }
+
+  if (isTextOperator(condition.operator)) {
+    return matchesTextOperator(condition, actual);
+  }
+
+  if (isAmountOperator(condition.operator)) {
+    return matchesAmountOperator(condition, transaction.amount);
+  }
+
+  if (String(condition.operator) === "exists") {
+    return actual !== null && actual !== undefined && actual !== "";
+  }
+
+  return false;
+}
+
+function isComparableOperator(
+  operator: FinanceCategoryRuleCondition["operator"],
+) {
+  return (
+    operator === "equals" || operator === "not_equals" || operator === "in"
+  );
+}
+
+function isTextOperator(operator: FinanceCategoryRuleCondition["operator"]) {
+  return (
+    operator === "contains" ||
+    operator === "contains_any" ||
+    operator === "starts_with" ||
+    operator === "regex"
+  );
+}
+
+function isAmountOperator(operator: FinanceCategoryRuleCondition["operator"]) {
+  return operator === "amount_less_than" || operator === "amount_greater_than";
+}
+
+function matchesComparableOperator(
+  condition: FinanceCategoryRuleCondition,
+  actual: unknown,
+) {
   switch (condition.operator) {
     case "equals":
-      return normalizeComparable(actual) === normalizeComparable(condition.value);
+      return (
+        normalizeComparable(actual) === normalizeComparable(condition.value)
+      );
     case "not_equals":
-      return normalizeComparable(actual) !== normalizeComparable(condition.value);
+      return (
+        normalizeComparable(actual) !== normalizeComparable(condition.value)
+      );
     case "in":
       return Array.isArray(condition.value)
         ? condition.value
             .map((value) => normalizeComparable(value))
             .includes(normalizeComparable(actual))
         : false;
+    default:
+      return false;
+  }
+}
+
+function matchesTextOperator(
+  condition: FinanceCategoryRuleCondition,
+  actual: unknown,
+) {
+  switch (condition.operator) {
     case "contains":
       return valueContains(actual, condition.value);
     case "contains_any":
@@ -94,12 +154,20 @@ export function doesConditionMatch(
         .startsWith(String(condition.value ?? "").toLowerCase());
     case "regex":
       return regexMatches(actual, condition.value);
-    case "exists":
-      return actual !== null && actual !== undefined && actual !== "";
+    default:
+      return false;
+  }
+}
+
+function matchesAmountOperator(
+  condition: FinanceCategoryRuleCondition,
+  amount: string,
+) {
+  switch (condition.operator) {
     case "amount_less_than":
-      return Number(transaction.amount) < Number(condition.value);
+      return Number(amount) < Number(condition.value);
     case "amount_greater_than":
-      return Number(transaction.amount) > Number(condition.value);
+      return Number(amount) > Number(condition.value);
     default:
       return false;
   }
@@ -153,11 +221,15 @@ function valueContains(actual: unknown, expected: unknown) {
 
   if (Array.isArray(actual)) {
     return actual.some((value) =>
-      String(value ?? "").toLowerCase().includes(expectedValue),
+      String(value ?? "")
+        .toLowerCase()
+        .includes(expectedValue),
     );
   }
 
-  return String(actual ?? "").toLowerCase().includes(expectedValue);
+  return String(actual ?? "")
+    .toLowerCase()
+    .includes(expectedValue);
 }
 
 function regexMatches(actual: unknown, expected: unknown) {
@@ -173,7 +245,9 @@ function regexMatches(actual: unknown, expected: unknown) {
 }
 
 function normalizeComparable(value: unknown) {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function getRuleSpecificity(rule: CategoryRuleForEvaluation) {

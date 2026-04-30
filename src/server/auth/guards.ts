@@ -74,7 +74,9 @@ export async function requirePageUser(callbackUrl: string) {
     });
 
     if (decision.status === "unauthenticated") {
-      redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}` as Route);
+      redirect(
+        `/signin?callbackUrl=${encodeURIComponent(callbackUrl)}` as Route,
+      );
     }
   }
 
@@ -93,5 +95,5 @@ async function getUserByEmail(email: string): Promise<CurrentUser | null> {
     .where(eq(users.email, email))
     .limit(1);
 
-  return user ?? null;
+  return user;
 }
