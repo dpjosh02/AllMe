@@ -271,6 +271,8 @@ Implemented behavior:
 - Saving revalidates `/today` and `/` so future home dashboard summaries can reflect note state.
 - The Capture card now supports quick capture into the existing `notes` table by creating undated notes.
 - `/today` shows the five most recent quick captures in the support column.
+- `/today` supports daily note archive navigation with previous/next day links, a back-to-today link when viewing an archive date, and a recent daily notes list.
+- Opening an archive date creates that date's note on demand if it does not exist yet.
 - Supporting cards for Agenda and Daily Closeout remain intentionally marked as planned surfaces.
 
 This is a vertical slice because it crosses the real app layers: auth guard, settings lookup, Postgres persistence, server-rendered page, server action mutation, scaffold UI, and unit-tested timezone date handling.
@@ -279,7 +281,6 @@ Next Today layers should stay similarly narrow:
 
 - capture organization and completion flow
 - note autosave or stronger save-state feedback
-- daily note archive/navigation
 - small finance snapshot
 - calendar-backed agenda
 - `name` / normalized transaction description

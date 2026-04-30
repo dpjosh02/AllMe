@@ -1,9 +1,12 @@
 import {
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Inbox,
   NotebookPen,
   SquareCheckBig,
 } from "lucide-react";
+import Link from "next/link";
 
 import {
   AllMeCard,
@@ -16,14 +19,25 @@ import {
 } from "@/components/layout/page-scaffold";
 import { DailyNoteForm } from "@/features/today/components/daily-note-form";
 import { QuickCaptureForm } from "@/features/today/components/quick-capture-form";
+import { addDaysToDateKey } from "@/features/today/date";
 import { getTodayPageData } from "@/features/today/queries";
 import { requirePageUser } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
-export default async function TodayPage() {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ date?: string }>;
+}) {
   const currentUser = await requirePageUser("/today");
-  const data = await getTodayPageData(currentUser.id);
+  const resolvedSearchParams = await searchParams;
+  const data = await getTodayPageData({
+    requestedDateKey: resolvedSearchParams?.date,
+    userId: currentUser.id,
+  });
+  const previousDateKey = addDaysToDateKey(data.dateKey, -1);
+  const nextDateKey = addDaysToDateKey(data.dateKey, 1);
 
   return (
     <AppPageShell>
@@ -33,7 +47,9 @@ export default async function TodayPage() {
           <div className="flex h-full flex-col justify-between rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
             <div>
               <p className="allme-kicker">Daily note</p>
-              <p className="mt-2 text-lg font-semibold">Auto-created</p>
+              <p className="mt-2 text-lg font-semibold">
+                {data.isViewingToday ? "Today" : "Archive"}
+              </p>
             </div>
             <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
               {data.displayDate} · {data.timezone}
@@ -53,6 +69,34 @@ export default async function TodayPage() {
               icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
               title={data.dailyNote.title}
             >
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <Link
+                  className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-sm font-semibold"
+                  href={`/today?date=${previousDateKey}`}
+                >
+                  <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                  Previous day
+                </Link>
+                {data.isViewingToday ? null : (
+                  <Link
+                    className="allme-control inline-flex min-h-9 items-center px-3 text-sm font-semibold"
+                    href="/today"
+                  >
+                    Back to today
+                  </Link>
+                )}
+                <Link
+                  className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-sm font-semibold"
+                  href={
+                    nextDateKey === data.localTodayKey
+                      ? "/today"
+                      : `/today?date=${nextDateKey}`
+                  }
+                >
+                  Next day
+                  <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                </Link>
+              </div>
               <DailyNoteForm
                 body={data.dailyNote.body}
                 lastSavedLabel={`Last saved ${dateTimeFormatter.format(data.dailyNote.updatedAt)}`}
@@ -64,6 +108,46 @@ export default async function TodayPage() {
 
         <PageGridItem span="support">
           <div className="grid h-full gap-5">
+            <AllMeCard variant="status">
+              <PageSection
+                description="Jump back into recent daily notes. Opening a missing day creates its note on demand."
+                eyebrow="Archive"
+                icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
+                title="Recent notes"
+              >
+                {data.recentDailyNotes.length > 0 ? (
+                  <div className="grid gap-2">
+                    {data.recentDailyNotes.map((note) => (
+                      <Link
+                        className={`rounded-xl border px-3 py-2 text-sm transition hover:border-[var(--accent)] ${
+                          note.noteDate === data.dateKey
+                            ? "border-[var(--accent)] bg-[var(--panel-strong)]"
+                            : "border-transparent bg-[var(--empty)]"
+                        }`}
+                        href={
+                          note.noteDate === data.localTodayKey
+                            ? "/today"
+                            : `/today?date=${note.noteDate}`
+                        }
+                        key={note.id}
+                      >
+                        <p className="font-semibold">
+                          {note.displayDate ?? note.title}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          Saved {dateTimeFormatter.format(note.updatedAt)}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-sm text-[var(--muted)]">
+                    No archived daily notes yet.
+                  </p>
+                )}
+              </PageSection>
+            </AllMeCard>
+
             <AllMeCard variant="status">
               <PageSection
                 description="Calendar connection comes later. This card reserves the agenda surface that will feed the daily command view."
