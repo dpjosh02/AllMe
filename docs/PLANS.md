@@ -14,7 +14,42 @@ This document is the execution plan for the rollout.
 
 - Phase 0: complete. Tooling scaffold, staged lint profiles, coverage, dependency-cruiser, package scripts, CI build, and project guidance docs are in place.
 - Phase 1: complete. Core-safe cleanup has been applied to server/auth guard code, finance categorization, finance imports, and script type-import usage without broad refactors or behavior changes.
-- Phase 2: active. The current objective is stabilizing the remaining warning policy and adding regression tests around Phase 1 categorization/importer refactors before any larger cleanup begins.
+- Phase 2: complete. Remaining warning policy was stabilized with documented narrow overrides and regression tests were added for categorization and Fintable importer behavior.
+- Phase 3: complete. Finance dashboard query/action seams were hardened with small behavior-preserving refactors and regression coverage for raw transaction detail extraction.
+- Phase 4A-D: complete. The finance dashboard UI hotspots were decomposed into smaller same-folder components and helpers without intended runtime or UI behavior changes.
+- Phase 5A: active. Documentation is being synchronized with the actual repo state.
+- Phase 5B: next. Targeted cleanup should focus only on `src/features/settings/queries.ts` and `src/features/today/queries.ts`.
+
+---
+
+## Current steady-state quality baseline
+
+As of the Phase 5A documentation sync:
+
+- `npm run lint:minimal` passes and is the blocking lint gate.
+- `npm run typecheck` passes.
+- `npm run test` passes with 10 unit test files and 41 tests.
+- `npm run build` passes.
+- `npm run depcruise` passes with no dependency violations and remains advisory.
+- `npm run coverage` passes and reports roughly 72% line coverage; coverage is advisory.
+- `npm run lint:balanced` is advisory and currently reports warnings only.
+- `npm run lint:strict` is advisory and currently reports warnings only.
+
+Blocking checks:
+
+- `npm run lint:minimal`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Advisory checks:
+
+- `npm run lint:balanced`
+- `npm run lint:strict`
+- `npm run coverage`
+- `npm run depcruise`
+
+Do not promote advisory checks to blocking until their warning output is reviewed and scoped promotion criteria are explicitly approved.
 
 ---
 
@@ -55,8 +90,9 @@ These are the best starting points because they are logic-heavy and less likely 
 
 These are valuable but more likely to require manual cleanup:
 
-- `src/features/finance/dashboard/queries.ts`
-- `src/features/finance/dashboard/actions.ts`
+- `src/features/settings/queries.ts`
+- `src/features/today/queries.ts`
+- remaining finance dashboard file-size warnings
 - `src/features/settings/**`
 - `src/features/today/**`
 
@@ -64,7 +100,10 @@ These are valuable but more likely to require manual cleanup:
 
 These should be deferred until config and core enforcement are stable:
 
-- oversized finance UI components
+- `src/server/db/schema.ts`
+- `scripts/finance-seed-test-data.ts`
+- defensive script/Auth guards that preserve runtime failure behavior
+- remaining advisory dashboard file-size warnings in query/action files
 - large pages that mix helpers, view logic, and domain logic
 - cross-domain oversized files
 
@@ -364,6 +403,10 @@ Before moving to broader service/query/action hardening, add focused tests aroun
 
 # Phase 2 — Service/query/action hardening
 
+## Status
+
+Complete.
+
 ## Goal
 
 Address seams where architecture and semantics are starting to blur.
@@ -372,8 +415,8 @@ Address seams where architecture and semantics are starting to blur.
 
 - `src/features/finance/dashboard/queries.ts`
 - `src/features/finance/dashboard/actions.ts`
-- `src/features/settings/**`
-- `src/features/today/**`
+
+Settings and Today query cleanup was intentionally deferred to Phase 5B after the finance dashboard work stabilized.
 
 ## Focus areas
 
@@ -392,6 +435,12 @@ Do not convert this phase into a broad domain rewrite. Prefer small clarifying e
 - reduced side-effect confusion
 - improved lint signal quality for future work
 
+## Completion notes
+
+- `src/features/finance/dashboard/queries.ts` was decomposed into smaller read helpers while preserving query behavior.
+- `src/features/finance/dashboard/actions.ts` received behavior-preserving row guard cleanup.
+- Regression tests were added for raw transaction detail extraction and importer/categorization behavior.
+
 ## Risk level
 
 Medium
@@ -399,6 +448,10 @@ Medium
 ---
 
 # Phase 3 — UI decomposition guided by lint findings
+
+## Status
+
+Complete.
 
 ## Goal
 
@@ -430,13 +483,129 @@ Reduce oversized UI surfaces without destabilizing behavior.
 - clearer reuse paths
 - fewer oversized files growing over time
 
+## Completion notes
+
+Phase 3 established the UI decomposition path and Phase 4A-D executed the finance dashboard component cleanup.
+
 ## Risk level
 
 Medium to high
 
 ---
 
-# Phase 4 — Enforcement tightening
+# Phase 4A-D — Finance dashboard component decomposition
+
+## Status
+
+Complete.
+
+## Goal
+
+Reduce oversized finance dashboard components into smaller, behavior-preserving modules before tightening enforcement.
+
+## Completed slices
+
+- Phase 4A: extracted recent transaction modal/tag-management concerns into same-folder components and shared dashboard types.
+- Phase 4B: extracted transaction filter controls and pure filtering/date helpers.
+- Phase 4C: extracted recent transaction ledger rendering, review banner, net footer, and row display.
+- Phase 4D: extracted summary metric calculations and summary metric view rendering.
+
+## Current dashboard component shape
+
+- `src/features/finance/dashboard/components/recent-transactions.tsx` now primarily owns orchestration, state, effects, and modal coordination.
+- `src/features/finance/dashboard/components/summary-metrics.tsx` now primarily owns lookback state, outside-click handling, calculation wiring, and review-event dispatch.
+- Larger remaining dashboard files are known advisory cleanup candidates, not blocking failures.
+
+## Deferred dashboard work
+
+- `src/features/finance/dashboard/actions.ts` remains over the advisory file-size threshold.
+- `src/features/finance/dashboard/queries.ts` remains over the advisory file-size threshold.
+- `src/features/finance/dashboard/components/tag-manager-modal.tsx` and `transaction-filter-controls.tsx` are intentionally larger because they are self-contained UI modules. Do not split them again unless future edits make a concrete pain point obvious.
+
+## Risk level
+
+Medium
+
+---
+
+# Phase 5A — Documentation sync
+
+## Status
+
+Active.
+
+## Goal
+
+Bring project guidance docs in sync with the actual repo state before starting the next source cleanup phase.
+
+## Scope
+
+- `docs/PLANS.md`
+- `docs/AGENTS.md`
+- lowercase `docs/plan.md` only as a pointer to avoid stale-agent drift
+
+## Success criteria
+
+- Phases 2, 3, and 4A-D are marked complete.
+- Current blocking vs advisory checks are explicit.
+- Phase 5B target files are explicit.
+- Deferred warning categories are documented.
+
+## Risk level
+
+Low
+
+---
+
+# Phase 5B — Targeted Settings and Today query cleanup
+
+## Status
+
+Next.
+
+## Goal
+
+Resolve low-risk advisory lint warnings in Settings and Today query modules without changing runtime behavior.
+
+## Scope
+
+- `src/features/settings/queries.ts`
+- `src/features/today/queries.ts`
+- related unit tests only if a helper extraction makes behavior less obvious
+
+## Allowed work
+
+- Remove or simplify clearly unnecessary conditions when behavior is unchanged.
+- Replace unnecessary optional chains/nullish coalescing where types prove values are non-null.
+- Extract tiny pure helpers only if that reduces risk or repeated local logic.
+
+## Explicit non-goals
+
+- Do not touch finance dashboard files in Phase 5B.
+- Do not change database schema.
+- Do not change Auth.js runtime logic.
+- Do not broaden lint enforcement.
+- Do not refactor settings or Today UI.
+
+## Validation
+
+- `npm run lint:minimal`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Advisory commands may be run to confirm warning reduction:
+
+- `npm run lint:balanced`
+- `npm run lint:strict`
+
+## Risk level
+
+Low to medium
+
+---
+
+# Later phase — Enforcement tightening
 
 ## Goal
 
