@@ -11,42 +11,131 @@ import {
   financeUserCategories,
 } from "@/server/db/schema";
 
-export type FinanceDashboardData = Awaited<ReturnType<typeof getFinanceDashboardData>>;
+export type FinanceDashboardData = Awaited<
+  ReturnType<typeof getFinanceDashboardData>
+>;
 
 export async function getFinanceDashboardData(userId: string) {
-  const [accountSummary] = await db
+  const [
+    accountSummary,
+    transactionSummary,
+    categorizationSummary,
+    activeAccounts,
+    recentTransactions,
+    metricTransactions,
+    latestImport,
+    categories,
+  ] = await Promise.all([
+    getAccountSummary(userId),
+    getTransactionSummary(userId),
+    getCategorizationSummary(userId),
+    getActiveFinanceAccounts(userId),
+    getRecentFinanceTransactions({ limit: 1000, userId }),
+    getFinanceMetricTransactions(userId),
+    getLatestFinanceImport(userId),
+    getFinanceCategoryOptions(userId),
+  ]);
+  const accounts = await hydrateAccountsWithLatestBalances(
+    activeAccounts,
+    userId,
+  );
+
+  return {
+    summary: createDashboardSummary(
+      accountSummary,
+      transactionSummary,
+      categorizationSummary,
+    ),
+    accounts,
+    categories,
+    metricTransactions,
+    recentTransactions,
+    latestImport,
+  };
+}
+
+export async function getFinanceAccountDetail({
+  accountId,
+  userId,
+}: {
+  accountId: string;
+  userId: string;
+}) {
+  const account = await getActiveFinanceAccount(accountId, userId);
+
+  if (!account) {
+    return null;
+  }
+
+  const [latestBalance, transactions, categories] = await Promise.all([
+    getLatestAccountBalance(account.id, userId),
+    getRecentFinanceTransactions({
+      accountId: account.id,
+      limit: 1000,
+      userId,
+    }),
+    getFinanceCategoryOptions(userId),
+  ]);
+
+  return {
+    ...account,
+    balance: latestBalance?.balance ?? null,
+    categories,
+    snapshotDate: latestBalance?.snapshotDate ?? null,
+    transactions,
+  };
+}
+
+async function getAccountSummary(userId: string) {
+  const rows = await db
     .select({
       accountCount: sql<number>`count(*)::int`,
     })
     .from(financeAccounts)
-    .where(and(eq(financeAccounts.userId, userId), eq(financeAccounts.isActive, true)));
+    .where(
+      and(
+        eq(financeAccounts.userId, userId),
+        eq(financeAccounts.isActive, true),
+      ),
+    );
 
-  const [transactionSummary] = await db
+  return firstRow(rows);
+}
+
+async function getTransactionSummary(userId: string) {
+  const rows = await db
     .select({
       transactionCount: sql<number>`count(*)::int`,
-      totalOutflow:
-        sql<string>`coalesce(sum(case when ${financeTransactions.amount}::numeric < 0 then abs(${financeTransactions.amount}::numeric) else 0 end), 0)::text`,
-      totalInflow:
-        sql<string>`coalesce(sum(case when ${financeTransactions.amount}::numeric > 0 then ${financeTransactions.amount}::numeric else 0 end), 0)::text`,
+      totalOutflow: sql<string>`coalesce(sum(case when ${financeTransactions.amount}::numeric < 0 then abs(${financeTransactions.amount}::numeric) else 0 end), 0)::text`,
+      totalInflow: sql<string>`coalesce(sum(case when ${financeTransactions.amount}::numeric > 0 then ${financeTransactions.amount}::numeric else 0 end), 0)::text`,
     })
     .from(financeTransactions)
     .where(eq(financeTransactions.userId, userId));
 
-  const [categorizationSummary] = await db
+  return firstRow(rows);
+}
+
+async function getCategorizationSummary(userId: string) {
+  const rows = await db
     .select({
-      categorizedCount:
-        sql<number>`count(${financeTransactionCategoryAssignments.id}) filter (where ${financeTransactionCategoryAssignments.source} <> 'uncategorized')::int`,
-      uncategorizedCount:
-        sql<number>`count(*) filter (where ${financeTransactionCategoryAssignments.id} is null or ${financeTransactionCategoryAssignments.source} = 'uncategorized')::int`,
+      categorizedCount: sql<number>`count(${financeTransactionCategoryAssignments.id}) filter (where ${financeTransactionCategoryAssignments.source} <> 'uncategorized')::int`,
+      uncategorizedCount: sql<number>`count(*) filter (where ${financeTransactionCategoryAssignments.id} is null or ${financeTransactionCategoryAssignments.source} = 'uncategorized')::int`,
     })
     .from(financeTransactions)
     .leftJoin(
       financeTransactionCategoryAssignments,
-      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+      eq(
+        financeTransactionCategoryAssignments.transactionId,
+        financeTransactions.id,
+      ),
     )
     .where(eq(financeTransactions.userId, userId));
 
-  const activeAccounts = await db
+  return firstRow(rows);
+}
+
+async function getActiveFinanceAccounts(userId: string) {
+  return db
     .select({
       id: financeAccounts.id,
       name: financeAccounts.name,
@@ -56,25 +145,22 @@ export async function getFinanceDashboardData(userId: string) {
       currency: financeAccounts.currency,
     })
     .from(financeAccounts)
-    .where(and(eq(financeAccounts.userId, userId), eq(financeAccounts.isActive, true)))
+    .where(
+      and(
+        eq(financeAccounts.userId, userId),
+        eq(financeAccounts.isActive, true),
+      ),
+    )
     .orderBy(financeAccounts.institutionName, financeAccounts.name);
+}
 
-  const accounts = await Promise.all(
-    activeAccounts.map(async (account) => {
-      const [latestBalance] = await db
-        .select({
-          balance: financeBalanceSnapshots.balance,
-          snapshotDate: financeBalanceSnapshots.snapshotDate,
-        })
-        .from(financeBalanceSnapshots)
-        .where(
-          and(
-            eq(financeBalanceSnapshots.userId, userId),
-            eq(financeBalanceSnapshots.accountId, account.id),
-          ),
-        )
-        .orderBy(desc(financeBalanceSnapshots.snapshotDate))
-        .limit(1);
+async function hydrateAccountsWithLatestBalances(
+  accounts: Awaited<ReturnType<typeof getActiveFinanceAccounts>>,
+  userId: string,
+) {
+  return Promise.all(
+    accounts.map(async (account) => {
+      const latestBalance = await getLatestAccountBalance(account.id, userId);
 
       return {
         ...account,
@@ -83,10 +169,29 @@ export async function getFinanceDashboardData(userId: string) {
       };
     }),
   );
+}
 
-  const recentTransactions = await getRecentFinanceTransactions({ limit: 1000, userId });
+async function getLatestAccountBalance(accountId: string, userId: string) {
+  const rows = await db
+    .select({
+      balance: financeBalanceSnapshots.balance,
+      snapshotDate: financeBalanceSnapshots.snapshotDate,
+    })
+    .from(financeBalanceSnapshots)
+    .where(
+      and(
+        eq(financeBalanceSnapshots.userId, userId),
+        eq(financeBalanceSnapshots.accountId, accountId),
+      ),
+    )
+    .orderBy(desc(financeBalanceSnapshots.snapshotDate))
+    .limit(1);
 
-  const metricTransactions = await db
+  return firstRow(rows);
+}
+
+async function getFinanceMetricTransactions(userId: string) {
+  return db
     .select({
       id: financeTransactions.id,
       postedDate: financeTransactions.postedDate,
@@ -99,15 +204,23 @@ export async function getFinanceDashboardData(userId: string) {
     .from(financeTransactions)
     .leftJoin(
       financeTransactionCategoryAssignments,
-      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+      eq(
+        financeTransactionCategoryAssignments.transactionId,
+        financeTransactions.id,
+      ),
     )
     .leftJoin(
       financeUserCategories,
-      eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
+      eq(
+        financeUserCategories.id,
+        financeTransactionCategoryAssignments.categoryId,
+      ),
     )
     .where(eq(financeTransactions.userId, userId));
+}
 
-  const [latestImport] = await db
+async function getLatestFinanceImport(userId: string) {
+  const rows = await db
     .select({
       id: financeImportRuns.id,
       status: financeImportRuns.status,
@@ -123,31 +236,11 @@ export async function getFinanceDashboardData(userId: string) {
     .orderBy(desc(financeImportRuns.createdAt))
     .limit(1);
 
-  return {
-    summary: {
-      accountCount: accountSummary?.accountCount ?? 0,
-      transactionCount: transactionSummary?.transactionCount ?? 0,
-      totalOutflow: transactionSummary?.totalOutflow ?? "0",
-      totalInflow: transactionSummary?.totalInflow ?? "0",
-      categorizedCount: categorizationSummary?.categorizedCount ?? 0,
-      uncategorizedCount: categorizationSummary?.uncategorizedCount ?? 0,
-    },
-    accounts,
-    categories: await getFinanceCategoryOptions(userId),
-    metricTransactions,
-    recentTransactions,
-    latestImport: latestImport ?? null,
-  };
+  return firstRow(rows);
 }
 
-export async function getFinanceAccountDetail({
-  accountId,
-  userId,
-}: {
-  accountId: string;
-  userId: string;
-}) {
-  const [account] = await db
+async function getActiveFinanceAccount(accountId: string, userId: string) {
+  const rows = await db
     .select({
       id: financeAccounts.id,
       name: financeAccounts.name,
@@ -168,37 +261,32 @@ export async function getFinanceAccountDetail({
     )
     .limit(1);
 
-  if (!account) {
-    return null;
-  }
+  return firstRow(rows);
+}
 
-  const [latestBalance] = await db
-    .select({
-      balance: financeBalanceSnapshots.balance,
-      snapshotDate: financeBalanceSnapshots.snapshotDate,
-    })
-    .from(financeBalanceSnapshots)
-    .where(
-      and(
-        eq(financeBalanceSnapshots.userId, userId),
-        eq(financeBalanceSnapshots.accountId, account.id),
-      ),
-    )
-    .orderBy(desc(financeBalanceSnapshots.snapshotDate))
-    .limit(1);
-
-  const transactions = await getRecentFinanceTransactions({
-    accountId: account.id,
-    limit: 1000,
-    userId,
-  });
+function createDashboardSummary(
+  accountSummary: Awaited<ReturnType<typeof getAccountSummary>>,
+  transactionSummary: Awaited<ReturnType<typeof getTransactionSummary>>,
+  categorizationSummary: Awaited<ReturnType<typeof getCategorizationSummary>>,
+) {
+  const account = accountSummary ?? { accountCount: 0 };
+  const transaction = transactionSummary ?? {
+    transactionCount: 0,
+    totalInflow: "0",
+    totalOutflow: "0",
+  };
+  const categorization = categorizationSummary ?? {
+    categorizedCount: 0,
+    uncategorizedCount: 0,
+  };
 
   return {
-    ...account,
-    balance: latestBalance?.balance ?? null,
-    categories: await getFinanceCategoryOptions(userId),
-    snapshotDate: latestBalance?.snapshotDate ?? null,
-    transactions,
+    accountCount: account.accountCount,
+    transactionCount: transaction.transactionCount,
+    totalOutflow: transaction.totalOutflow,
+    totalInflow: transaction.totalInflow,
+    categorizedCount: categorization.categorizedCount,
+    uncategorizedCount: categorization.uncategorizedCount,
   };
 }
 
@@ -211,13 +299,15 @@ async function getFinanceCategoryOptions(userId: string) {
       color: financeUserCategories.color,
       includeInIncome: financeUserCategories.includeInIncome,
       includeInSpending: financeUserCategories.includeInSpending,
-      transactionCount:
-        sql<number>`count(${financeTransactionCategoryAssignments.id})::int`,
+      transactionCount: sql<number>`count(${financeTransactionCategoryAssignments.id})::int`,
     })
     .from(financeUserCategories)
     .leftJoin(
       financeTransactionCategoryAssignments,
-      eq(financeTransactionCategoryAssignments.categoryId, financeUserCategories.id),
+      eq(
+        financeTransactionCategoryAssignments.categoryId,
+        financeUserCategories.id,
+      ),
     )
     .where(eq(financeUserCategories.userId, userId))
     .groupBy(financeUserCategories.id)
@@ -250,16 +340,28 @@ async function getRecentFinanceTransactions({
       rawPayload: financeRawRecords.payload,
     })
     .from(financeTransactions)
-    .innerJoin(financeAccounts, eq(financeAccounts.id, financeTransactions.accountId))
+    .innerJoin(
+      financeAccounts,
+      eq(financeAccounts.id, financeTransactions.accountId),
+    )
     .leftJoin(
       financeTransactionCategoryAssignments,
-      eq(financeTransactionCategoryAssignments.transactionId, financeTransactions.id),
+      eq(
+        financeTransactionCategoryAssignments.transactionId,
+        financeTransactions.id,
+      ),
     )
     .leftJoin(
       financeUserCategories,
-      eq(financeUserCategories.id, financeTransactionCategoryAssignments.categoryId),
+      eq(
+        financeUserCategories.id,
+        financeTransactionCategoryAssignments.categoryId,
+      ),
     )
-    .leftJoin(financeRawRecords, eq(financeRawRecords.id, financeTransactions.rawRecordId))
+    .leftJoin(
+      financeRawRecords,
+      eq(financeRawRecords.id, financeTransactions.rawRecordId),
+    )
     .where(
       accountId
         ? and(
@@ -268,7 +370,10 @@ async function getRecentFinanceTransactions({
           )
         : eq(financeTransactions.userId, userId),
     )
-    .orderBy(desc(financeTransactions.postedDate), desc(financeTransactions.createdAt))
+    .orderBy(
+      desc(financeTransactions.postedDate),
+      desc(financeTransactions.createdAt),
+    )
     .limit(limit);
 
   return rows.map(({ rawPayload, ...transaction }) => ({
@@ -277,7 +382,9 @@ async function getRecentFinanceTransactions({
   }));
 }
 
-function extractRawTransactionDetails(payload: Record<string, unknown> | null) {
+export function extractRawTransactionDetails(
+  payload: Record<string, unknown> | null,
+) {
   const personalFinanceCategory = getObject(payload?.personal_finance_category);
   const legacyCategory = Array.isArray(payload?.category)
     ? payload.category
@@ -292,7 +399,9 @@ function extractRawTransactionDetails(payload: Record<string, unknown> | null) {
     rawCategoryPath: legacyCategory,
     rawPersonalFinancePrimary: getString(personalFinanceCategory?.primary),
     rawPersonalFinanceDetailed: getString(personalFinanceCategory?.detailed),
-    rawPersonalFinanceConfidence: getString(personalFinanceCategory?.confidence_level),
+    rawPersonalFinanceConfidence: getString(
+      personalFinanceCategory?.confidence_level,
+    ),
   };
 }
 
@@ -312,4 +421,8 @@ function getString(value: unknown) {
   }
 
   return null;
+}
+
+function firstRow<T>(rows: T[]) {
+  return rows.at(0) ?? null;
 }

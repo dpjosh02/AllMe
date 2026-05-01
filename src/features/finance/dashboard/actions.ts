@@ -33,7 +33,10 @@ export async function renameFinanceAccount(formData: FormData) {
       updatedAt: new Date(),
     })
     .where(
-      and(eq(financeAccounts.id, accountId), eq(financeAccounts.userId, currentUser.id)),
+      and(
+        eq(financeAccounts.id, accountId),
+        eq(financeAccounts.userId, currentUser.id),
+      ),
     );
 
   revalidatePath("/finance");
@@ -125,7 +128,10 @@ export async function updateFinanceCategory(formData: FormData) {
       updatedAt: new Date(),
     })
     .where(
-      and(eq(financeUserCategories.id, categoryId), eq(financeUserCategories.userId, userId)),
+      and(
+        eq(financeUserCategories.id, categoryId),
+        eq(financeUserCategories.userId, userId),
+      ),
     );
 
   revalidateFinancePaths(returnAccountId);
@@ -161,7 +167,10 @@ export async function deleteFinanceCategory(formData: FormData) {
   await db
     .delete(financeUserCategories)
     .where(
-      and(eq(financeUserCategories.id, categoryId), eq(financeUserCategories.userId, userId)),
+      and(
+        eq(financeUserCategories.id, categoryId),
+        eq(financeUserCategories.userId, userId),
+      ),
     );
 
   revalidateFinancePaths(returnAccountId);
@@ -177,7 +186,7 @@ export async function assignFinanceTransactionCategory(formData: FormData) {
     throw new Error("Missing transaction/category id");
   }
 
-  const [transaction] = await db
+  const transactionRows = await db
     .select({
       id: financeTransactions.id,
       userId: financeTransactions.userId,
@@ -192,11 +201,12 @@ export async function assignFinanceTransactionCategory(formData: FormData) {
     )
     .limit(1);
 
-  if (!transaction) {
+  if (transactionRows.length === 0) {
     throw new Error("Transaction not found");
   }
 
-  const [category] = await db
+  const transaction = transactionRows[0];
+  const categoryRows = await db
     .select({ id: financeUserCategories.id })
     .from(financeUserCategories)
     .where(
@@ -207,9 +217,11 @@ export async function assignFinanceTransactionCategory(formData: FormData) {
     )
     .limit(1);
 
-  if (!category) {
+  if (categoryRows.length === 0) {
     throw new Error("Category not found");
   }
+
+  const category = categoryRows[0];
 
   await db
     .insert(financeTransactionCategoryAssignments)
@@ -281,8 +293,11 @@ export async function createFinanceCategoryTextRule(formData: FormData) {
     throw new Error("Missing category id or match terms");
   }
 
-  const [category] = await db
-    .select({ id: financeUserCategories.id, userId: financeUserCategories.userId })
+  const categoryRows = await db
+    .select({
+      id: financeUserCategories.id,
+      userId: financeUserCategories.userId,
+    })
     .from(financeUserCategories)
     .where(
       and(
@@ -292,16 +307,26 @@ export async function createFinanceCategoryTextRule(formData: FormData) {
     )
     .limit(1);
 
-  if (!category) {
+  if (categoryRows.length === 0) {
     throw new Error("Category not found");
   }
+
+  const category = categoryRows[0];
 
   const conditions: FinanceCategoryRuleConditions = [
     { field: "description", operator: "contains_any", value: terms },
     { field: "merchant", operator: "contains_any", value: terms },
     { field: "category", operator: "contains_any", value: terms },
-    { field: "personal_finance_category.primary", operator: "contains_any", value: terms },
-    { field: "personal_finance_category.detailed", operator: "contains_any", value: terms },
+    {
+      field: "personal_finance_category.primary",
+      operator: "contains_any",
+      value: terms,
+    },
+    {
+      field: "personal_finance_category.detailed",
+      operator: "contains_any",
+      value: terms,
+    },
     { field: "raw.category", operator: "contains_any", value: terms },
     { field: "raw.name", operator: "contains_any", value: terms },
     { field: "raw.merchant_name", operator: "contains_any", value: terms },
@@ -341,8 +366,11 @@ async function assignTransactionsToCategory({
   transactionIds: string[];
   userId: string;
 }) {
-  const [category] = await db
-    .select({ id: financeUserCategories.id, userId: financeUserCategories.userId })
+  const categoryRows = await db
+    .select({
+      id: financeUserCategories.id,
+      userId: financeUserCategories.userId,
+    })
     .from(financeUserCategories)
     .where(
       and(
@@ -352,9 +380,11 @@ async function assignTransactionsToCategory({
     )
     .limit(1);
 
-  if (!category) {
+  if (categoryRows.length === 0) {
     throw new Error("Category not found");
   }
+
+  const category = categoryRows[0];
 
   const transactions = await db
     .select({ id: financeTransactions.id })
@@ -462,12 +492,21 @@ async function createUniqueCategorySlug({
   return candidate;
 }
 
-async function categorySlugExists({ slug, userId }: { slug: string; userId: string }) {
+async function categorySlugExists({
+  slug,
+  userId,
+}: {
+  slug: string;
+  userId: string;
+}) {
   const [category] = await db
     .select({ id: financeUserCategories.id })
     .from(financeUserCategories)
     .where(
-      and(eq(financeUserCategories.userId, userId), eq(financeUserCategories.slug, slug)),
+      and(
+        eq(financeUserCategories.userId, userId),
+        eq(financeUserCategories.slug, slug),
+      ),
     )
     .limit(1);
 
