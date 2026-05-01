@@ -45,6 +45,111 @@ describe("finance categorization rules", () => {
         orderingOutTransaction,
       ),
     ).toBe(true);
+
+    expect(
+      doesConditionMatch(
+        {
+          field: "raw.category",
+          operator: "contains_any",
+          value: ["Coffee Shop", "Bookstore"],
+        },
+        orderingOutTransaction,
+      ),
+    ).toBe(false);
+
+    expect(
+      doesConditionMatch(
+        {
+          field: "raw.category",
+          operator: "contains_any",
+          value: "Fast Food",
+        },
+        orderingOutTransaction,
+      ),
+    ).toBe(false);
+  });
+
+  it("checks existence without treating empty values as present", () => {
+    expect(
+      doesConditionMatch(
+        {
+          field: "merchant",
+          operator: "exists",
+        },
+        orderingOutTransaction,
+      ),
+    ).toBe(true);
+
+    expect(
+      doesConditionMatch(
+        {
+          field: "merchant",
+          operator: "exists",
+        },
+        {
+          ...orderingOutTransaction,
+          merchant: "",
+        },
+      ),
+    ).toBe(false);
+
+    expect(
+      doesConditionMatch(
+        {
+          field: "raw.missing",
+          operator: "exists",
+        },
+        orderingOutTransaction,
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false for unknown runtime operators", () => {
+    expect(
+      doesConditionMatch(
+        {
+          field: "description",
+          operator: "unknown_operator",
+          value: "Example",
+        } as unknown as Parameters<typeof doesConditionMatch>[0],
+        orderingOutTransaction,
+      ),
+    ).toBe(false);
+  });
+
+  it("compares amount thresholds numerically", () => {
+    expect(
+      doesConditionMatch(
+        {
+          field: "amount",
+          operator: "amount_less_than",
+          value: "-10",
+        },
+        orderingOutTransaction,
+      ),
+    ).toBe(true);
+
+    expect(
+      doesConditionMatch(
+        {
+          field: "amount",
+          operator: "amount_greater_than",
+          value: "-20",
+        },
+        orderingOutTransaction,
+      ),
+    ).toBe(true);
+
+    expect(
+      doesConditionMatch(
+        {
+          field: "amount",
+          operator: "amount_greater_than",
+          value: "0",
+        },
+        orderingOutTransaction,
+      ),
+    ).toBe(false);
   });
 
   it("uses priority before specificity when choosing the best match", () => {

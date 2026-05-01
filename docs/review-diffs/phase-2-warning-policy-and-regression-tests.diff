@@ -1,0 +1,806 @@
+diff --git a/docs/AGENTS.md b/docs/AGENTS.md
+index 3cf32c3..04c08cc 100644
+--- a/docs/AGENTS.md
++++ b/docs/AGENTS.md
+@@ -13,11 +13,14 @@ work must follow `docs/plan.md` and should roll out incrementally.
+ 
+ - Execute only the active phase requested by the user.
+ - Phase 0 is scaffolding only: configuration, scripts, CI wiring, and docs.
++- Phase 1 is complete; do not reopen core cleanup unless the user explicitly asks.
++- Phase 2 should prioritize warning-policy stability and regression tests before larger structural cleanup.
+ - Do not start broad refactors during Phase 0.
+ - Do not touch large UI hotspot files unless the user explicitly approves.
+ - Prefer mechanical/autofixable changes before manual code edits.
+ - Treat typed linting, dependency boundaries, and coverage as staged gates.
+ - Do not install new dependencies unless the user explicitly approves the install.
++- Keep `lint:minimal` as the blocking gate. Treat `lint:balanced` and `lint:strict` as advisory until the project owner explicitly promotes them.
+ 
+ ## Risk Boundaries
+ 
+@@ -33,6 +36,7 @@ work must follow `docs/plan.md` and should roll out incrementally.
+ - For config-only changes, validate config parsing and existing baseline checks.
+ - Report remaining issues by folder and risk level.
+ - Keep unrelated worktree changes isolated.
++- Preserve documented narrow ESLint overrides unless the replacement is demonstrably behavior-preserving and scoped.
+ 
+ ## Reporting Format
+ 
+diff --git a/docs/PLANS.md b/docs/PLANS.md
+index d0ed74a..04da322 100644
+--- a/docs/PLANS.md
++++ b/docs/PLANS.md
+@@ -3,6 +3,7 @@
+ # AllMe linting and static-analysis execution blueprint
+ 
+ ## Objective
++
+ Introduce a strong linting and static-analysis system into the AllMe repository safely, incrementally, and in a way that supports long-term human and AI-assisted development.
+ 
+ This document is the execution plan for the rollout.
+@@ -13,12 +14,14 @@ This document is the execution plan for the rollout.
+ 
+ - Phase 0: complete. Tooling scaffold, staged lint profiles, coverage, dependency-cruiser, package scripts, CI build, and project guidance docs are in place.
+ - Phase 1: complete. Core-safe cleanup has been applied to server/auth guard code, finance categorization, finance imports, and script type-import usage without broad refactors or behavior changes.
+-- Next phase: Phase 2 should focus on service/query/action hardening only after reviewing the deferred warnings and confirming the Phase 1 helper extractions.
++- Phase 2: active. The current objective is stabilizing the remaining warning policy and adding regression tests around Phase 1 categorization/importer refactors before any larger cleanup begins.
+ 
+ ---
+ 
+ ## Desired outcomes
++
+ By the end of the rollout, the repo should have:
++
+ - typed ESLint integrated cleanly with the existing Next.js setup
+ - stronger TypeScript enforcement where it provides real value
+ - stable formatting boundaries between Prettier and ESLint
+@@ -31,13 +34,17 @@ By the end of the rollout, the repo should have:
+ ---
+ 
+ ## Architectural alignment with the current repo
++
+ The rollout must respect the current structure rather than pretending the repo is greenfield.
+ 
+ ### Current architectural reality
++
+ The repo has a coherent Next.js App Router structure with shared layout primitives and feature-focused modules. The most mature surface is finance, especially imports, categorization, dashboard queries/actions, and related UI. Settings and Today contain meaningful logic. Some intended surfaces remain thin or placeholder.
+ 
+ ### High-value enforcement zones
++
+ These are the best starting points because they are logic-heavy and less likely to suffer from JSX/UI noise:
++
+ - `src/server/**`
+ - `src/lib/**`
+ - `scripts/**`
+@@ -45,14 +52,18 @@ These are the best starting points because they are logic-heavy and less likely
+ - `src/features/finance/categorization/**`
+ 
+ ### Medium-risk zones
++
+ These are valuable but more likely to require manual cleanup:
++
+ - `src/features/finance/dashboard/queries.ts`
+ - `src/features/finance/dashboard/actions.ts`
+ - `src/features/settings/**`
+ - `src/features/today/**`
+ 
+ ### High-risk legacy hotspots
++
+ These should be deferred until config and core enforcement are stable:
++
+ - oversized finance UI components
+ - large pages that mix helpers, view logic, and domain logic
+ - cross-domain oversized files
+@@ -62,6 +73,7 @@ These should be deferred until config and core enforcement are stable:
+ ## Recommended linting/tooling stack
+ 
+ ### Core stack
++
+ 1. **ESLint (flat config)**
+    - keep ESLint as the central lint orchestrator
+    - extend the existing Next.js config rather than replacing it
+@@ -89,6 +101,7 @@ These should be deferred until config and core enforcement are stable:
+    - start advisory, then progressively block regressions
+ 
+ ### Why this stack fits AllMe
++
+ - it matches the current TypeScript/Next.js architecture
+ - it can be staged safely
+ - it addresses actual repo pain points: typing drift, async safety, complexity growth, and module sprawl
+@@ -99,27 +112,33 @@ These should be deferred until config and core enforcement are stable:
+ ## Rule catalog and rollout rationale
+ 
+ ## A. Strong typing rules
++
+ Purpose: move correctness earlier and reduce stringly typed drift.
+ 
+ ### Phase 1 candidates
++
+ - `@typescript-eslint/consistent-type-imports`
+ - `@typescript-eslint/no-floating-promises`
+ - `@typescript-eslint/no-misused-promises`
+ - `@typescript-eslint/no-unnecessary-condition`
+ 
+ ### Phase 2 candidates
++
+ - `@typescript-eslint/switch-exhaustiveness-check`
+ - `@typescript-eslint/restrict-template-expressions`
+ - stricter compiler flags where safe
+ 
+ ### Possible later TS compiler flags
++
+ Evaluate and enable in stages:
++
+ - `noUncheckedIndexedAccess`
+ - `exactOptionalPropertyTypes`
+ - `noPropertyAccessFromIndexSignature`
+ - `noImplicitOverride`
+ 
+ ### Success criteria
++
+ - fewer promise mistakes
+ - fewer implicit type/value import problems
+ - narrower runtime-only errors from nullable or string-path assumptions
+@@ -127,21 +146,27 @@ Evaluate and enable in stages:
+ ---
+ 
+ ## B. Complexity and nesting controls
++
+ Purpose: slow the growth of unreadable logic before it becomes normal.
+ 
+ ### Initial settings
++
+ Start as warnings:
++
+ - `complexity`
+ - `max-depth`
+ - `max-lines-per-function`
+ 
+ ### Suggested thresholds to start
++
+ These should be advisory first, not blocking:
++
+ - `complexity`: 12
+ - `max-depth`: 4
+ - `max-lines-per-function`: 80
+ 
+ ### Notes
++
+ - do not make these hard failures across legacy UI immediately
+ - use them first in server and domain logic
+ - treat repeated warnings as decomposition prompts, not instant rewrite mandates
+@@ -149,16 +174,21 @@ These should be advisory first, not blocking:
+ ---
+ 
+ ## C. File size / module sprawl controls
++
+ Purpose: stop already-large files from getting worse.
+ 
+ ### Initial settings
++
+ Start as warnings:
++
+ - `max-lines`
+ 
+ ### Suggested threshold
++
+ - `max-lines`: 350, excluding comments and blank lines
+ 
+ ### Application strategy
++
+ - apply to core logic sooner
+ - apply to legacy UI later
+ - do not block the build on large legacy files until there is a cleanup path
+@@ -166,31 +196,38 @@ Start as warnings:
+ ---
+ 
+ ## D. Unused code / cleanup rules
++
+ Purpose: reduce noise and token waste.
+ 
+ ### Rules / behaviors
++
+ - unused imports cleanup
+ - consistent type imports
+ - dead helper identification
+ - safe unused variable handling with underscore conventions if needed
+ 
+ ### Guidance
++
+ Prefer autofix for imports. Review variable cleanup manually where intent may matter.
+ 
+ ---
+ 
+ ## E. Import boundary / architecture rules
++
+ Purpose: prevent layer leakage and reduce architectural drift.
+ 
+ ### Tool
++
+ - dependency-cruiser
+ 
+ ### Initial forbidden dependency ideas
++
+ - app/page layer should not import deep DB internals directly where an approved seam exists
+ - shared presentational components should not import server internals
+ - circular dependencies should be surfaced
+ 
+ ### Rollout guidance
++
+ - start by generating visibility/reporting
+ - then introduce a small number of high-confidence forbidden rules
+ - add more only after the graph is understood
+@@ -198,9 +235,11 @@ Purpose: prevent layer leakage and reduce architectural drift.
+ ---
+ 
+ ## F. Naming and convention rules
++
+ Purpose: improve readability only after the core rollout is stable.
+ 
+ ### Guidance
++
+ Do not lead with heavy naming rules. Only add them if they are clearly valuable and low-friction.
+ 
+ This category is lower priority than type safety, async correctness, complexity, and boundaries.
+@@ -212,9 +251,11 @@ This category is lower priority than type safety, async correctness, complexity,
+ # Phase 0 — Scaffolding and visibility
+ 
+ ## Goal
++
+ Set up the infrastructure without turning the codebase red.
+ 
+ ## Tasks
++
+ 1. audit current `eslint.config.*`, Prettier config, tsconfig, scripts, and CI
+ 2. add or update typed ESLint scaffolding
+ 3. add optional lint profiles or phased scripts
+@@ -225,6 +266,7 @@ Set up the infrastructure without turning the codebase red.
+ 8. ensure commands are documented and discoverable
+ 
+ ## Deliverables
++
+ - updated lint config(s)
+ - updated package scripts
+ - CI workflow file
+@@ -233,11 +275,13 @@ Set up the infrastructure without turning the codebase red.
+ - repo guidance docs
+ 
+ ## Validation
++
+ - configs parse correctly
+ - scripts run
+ - no large source refactor yet
+ 
+ ## Risk level
++
+ Low
+ 
+ ---
+@@ -245,12 +289,15 @@ Low
+ # Phase 1 — Core-safe enforcement
+ 
+ ## Status
++
+ Complete.
+ 
+ ## Goal
++
+ Enable high-value linting in the safest areas first.
+ 
+ ## Target folders
++
+ - `src/server/**`
+ - `src/lib/**`
+ - `scripts/**`
+@@ -258,6 +305,7 @@ Enable high-value linting in the safest areas first.
+ - `src/features/finance/categorization/**`
+ 
+ ## Rules to emphasize
++
+ - `consistent-type-imports`
+ - `no-floating-promises`
+ - `no-misused-promises`
+@@ -265,6 +313,7 @@ Enable high-value linting in the safest areas first.
+ - advisory complexity / depth / function-size rules
+ 
+ ## Workflow
++
+ 1. run lint on target folders only if possible
+ 2. classify failures by risk
+ 3. apply safe autofixes first
+@@ -272,59 +321,79 @@ Enable high-value linting in the safest areas first.
+ 5. document deferred or high-risk findings
+ 
+ ## Success criteria
++
+ - target folders are significantly cleaner
+ - no runtime behavior regressions introduced
+ - async and typing safety improved measurably
+ 
+ ## Risk level
++
+ Low to medium
+ 
+ ---
+ 
+ ## Deferred warnings after Phase 1
+ 
+-The remaining `lint:minimal` warnings are intentionally documented rather than forced through risky cleanup.
++The remaining `lint:minimal` warnings were intentionally documented rather than forced through risky cleanup. In Phase 2, these are handled by narrow file-level overrides so `lint:minimal` can act as a clean blocking gate while preserving runtime defenses.
+ 
+ ### Defensive script guards
+-The remaining script warnings are mostly `no-unnecessary-condition` findings around required user/account lookup guards. These checks preserve explicit failure paths for missing environment configuration or missing database rows. Removing them would make runtime failure behavior less clear and is not worth the lint-only benefit.
++
++The script warnings were mostly `no-unnecessary-condition` findings around required user/account lookup guards. These checks preserve explicit failure paths for missing environment configuration or missing database rows. Removing them would make runtime failure behavior less clear and is not worth the lint-only benefit. Policy: narrow override.
+ 
+ ### Defensive Auth.js callback guards
+-`src/server/auth/config.ts` still has optional-chain/session guard warnings. Auth.js callback payloads are runtime-controlled, and the current checks defensively preserve behavior if a callback receives an incomplete user/session shape. These should remain until hosted-auth behavior is exercised more thoroughly.
++
++`src/server/auth/config.ts` has optional-chain/session guard warnings. Auth.js callback payloads are runtime-controlled, and the current checks defensively preserve behavior if a callback receives an incomplete user/session shape. These should remain until hosted-auth behavior is exercised more thoroughly. Policy: narrow override.
+ 
+ ### Seed script size and nullable cleanup
+-`scripts/finance-seed-test-data.ts` still has size, function-length, and nullable-condition warnings. This script is development-only, large by nature, and should be decomposed separately if test-data workflows become central. It is intentionally excluded from Phase 1 semantic cleanup because splitting it would be a larger refactor.
++
++`scripts/finance-seed-test-data.ts` has size, function-length, and nullable-condition warnings. This script is development-only, large by nature, and should be decomposed separately if test-data workflows become central. It is intentionally excluded from Phase 1 and Phase 2 semantic cleanup because splitting it would be a larger refactor. Policy: narrow override plus later refactor.
+ 
+ ### Deferred schema file-size warning
+-`src/server/db/schema.ts` remains over the advisory file-size threshold. Schema files naturally accumulate table definitions, and splitting schema modules has migration/import-boundary consequences. Defer this until there is a clear database organization plan.
++
++`src/server/db/schema.ts` remains over the advisory file-size threshold. Schema files naturally accumulate table definitions, and splitting schema modules has migration/import-boundary consequences. Defer this until there is a clear database organization plan. Policy: narrow override plus later schema organization plan.
++
++### Phase 2 regression-test target
++
++Before moving to broader service/query/action hardening, add focused tests around:
++
++- categorization operator behavior after helper extraction
++- Fintable importer orchestration order after helper extraction
++- conflict-target invariants for account, raw-record, balance, transaction, and import-run writes
+ 
+ ---
+ 
+ # Phase 2 — Service/query/action hardening
+ 
+ ## Goal
++
+ Address seams where architecture and semantics are starting to blur.
+ 
+ ## Target folders
++
+ - `src/features/finance/dashboard/queries.ts`
+ - `src/features/finance/dashboard/actions.ts`
+ - `src/features/settings/**`
+ - `src/features/today/**`
+ 
+ ## Focus areas
++
+ - query/action responsibility separation
+ - surprise side effects in read paths
+ - stronger domain typing
+ - reducing fragile string assumptions
+ 
+ ## Guardrail
++
+ Do not convert this phase into a broad domain rewrite. Prefer small clarifying extractions or wrappers.
+ 
+ ## Success criteria
++
+ - clearer boundaries
+ - reduced side-effect confusion
+ - improved lint signal quality for future work
+ 
+ ## Risk level
++
+ Medium
+ 
+ ---
+@@ -332,31 +401,37 @@ Medium
+ # Phase 3 — UI decomposition guided by lint findings
+ 
+ ## Goal
++
+ Reduce oversized UI surfaces without destabilizing behavior.
+ 
+ ## Target zones
++
+ - oversized finance dashboard components
+ - large page files mixing helpers + rendering + logic
+ - duplicated formatting/helper logic across finance UI
+ 
+ ## Strategy
++
+ 1. choose one hotspot at a time
+ 2. extract the smallest stable helper/component first
+ 3. re-run lint/tests after each extraction
+ 4. avoid combining visual tweaks with architectural extraction
+ 
+ ## Typical work items
++
+ - extract formatting utilities
+ - extract filter state helpers
+ - extract modal-specific subcomponents
+ - reduce nested render logic
+ 
+ ## Success criteria
++
+ - smaller prompt scopes for future changes
+ - clearer reuse paths
+ - fewer oversized files growing over time
+ 
+ ## Risk level
++
+ Medium to high
+ 
+ ---
+@@ -364,9 +439,11 @@ Medium to high
+ # Phase 4 — Enforcement tightening
+ 
+ ## Goal
++
+ Move from advisory tooling to durable guardrails.
+ 
+ ## Tasks
++
+ - raise selected warnings to errors
+ - enable stronger TS flags if remaining issues are manageable
+ - enforce dependency rules in CI
+@@ -374,11 +451,13 @@ Move from advisory tooling to durable guardrails.
+ - optionally add stricter folder-based gating
+ 
+ ## Success criteria
++
+ - regressions are blocked early
+ - developers can still work without constant tooling friction
+ - the quality system is sustainable, not performative
+ 
+ ## Risk level
++
+ Medium
+ 
+ ---
+@@ -386,27 +465,33 @@ Medium
+ ## Safe auto-fix strategy vs manual refactor strategy
+ 
+ ## Safe auto-fix bucket
++
+ Use autofix freely when the chance of semantic change is very low.
+ 
+ Examples:
++
+ - type-only imports
+ - formatting
+ - obvious unused imports
+ - trivial config normalization
+ 
+ ## Manual low-risk bucket
++
+ Patch after review.
+ 
+ Examples:
++
+ - adding explicit `await`
+ - adding `void` intentionally where promise fire-and-forget is correct
+ - narrowing conditions
+ - removing dead local helpers with obvious lack of usage
+ 
+ ## Manual high-risk bucket
++
+ Do not batch these into the same patch as tooling setup.
+ 
+ Examples:
++
+ - splitting large components
+ - changing service/query responsibilities
+ - introducing batching behavior where sequential logic existed
+@@ -416,19 +501,23 @@ Examples:
+ ---
+ 
+ ## Codemod opportunities
++
+ These are good candidates for automation once the baseline is stable.
+ 
+ ### Strong candidates
++
+ - convert imports to `import type` where appropriate
+ - remove unused imports
+ - normalize common ESLint/Prettier style issues
+ - optionally codemod repeated helpers into shared modules if usage is simple and isolated
+ 
+ ### Possible later codemods
++
+ - migration toward shared formatting utilities
+ - mechanical extraction of duplicated helper names if imports are straightforward
+ 
+ ### Avoid as early codemods
++
+ - large component decomposition
+ - service-layer purity refactors
+ - transformations that alter async execution order
+@@ -436,9 +525,11 @@ These are good candidates for automation once the baseline is stable.
+ ---
+ 
+ ## Guardrails for AI-assisted implementation
++
+ This section is meant specifically for Codex or similar agents.
+ 
+ ### Mandatory behavior
++
+ - never begin with a repo-wide refactor
+ - always classify changes into autofixable / low-risk manual / high-risk manual
+ - show the patch plan before touching risky files
+@@ -446,7 +537,9 @@ This section is meant specifically for Codex or similar agents.
+ - validate after each grouped change
+ 
+ ### Hard stops
++
+ Stop and ask before proceeding if any task requires:
++
+ - touching large UI hotspots unexpectedly
+ - changing runtime behavior
+ - changing data flow across multiple layers
+@@ -454,6 +547,7 @@ Stop and ask before proceeding if any task requires:
+ - edits across many modules with unclear blast radius
+ 
+ ### Patch sizing rule
++
+ Prefer multiple small PR-sized changes over one large “quality sweep.”
+ 
+ ---
+@@ -461,9 +555,11 @@ Prefer multiple small PR-sized changes over one large “quality sweep.”
+ ## CI/CD enforcement plan
+ 
+ ## Initial CI behavior
++
+ Phase 0 / Phase 1 prioritized visibility and safety.
+ 
+ Current blocking checks:
++
+ 1. install dependencies
+ 2. run `npm run lint:minimal`
+ 3. run typecheck
+@@ -471,6 +567,7 @@ Current blocking checks:
+ 5. run build
+ 
+ Advisory commands:
++
+ - `npm run lint:balanced`
+ - `npm run lint:strict`
+ - `npm run coverage`
+@@ -479,21 +576,26 @@ Advisory commands:
+ These advisory commands should remain available locally until their warning output is reviewed and the team explicitly decides which checks should become blocking.
+ 
+ ## Later CI behavior
++
+ Once the repo is stable:
++
+ - fail on target lint rules
+ - fail on forbidden dependency rules
+ - fail on regression in agreed coverage thresholds
+ - optionally fail on new warnings in scoped areas
+ 
+ ## Important policy
++
+ Do not let CI hard-fail on legacy warnings everywhere too early. Scope enforcement or phase it in.
+ 
+ ---
+ 
+ ## Metrics for success
++
+ Track trends, not just raw counts.
+ 
+ ### Recommended metrics
++
+ - total lint violations by rule
+ - violations by folder
+ - count of autofixable vs manual findings
+@@ -509,6 +611,7 @@ Track trends, not just raw counts.
+ - median time to resolve lint regressions
+ 
+ ### Good signs
++
+ - core logic folders stabilize first
+ - new violations trend toward zero
+ - large files stop growing
+@@ -517,9 +620,11 @@ Track trends, not just raw counts.
+ ---
+ 
+ ## Token usage and AI-assisted development impact
++
+ Strong linting will not magically reduce token usage by itself, but it will improve the structure that determines token consumption.
+ 
+ ### Expected benefits
++
+ 1. **Smaller edit scopes**
+    When files and functions are bounded, AI tools can work on one smaller surface instead of loading a large umbrella component.
+ 
+@@ -536,18 +641,22 @@ Strong linting will not magically reduce token usage by itself, but it will impr
+    More explicit types and narrower modules make it easier to issue precise instructions to AI tools.
+ 
+ ### Practical expectation for AllMe
++
+ The biggest token benefits will come later, especially when:
++
+ - oversized finance UI files are decomposed
+ - duplicated format helpers are centralized
+ - service/query boundaries are clearer
+ - linting prevents new monoliths from forming
+ 
+ ### Important nuance
++
+ Config-only linting does not save many tokens immediately. The token savings come from the codebase shape that linting gradually enforces.
+ 
+ ---
+ 
+ ## First implementation tasks for Codex
++
+ When beginning actual implementation, use this exact order:
+ 
+ 1. inspect current quality tooling files
+@@ -565,6 +674,7 @@ When beginning actual implementation, use this exact order:
+ ---
+ 
+ ## What not to do
++
+ - do not enable every strict rule at once
+ - do not refactor the whole finance dashboard first
+ - do not mix setup, autofix, and architectural cleanup into one giant patch
+@@ -574,7 +684,9 @@ When beginning actual implementation, use this exact order:
+ ---
+ 
+ ## Definition of done for the initial rollout
++
+ The initial rollout is successful when:
++
+ - the repo has a durable lint/static-analysis framework
+ - the core logic folders have meaningful typed lint enforcement
+ - CI can surface quality regressions reliably
+diff --git a/eslint.minimal.config.mjs b/eslint.minimal.config.mjs
+index bd6dadc..6e68b14 100644
+--- a/eslint.minimal.config.mjs
++++ b/eslint.minimal.config.mjs
+@@ -30,6 +30,31 @@ const config = [
+     "@typescript-eslint/no-misused-promises": "warn",
+     "@typescript-eslint/no-unnecessary-condition": "warn",
+   }),
++  {
++    files: [
++      "scripts/finance-categorize.ts",
++      "scripts/finance-clear-test-data.ts",
++      "scripts/fintable-import.ts",
++      "src/server/auth/config.ts",
++    ],
++    rules: {
++      "@typescript-eslint/no-unnecessary-condition": "off",
++    },
++  },
++  {
++    files: ["scripts/finance-seed-test-data.ts"],
++    rules: {
++      "@typescript-eslint/no-unnecessary-condition": "off",
++      "max-lines": "off",
++      "max-lines-per-function": "off",
++    },
++  },
++  {
++    files: ["src/server/db/schema.ts"],
++    rules: {
++      "max-lines": "off",
++    },
++  },
+ ];
+ 
+ export default config;
+diff --git a/tests/unit/finance/categorization/rules.test.ts b/tests/unit/finance/categorization/rules.test.ts
+index 5eab41c..698ac5b 100644
+--- a/tests/unit/finance/categorization/rules.test.ts
++++ b/tests/unit/finance/categorization/rules.test.ts
+@@ -45,6 +45,111 @@ describe("finance categorization rules", () => {
+         orderingOutTransaction,
+       ),
+     ).toBe(true);
++
++    expect(
++      doesConditionMatch(
++        {
++          field: "raw.category",
++          operator: "contains_any",
++          value: ["Coffee Shop", "Bookstore"],
++        },
++        orderingOutTransaction,
++      ),
++    ).toBe(false);
++
++    expect(
++      doesConditionMatch(
++        {
++          field: "raw.category",
++          operator: "contains_any",
++          value: "Fast Food",
++        },
++        orderingOutTransaction,
++      ),
++    ).toBe(false);
++  });
++
++  it("checks existence without treating empty values as present", () => {
++    expect(
++      doesConditionMatch(
++        {
++          field: "merchant",
++          operator: "exists",
++        },
++        orderingOutTransaction,
++      ),
++    ).toBe(true);
++
++    expect(
++      doesConditionMatch(
++        {
++          field: "merchant",
++          operator: "exists",
++        },
++        {
++          ...orderingOutTransaction,
++          merchant: "",
++        },
++      ),
++    ).toBe(false);
++
++    expect(
++      doesConditionMatch(
++        {
++          field: "raw.missing",
++          operator: "exists",
++        },
++        orderingOutTransaction,
++      ),
++    ).toBe(false);
++  });
++
++  it("returns false for unknown runtime operators", () => {
++    expect(
++      doesConditionMatch(
++        {
++          field: "description",
++          operator: "unknown_operator",
++          value: "Example",
++        } as unknown as Parameters<typeof doesConditionMatch>[0],
++        orderingOutTransaction,
++      ),
++    ).toBe(false);
++  });
++
++  it("compares amount thresholds numerically", () => {
++    expect(
++      doesConditionMatch(
++        {
++          field: "amount",
++          operator: "amount_less_than",
++          value: "-10",
++        },
++        orderingOutTransaction,
++      ),
++    ).toBe(true);
++
++    expect(
++      doesConditionMatch(
++        {
++          field: "amount",
++          operator: "amount_greater_than",
++          value: "-20",
++        },
++        orderingOutTransaction,
++      ),
++    ).toBe(true);
++
++    expect(
++      doesConditionMatch(
++        {
++          field: "amount",
++          operator: "amount_greater_than",
++          value: "0",
++        },
++        orderingOutTransaction,
++      ),
++    ).toBe(false);
+   });
+ 
+   it("uses priority before specificity when choosing the best match", () => {
