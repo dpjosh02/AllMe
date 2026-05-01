@@ -40,18 +40,15 @@ export async function getTodayPageData({
 }
 
 async function getUserTimezone(userId: string) {
-  await db
-    .insert(userSettings)
-    .values({ userId })
-    .onConflictDoNothing();
+  await db.insert(userSettings).values({ userId }).onConflictDoNothing();
 
-  const [settings] = await db
+  const settingRows = await db
     .select({ timezone: userSettings.timezone })
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
     .limit(1);
 
-  return settings?.timezone ?? defaultTimezone;
+  return settingRows.length > 0 ? settingRows[0].timezone : defaultTimezone;
 }
 
 async function ensureDailyNote({
@@ -61,7 +58,7 @@ async function ensureDailyNote({
   dateKey: string;
   userId: string;
 }) {
-  const [existingNote] = await db
+  const existingNotes = await db
     .select({
       body: notes.body,
       id: notes.id,
@@ -71,6 +68,7 @@ async function ensureDailyNote({
     .from(notes)
     .where(and(eq(notes.userId, userId), eq(notes.noteDate, dateKey)))
     .limit(1);
+  const existingNote = existingNotes.length > 0 ? existingNotes[0] : null;
 
   if (existingNote) {
     return existingNote;
@@ -122,6 +120,10 @@ async function getRecentDailyNotes(userId: string) {
 
   return rows.map((note) => ({
     ...note,
-    displayDate: note.noteDate ? formatDisplayDate(note.noteDate) : null,
+    displayDate: formatNullableDisplayDate(note.noteDate),
   }));
+}
+
+function formatNullableDisplayDate(dateKey: string | null) {
+  return dateKey ? formatDisplayDate(dateKey) : null;
 }

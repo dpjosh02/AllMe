@@ -31,7 +31,7 @@ export async function getSettingsPageData(userId: string) {
       .onConflictDoNothing();
   }
 
-  const [settings] = owner
+  const settingRows = owner
     ? await db
         .select({
           preferredCurrency: userSettings.preferredCurrency,
@@ -42,6 +42,7 @@ export async function getSettingsPageData(userId: string) {
         .where(eq(userSettings.userId, owner.id))
         .limit(1)
     : [];
+  const settings = settingRows.length > 0 ? settingRows[0] : null;
 
   return {
     auth: getAuthStatus(),
@@ -54,12 +55,12 @@ export async function getSettingsPageData(userId: string) {
       exists: Boolean(owner),
       name: owner?.name ?? null,
     },
-    settings: settings ?? null,
+    settings,
   };
 }
 
 export async function getOwnerByEmail(email: string) {
-  const [owner] = await db
+  const owners = await db
     .select({
       email: users.email,
       id: users.id,
@@ -69,11 +70,11 @@ export async function getOwnerByEmail(email: string) {
     .where(eq(users.email, email))
     .limit(1);
 
-  return owner ?? null;
+  return owners.length > 0 ? owners[0] : null;
 }
 
 export async function getUserById(userId: string) {
-  const [user] = await db
+  const userRows = await db
     .select({
       email: users.email,
       id: users.id,
@@ -83,7 +84,7 @@ export async function getUserById(userId: string) {
     .where(eq(users.id, userId))
     .limit(1);
 
-  return user ?? null;
+  return userRows.length > 0 ? userRows[0] : null;
 }
 
 function getAuthBoundaryStatus(ownerEmailConfigured: boolean) {
