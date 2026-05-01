@@ -100,7 +100,13 @@ async function getQuickCaptures(userId: string) {
       title: notes.title,
     })
     .from(notes)
-    .where(and(eq(notes.userId, userId), isNull(notes.noteDate)))
+    .where(
+      and(
+        eq(notes.userId, userId),
+        isNull(notes.noteDate),
+        isNull(notes.completedAt),
+      ),
+    )
     .orderBy(desc(notes.createdAt))
     .limit(5);
 }

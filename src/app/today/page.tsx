@@ -19,6 +19,7 @@ import {
 } from "@/components/layout/page-scaffold";
 import { DailyNoteForm } from "@/features/today/components/daily-note-form";
 import { QuickCaptureForm } from "@/features/today/components/quick-capture-form";
+import { QuickCaptureList } from "@/features/today/components/quick-capture-list";
 import { addDaysToDateKey } from "@/features/today/date";
 import { getTodayPageData } from "@/features/today/queries";
 import { requirePageUser } from "@/server/auth/guards";
@@ -176,25 +177,7 @@ export default async function TodayPage({
                 title="Inbox layer"
               >
                 <QuickCaptureForm />
-                {data.quickCaptures.length > 0 ? (
-                  <div className="mt-4 grid gap-2 border-t border-[var(--line)] pt-4">
-                    {data.quickCaptures.map((capture) => (
-                      <article
-                        className="rounded-xl bg-[var(--empty)] px-3 py-2 text-sm"
-                        key={capture.id}
-                      >
-                        <p className="font-semibold">{capture.title}</p>
-                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--muted)]">
-                          {capture.body}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-sm text-[var(--muted)]">
-                    No captures yet.
-                  </p>
-                )}
+                <QuickCaptureList captures={data.quickCaptures} />
               </PageSection>
             </AllMeCard>
 

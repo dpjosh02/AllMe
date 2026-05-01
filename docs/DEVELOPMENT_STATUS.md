@@ -270,7 +270,8 @@ Implemented behavior:
 - The daily note form shows temporary `Saved!` feedback after a successful save.
 - Saving revalidates `/today` and `/` so future home dashboard summaries can reflect note state.
 - The Capture card now supports quick capture into the existing `notes` table by creating undated notes.
-- `/today` shows the five most recent quick captures in the support column.
+- `/today` shows the five most recent active quick captures in the support column.
+- Quick captures can now be completed from the Today inbox. Completion preserves the note row and stamps `notes.completed_at` so the capture can support future inbox/archive/progress workflows.
 - `/today` supports daily note archive navigation with previous/next day links, a back-to-today link when viewing an archive date, and a recent daily notes list.
 - Opening an archive date creates that date's note on demand if it does not exist yet.
 - Supporting cards for Agenda and Daily Closeout remain intentionally marked as planned surfaces.

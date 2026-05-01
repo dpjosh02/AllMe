@@ -60,6 +60,7 @@ export const notes = pgTable(
     title: text("title").notNull(),
     body: text("body").notNull().default(""),
     noteDate: date("note_date"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

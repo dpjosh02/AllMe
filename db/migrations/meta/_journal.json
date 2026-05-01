@@ -43,6 +43,13 @@
       "when": 1777220452380,
       "tag": "0005_sparkling_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777670841960,
+      "tag": "0006_chemical_the_hunter",
+      "breakpoints": true
     }
   ]
 }
