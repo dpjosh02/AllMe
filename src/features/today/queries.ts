@@ -122,7 +122,7 @@ async function getRecentDailyNotes(userId: string) {
     .from(notes)
     .where(and(eq(notes.userId, userId), isNotNull(notes.noteDate)))
     .orderBy(desc(notes.noteDate))
-    .limit(7);
+    .limit(31);
 
   return rows.map((note) => ({
     ...note,

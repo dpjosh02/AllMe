@@ -33,7 +33,7 @@ export function DailyNoteForm({
       <input name="noteId" type="hidden" value={noteId} />
       <textarea
         aria-label="Daily note body"
-        className="min-h-[24rem] w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-4 text-base leading-7 outline-none transition focus:border-[var(--accent)]"
+        className="min-h-[16rem] w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-4 text-base leading-7 outline-none transition focus:border-[var(--accent)]"
         name="body"
         placeholder="What matters today?"
         defaultValue={body}

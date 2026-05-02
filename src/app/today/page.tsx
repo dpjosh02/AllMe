@@ -62,9 +62,10 @@ export default async function TodayPage({
       />
 
       <PageGrid>
-        <PageGridItem span="primary">
-          <AllMeCard variant="form">
+        <PageGridItem span="primary" className="xl:min-h-[36rem]">
+          <AllMeCard className="flex flex-col" variant="form">
             <PageSection
+              className="flex min-h-0 flex-1 flex-col"
               description="This note is stored in Postgres and keyed to today's date in your configured timezone."
               eyebrow="Daily Note"
               icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
@@ -75,6 +76,7 @@ export default async function TodayPage({
                   <Link
                     className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-sm font-semibold"
                     href={`/today?date=${previousDateKey}`}
+                    scroll={false}
                   >
                     <ChevronLeft aria-hidden="true" className="h-4 w-4" />
                     Previous day
@@ -86,6 +88,7 @@ export default async function TodayPage({
                         ? "/today"
                         : `/today?date=${nextDateKey}`
                     }
+                    scroll={false}
                   >
                     Next day
                     <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -102,6 +105,7 @@ export default async function TodayPage({
                   <Link
                     className="allme-control inline-flex min-h-9 items-center px-3 text-sm font-semibold"
                     href="/today"
+                    scroll={false}
                   >
                     Back to today
                   </Link>
@@ -116,16 +120,17 @@ export default async function TodayPage({
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="support">
-          <div className="grid h-full gap-5">
-            <AllMeCard variant="status">
-              <PageSection
-                description="Jump back into recent daily notes. Opening a missing day creates its note on demand."
-                eyebrow="Archive"
-                icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
-                title="Recent notes"
-              >
-                {data.recentDailyNotes.length > 0 ? (
+        <PageGridItem span="support" className="xl:min-h-[36rem]">
+          <AllMeCard className="flex flex-col" variant="status">
+            <PageSection
+              className="flex min-h-0 flex-1 flex-col"
+              description="Jump back into roughly one month of daily notes. Opening a missing day creates its note on demand."
+              eyebrow="Archive"
+              icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
+              title="Recent notes"
+            >
+              {data.recentDailyNotes.length > 0 ? (
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                   <div className="grid gap-2">
                     {data.recentDailyNotes.map((note) => (
                       <Link
@@ -140,6 +145,7 @@ export default async function TodayPage({
                             : `/today?date=${note.noteDate}`
                         }
                         key={note.id}
+                        scroll={false}
                       >
                         <p className="font-semibold">
                           {note.displayDate ?? note.title}
@@ -150,14 +156,32 @@ export default async function TodayPage({
                       </Link>
                     ))}
                   </div>
-                ) : (
-                  <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-sm text-[var(--muted)]">
-                    No archived daily notes yet.
-                  </p>
-                )}
-              </PageSection>
-            </AllMeCard>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-sm text-[var(--muted)]">
+                  No archived daily notes yet.
+                </p>
+              )}
+            </PageSection>
+          </AllMeCard>
+        </PageGridItem>
 
+        <PageGridItem span="primary">
+          <AllMeCard variant="status">
+            <PageSection
+              description="Low-friction inbox for tasks, thoughts, errands, and follow-ups before they are organized."
+              eyebrow="Capture"
+              icon={<Inbox aria-hidden="true" className="h-6 w-6" />}
+              title="Inbox layer"
+            >
+              <QuickCaptureForm />
+              <QuickCaptureList captures={data.quickCaptures} />
+            </PageSection>
+          </AllMeCard>
+        </PageGridItem>
+
+        <PageGridItem span="support">
+          <div className="grid h-full gap-5">
             <AllMeCard variant="status">
               <PageSection
                 description="Calendar connection comes later. This card reserves the agenda surface that will feed the daily command view."
@@ -166,18 +190,6 @@ export default async function TodayPage({
                 title="Schedule context"
               >
                 <StatusPill label="Planned" tone="neutral" />
-              </PageSection>
-            </AllMeCard>
-
-            <AllMeCard variant="status">
-              <PageSection
-                description="Low-friction inbox for tasks, thoughts, errands, and follow-ups before they are organized."
-                eyebrow="Capture"
-                icon={<Inbox aria-hidden="true" className="h-6 w-6" />}
-                title="Inbox layer"
-              >
-                <QuickCaptureForm />
-                <QuickCaptureList captures={data.quickCaptures} />
               </PageSection>
             </AllMeCard>
 

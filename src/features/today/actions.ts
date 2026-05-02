@@ -29,7 +29,6 @@ export async function updateDailyNote(formData: FormData) {
     .where(and(eq(notes.id, noteId), eq(notes.userId, currentUser.id)));
 
   revalidatePath("/");
-  revalidatePath("/today");
 }
 
 export async function updateDailyNoteWithState(
