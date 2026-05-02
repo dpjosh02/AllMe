@@ -13,10 +13,16 @@ type CaptureListItem = {
 type CaptureListProps = {
   action: "complete" | "restore";
   captures: CaptureListItem[];
+  density?: "comfortable" | "compact";
   emptyLabel: string;
 };
 
-export function CaptureList({ action, captures, emptyLabel }: CaptureListProps) {
+export function CaptureList({
+  action,
+  captures,
+  density = "comfortable",
+  emptyLabel,
+}: CaptureListProps) {
   if (captures.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-4 py-3 text-sm text-[var(--muted)]">
@@ -28,7 +34,12 @@ export function CaptureList({ action, captures, emptyLabel }: CaptureListProps) 
   return (
     <div className="grid gap-3">
       {captures.map((capture) => (
-        <CaptureRow action={action} capture={capture} key={capture.id} />
+        <CaptureRow
+          action={action}
+          capture={capture}
+          density={density}
+          key={capture.id}
+        />
       ))}
     </div>
   );
@@ -37,17 +48,28 @@ export function CaptureList({ action, captures, emptyLabel }: CaptureListProps) 
 function CaptureRow({
   action,
   capture,
+  density,
 }: {
   action: CaptureListProps["action"];
   capture: CaptureListItem;
+  density: NonNullable<CaptureListProps["density"]>;
 }) {
   const captureHref = `/notes/captures/${capture.id}` as Route;
+  const isCompact = density === "compact";
 
   return (
-    <article className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+    <article
+      className={`grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] md:grid-cols-[minmax(0,1fr)_auto] md:items-start ${
+        isCompact ? "p-3" : "p-4"
+      }`}
+    >
       <div>
         <p className="font-semibold">{capture.title}</p>
-        <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">
+        <p
+          className={`mt-2 text-sm leading-6 text-[var(--muted)] ${
+            isCompact ? "line-clamp-1" : "line-clamp-3"
+          }`}
+        >
           {capture.body}
         </p>
       </div>
