@@ -57,16 +57,16 @@ export default async function NotesPage() {
             variant="activity"
           >
             <PageSection
-              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+              className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)]"
               description="Inbox items are quick captures that have not been completed yet."
               eyebrow="Inbox"
               icon={<Inbox aria-hidden="true" className="h-6 w-6" />}
               title="Active captures"
             >
+              <div className="border-b border-[var(--line)] pb-4">
+                <CaptureCreateForm />
+              </div>
               <div className="min-h-0 overflow-y-auto pr-1">
-                <div className="mb-4">
-                  <CaptureCreateForm />
-                </div>
                 <CaptureList
                   action="complete"
                   captures={data.activeCaptures}
@@ -117,19 +117,25 @@ export default async function NotesPage() {
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="full">
-          <AllMeCard variant="activity">
+        <PageGridItem className="xl:h-[30rem]" span="full">
+          <AllMeCard
+            className="flex min-h-0 flex-col overflow-hidden"
+            variant="activity"
+          >
             <PageSection
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description="Completed captures are retained so they can become review material for future Notes and Progress flows."
               eyebrow="Completed"
               icon={<Archive aria-hidden="true" className="h-6 w-6" />}
               title="Recent completed captures"
             >
-              <CaptureList
-                action="restore"
-                captures={data.completedCaptures}
-                emptyLabel="No completed captures yet."
-              />
+              <div className="min-h-0 overflow-y-auto pr-1">
+                <CaptureList
+                  action="restore"
+                  captures={data.completedCaptures}
+                  emptyLabel="No completed captures yet."
+                />
+              </div>
             </PageSection>
           </AllMeCard>
         </PageGridItem>

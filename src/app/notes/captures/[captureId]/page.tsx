@@ -5,8 +5,6 @@ import { notFound } from "next/navigation";
 import {
   AllMeCard,
   AppPageShell,
-  KeyValueRow,
-  MetricGrid,
   PageGrid,
   PageGridItem,
   PageHero,
@@ -49,16 +47,16 @@ export default async function CaptureDetailPage({
                 label={isCompleted ? "Completed" : "Active"}
                 tone={isCompleted ? "ready" : "neutral"}
               />
-              <MetricGrid className="mt-4">
-                <KeyValueRow
+              <dl className="mt-4 grid gap-3">
+                <MetadataRow
                   label="Created"
                   value={dateTimeFormatter.format(capture.createdAt)}
                 />
-                <KeyValueRow
+                <MetadataRow
                   label="Updated"
                   value={dateTimeFormatter.format(capture.updatedAt)}
                 />
-              </MetricGrid>
+              </dl>
             </PageSection>
           </AllMeCard>
         }
@@ -135,3 +133,14 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
 });
+
+function MetadataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-[var(--empty)] px-3 py-3">
+      <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words text-sm font-semibold leading-6">{value}</dd>
+    </div>
+  );
+}
