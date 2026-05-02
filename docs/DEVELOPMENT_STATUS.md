@@ -280,13 +280,25 @@ This is a vertical slice because it crosses the real app layers: auth guard, set
 
 Next Today layers should stay similarly narrow:
 
-- capture organization and completion flow
 - note autosave or stronger save-state feedback
 - small finance snapshot
 - calendar-backed agenda
-- `name` / normalized transaction description
-- `website`
-- investment fields such as `type`, `symbol`, and settlement-related fields
+
+## Notes Vertical Slice
+
+The first real `/notes` product slice has shipped.
+
+Implemented behavior:
+
+- `/notes` is no longer a placeholder route.
+- The page resolves the authorized user through the existing page guard.
+- Active quick captures are listed as an inbox and can be completed from Notes.
+- Completed quick captures are retained and can be restored back into the active inbox.
+- Recent daily notes are listed and link back to the date-specific `/today` archive view.
+- Summary counts show active captures, completed captures, and recent daily notes in the page hero.
+- The page uses the shared desktop scaffold so it remains visually aligned with Today, Finance, and Settings.
+
+This keeps Today lightweight while giving captures a dedicated review surface. The next Notes layer should add editing/detail views for individual captures or lightweight note pages before adding tags/backlinks.
 
 Verified after this work:
 

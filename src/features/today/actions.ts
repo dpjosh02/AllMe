@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { requireCurrentUser } from "@/server/auth/guards";
@@ -56,33 +56,6 @@ export async function createQuickCapture(formData: FormData) {
     title: createCaptureTitle(body),
     userId: currentUser.id,
   });
-
-  revalidatePath("/today");
-}
-
-export async function completeQuickCapture(formData: FormData) {
-  const currentUser = await requireCurrentUser();
-  const captureId = String(formData.get("captureId") ?? "");
-
-  if (!captureId) {
-    throw new Error("Missing capture id");
-  }
-
-  const completedAt = new Date();
-
-  await db
-    .update(notes)
-    .set({
-      completedAt,
-      updatedAt: completedAt,
-    })
-    .where(
-      and(
-        eq(notes.id, captureId),
-        eq(notes.userId, currentUser.id),
-        isNull(notes.noteDate),
-      ),
-    );
 
   revalidatePath("/today");
 }

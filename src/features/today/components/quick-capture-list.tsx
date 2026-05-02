@@ -1,6 +1,6 @@
 import { CheckCircle2 } from "lucide-react";
 
-import { completeQuickCapture } from "@/features/today/actions";
+import { completeCapture } from "@/features/notes/actions";
 
 type QuickCapture = {
   body: string;
@@ -34,7 +34,7 @@ export function QuickCaptureList({ captures }: QuickCaptureListProps) {
               {capture.body}
             </p>
           </div>
-          <form action={completeQuickCapture}>
+          <form action={completeCapture}>
             <input name="captureId" type="hidden" value={capture.id} />
             <button
               className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-xs font-semibold"
