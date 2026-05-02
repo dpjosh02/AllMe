@@ -11,6 +11,7 @@ import {
   PageHero,
   PageSection,
 } from "@/components/layout/page-scaffold";
+import { CaptureCreateForm } from "@/features/notes/components/capture-create-form";
 import { CaptureList } from "@/features/notes/components/capture-list";
 import { getNotesPageData } from "@/features/notes/queries";
 import { requirePageUser } from "@/server/auth/guards";
@@ -63,6 +64,9 @@ export default async function NotesPage() {
               title="Active captures"
             >
               <div className="min-h-0 overflow-y-auto pr-1">
+                <div className="mb-4">
+                  <CaptureCreateForm />
+                </div>
                 <CaptureList
                   action="complete"
                   captures={data.activeCaptures}

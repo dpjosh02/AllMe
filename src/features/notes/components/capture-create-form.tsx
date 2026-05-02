@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { createCapture } from "@/features/notes/actions";
 
-export function QuickCaptureForm() {
+export function CaptureCreateForm() {
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
@@ -14,21 +14,24 @@ export function QuickCaptureForm() {
         await createCapture(formData);
         formRef.current?.reset();
       }}
-      className="grid gap-3"
+      className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4"
       ref={formRef}
     >
-      <textarea
-        aria-label="Quick capture"
-        className="min-h-28 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
-        name="body"
-        placeholder="Capture a task, thought, errand, or follow-up..."
-      />
-      <CaptureButton />
+      <label className="grid gap-2">
+        <span className="allme-kicker">New capture</span>
+        <textarea
+          aria-label="New capture"
+          className="min-h-24 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+          name="body"
+          placeholder="Capture something for later review..."
+        />
+      </label>
+      <CreateButton />
     </form>
   );
 }
 
-function CaptureButton() {
+function CreateButton() {
   const { pending } = useFormStatus();
 
   return (

@@ -295,6 +295,7 @@ Implemented behavior:
 
 - `/notes` is no longer a placeholder route.
 - The page resolves the authorized user through the existing page guard.
+- New quick captures can be created directly from `/notes`.
 - Active quick captures are listed as an inbox and can be completed from Notes.
 - Completed quick captures are retained and can be restored back into the active inbox.
 - Quick captures now have L2 detail pages at `/notes/captures/[captureId]`.

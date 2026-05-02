@@ -11,6 +11,23 @@ export type CaptureSaveState = {
   savedAt: string | null;
 };
 
+export async function createCapture(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!body) {
+    return;
+  }
+
+  await db.insert(notes).values({
+    body,
+    title: createCaptureTitle(body),
+    userId: currentUser.id,
+  });
+
+  revalidateCaptureViews();
+}
+
 export async function updateCapture(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const captureId = getCaptureId(formData);
@@ -103,6 +120,16 @@ function getCaptureId(formData: FormData) {
   }
 
   return captureId;
+}
+
+function createCaptureTitle(body: string) {
+  const firstLine = body.split(/\r?\n/)[0]?.trim() ?? "";
+
+  if (!firstLine) {
+    return "Quick capture";
+  }
+
+  return firstLine.length > 72 ? `${firstLine.slice(0, 69)}...` : firstLine;
 }
 
 function revalidateCaptureViews(captureId?: string) {
