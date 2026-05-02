@@ -25,6 +25,35 @@ export async function getNotesPageData(userId: string) {
   };
 }
 
+export async function getCaptureDetail({
+  captureId,
+  userId,
+}: {
+  captureId: string;
+  userId: string;
+}) {
+  const rows = await db
+    .select({
+      body: notes.body,
+      completedAt: notes.completedAt,
+      createdAt: notes.createdAt,
+      id: notes.id,
+      title: notes.title,
+      updatedAt: notes.updatedAt,
+    })
+    .from(notes)
+    .where(
+      and(
+        eq(notes.id, captureId),
+        eq(notes.userId, userId),
+        isNull(notes.noteDate),
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0 ? rows[0] : null;
+}
+
 async function getActiveCaptures(userId: string) {
   return db
     .select({

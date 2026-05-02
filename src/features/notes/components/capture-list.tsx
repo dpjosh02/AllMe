@@ -1,4 +1,6 @@
 import { CheckCircle2, RotateCcw } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 
 import { completeCapture, restoreCapture } from "@/features/notes/actions";
 
@@ -26,20 +28,39 @@ export function CaptureList({ action, captures, emptyLabel }: CaptureListProps) 
   return (
     <div className="grid gap-3">
       {captures.map((capture) => (
-        <article
-          className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start"
-          key={capture.id}
-        >
-          <div>
-            <p className="font-semibold">{capture.title}</p>
-            <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">
-              {capture.body}
-            </p>
-          </div>
-          <CaptureAction action={action} captureId={capture.id} />
-        </article>
+        <CaptureRow action={action} capture={capture} key={capture.id} />
       ))}
     </div>
+  );
+}
+
+function CaptureRow({
+  action,
+  capture,
+}: {
+  action: CaptureListProps["action"];
+  capture: CaptureListItem;
+}) {
+  const captureHref = `/notes/captures/${capture.id}` as Route;
+
+  return (
+    <article className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+      <div>
+        <p className="font-semibold">{capture.title}</p>
+        <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">
+          {capture.body}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+        <Link
+          className="allme-control inline-flex min-h-9 items-center px-3 text-xs font-semibold"
+          href={captureHref}
+        >
+          Open
+        </Link>
+        <CaptureAction action={action} captureId={capture.id} />
+      </div>
+    </article>
   );
 }
 

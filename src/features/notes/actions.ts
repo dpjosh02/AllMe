@@ -7,6 +7,49 @@ import { requireCurrentUser } from "@/server/auth/guards";
 import { db } from "@/server/db";
 import { notes } from "@/server/db/schema";
 
+export type CaptureSaveState = {
+  savedAt: string | null;
+};
+
+export async function updateCapture(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const captureId = getCaptureId(formData);
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!title) {
+    throw new Error("Capture title is required");
+  }
+
+  await db
+    .update(notes)
+    .set({
+      body,
+      title,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(notes.id, captureId),
+        eq(notes.userId, currentUser.id),
+        isNull(notes.noteDate),
+      ),
+    );
+
+  revalidateCaptureViews(captureId);
+}
+
+export async function updateCaptureWithState(
+  _previousState: CaptureSaveState,
+  formData: FormData,
+): Promise<CaptureSaveState> {
+  await updateCapture(formData);
+
+  return {
+    savedAt: new Date().toISOString(),
+  };
+}
+
 export async function completeCapture(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const captureId = getCaptureId(formData);
@@ -27,7 +70,7 @@ export async function completeCapture(formData: FormData) {
       ),
     );
 
-  revalidateCaptureViews();
+  revalidateCaptureViews(captureId);
 }
 
 export async function restoreCapture(formData: FormData) {
@@ -49,7 +92,7 @@ export async function restoreCapture(formData: FormData) {
       ),
     );
 
-  revalidateCaptureViews();
+  revalidateCaptureViews(captureId);
 }
 
 function getCaptureId(formData: FormData) {
@@ -62,8 +105,12 @@ function getCaptureId(formData: FormData) {
   return captureId;
 }
 
-function revalidateCaptureViews() {
+function revalidateCaptureViews(captureId?: string) {
   revalidatePath("/");
   revalidatePath("/notes");
   revalidatePath("/today");
+
+  if (captureId) {
+    revalidatePath(`/notes/captures/${captureId}`);
+  }
 }

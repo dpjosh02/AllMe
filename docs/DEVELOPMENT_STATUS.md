@@ -297,6 +297,8 @@ Implemented behavior:
 - The page resolves the authorized user through the existing page guard.
 - Active quick captures are listed as an inbox and can be completed from Notes.
 - Completed quick captures are retained and can be restored back into the active inbox.
+- Quick captures now have L2 detail pages at `/notes/captures/[captureId]`.
+- Capture detail pages allow title/body editing with local `Saved!` feedback and completion/restoration controls.
 - Recent daily notes are listed and link back to the date-specific `/today` archive view.
 - Summary counts show active captures, completed captures, and recent daily notes in the page hero.
 - The page uses the shared desktop scaffold so it remains visually aligned with Today, Finance, and Settings.
