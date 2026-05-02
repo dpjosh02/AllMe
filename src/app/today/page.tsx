@@ -62,10 +62,10 @@ export default async function TodayPage({
       />
 
       <PageGrid>
-        <PageGridItem span="primary" className="xl:min-h-[36rem]">
-          <AllMeCard className="flex flex-col" variant="form">
+        <PageGridItem span="primary" className="xl:h-[36rem]">
+          <AllMeCard className="flex min-h-0 flex-col overflow-hidden" variant="form">
             <PageSection
-              className="flex min-h-0 flex-1 flex-col"
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description="This note is stored in Postgres and keyed to today's date in your configured timezone."
               eyebrow="Daily Note"
               icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
@@ -120,10 +120,10 @@ export default async function TodayPage({
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="support" className="xl:min-h-[36rem]">
-          <AllMeCard className="flex flex-col" variant="status">
+        <PageGridItem span="support" className="xl:h-[36rem]">
+          <AllMeCard className="flex min-h-0 flex-col overflow-hidden" variant="status">
             <PageSection
-              className="flex min-h-0 flex-1 flex-col"
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description="Jump back into roughly one month of daily notes. Opening a missing day creates its note on demand."
               eyebrow="Archive"
               icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
