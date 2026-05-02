@@ -50,47 +50,59 @@ export default async function NotesPage() {
       />
 
       <PageGrid>
-        <PageGridItem span="primary">
-          <AllMeCard variant="activity">
+        <PageGridItem className="xl:h-[34rem]" span="primary">
+          <AllMeCard
+            className="flex min-h-0 flex-col overflow-hidden"
+            variant="activity"
+          >
             <PageSection
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description="Inbox items are quick captures that have not been completed yet."
               eyebrow="Inbox"
               icon={<Inbox aria-hidden="true" className="h-6 w-6" />}
               title="Active captures"
             >
-              <CaptureList
-                action="complete"
-                captures={data.activeCaptures}
-                emptyLabel="No active captures."
-              />
+              <div className="min-h-0 overflow-y-auto pr-1">
+                <CaptureList
+                  action="complete"
+                  captures={data.activeCaptures}
+                  emptyLabel="No active captures."
+                />
+              </div>
             </PageSection>
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="support">
-          <AllMeCard variant="activity">
+        <PageGridItem className="xl:h-[34rem]" span="support">
+          <AllMeCard
+            className="flex min-h-0 flex-col overflow-hidden"
+            variant="activity"
+          >
             <PageSection
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description="Daily notes still open on Today so date navigation remains centralized."
               eyebrow="Archive"
               icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
               title="Daily notes"
             >
               {data.dailyNotes.length > 0 ? (
-                <div className="grid gap-3">
-                  {data.dailyNotes.map((note) => (
-                    <Link
-                      className="rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4 transition hover:border-[var(--accent)]"
-                      href={
-                        note.noteDate ? `/today?date=${note.noteDate}` : "/today"
-                      }
-                      key={note.id}
-                    >
-                      <p className="font-semibold">{note.displayDate}</p>
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
-                        {note.body || "No note body yet."}
-                      </p>
-                    </Link>
-                  ))}
+                <div className="min-h-0 overflow-y-auto pr-1">
+                  <div className="grid gap-3">
+                    {data.dailyNotes.map((note) => (
+                      <Link
+                        className="rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4 transition hover:border-[var(--accent)]"
+                        href={
+                          note.noteDate ? `/today?date=${note.noteDate}` : "/today"
+                        }
+                        key={note.id}
+                      >
+                        <p className="font-semibold">{note.displayDate}</p>
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
+                          {note.body || "No note body yet."}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-4 py-3 text-sm text-[var(--muted)]">
