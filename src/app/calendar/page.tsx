@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Clock3,
+  Eye,
   PlugZap,
   ShieldCheck,
 } from "lucide-react";
@@ -16,7 +17,11 @@ import {
   PageSection,
   StatusPill,
 } from "@/components/layout/page-scaffold";
-import { syncGoogleCalendarNow } from "@/features/calendar/actions";
+import {
+  syncGoogleCalendarNow,
+  updateCalendarSelection,
+} from "@/features/calendar/actions";
+import { CalendarSelectionButton } from "@/features/calendar/components/calendar-selection-button";
 import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
 import {
   getCalendarPageData,
@@ -29,7 +34,7 @@ export const dynamic = "force-dynamic";
 
 const nextSteps = [
   "Keep manual sync using stored Google incremental tokens",
-  "Expose selected-calendar controls after sync metadata is stable",
+  "Use selected calendars consistently across Today and future planning views",
   "Add a weekly planning surface backed by cached events",
   "Defer editing and bidirectional writes until read-only sync is durable",
 ];
@@ -83,7 +88,7 @@ export default async function CalendarPage() {
             >
               <div className="grid gap-3 md:grid-cols-3">
                 <MetricTile
-                  detail="Cached provider calendars"
+                  detail={`${data.selectedCalendars} shown in Today`}
                   label="Calendars"
                   value={String(data.calendars)}
                 />
@@ -137,6 +142,38 @@ export default async function CalendarPage() {
                   Calendar access before running the first sync.
                 </p>
               ) : null}
+            </PageSection>
+          </AllMeCard>
+        </PageGridItem>
+
+        <PageGridItem span="full">
+          <AllMeCard
+            className="flex max-h-[24rem] min-h-0 flex-col overflow-hidden"
+            variant="activity"
+          >
+            <PageSection
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+              description="Choose which synced calendars are visible in AllMe. This only changes local display preferences; Google Calendar is not modified."
+              eyebrow="Sources"
+              icon={<Eye aria-hidden="true" className="h-6 w-6" />}
+              title="Calendars in AllMe"
+            >
+              {data.calendarSources.length > 0 ? (
+                <div className="min-h-0 overflow-y-auto pr-1">
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {data.calendarSources.map((calendar) => (
+                      <CalendarSourceRow calendar={calendar} key={calendar.id} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
+                  <p className="text-lg font-semibold">No calendars synced yet</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    Run Calendar sync after connecting Google Calendar.
+                  </p>
+                </div>
+              )}
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -312,6 +349,57 @@ function UpcomingEventRow({
           {timeLabel}
         </span>
       </div>
+    </div>
+  );
+}
+
+function CalendarSourceRow({
+  calendar,
+}: {
+  calendar: CalendarPageData["calendarSources"][number];
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--line)]"
+              style={{ backgroundColor: calendar.color ?? "var(--accent)" }}
+            />
+            <p className="truncate text-sm font-semibold">{calendar.name}</p>
+          </div>
+          <p className="mt-1 truncate text-xs text-[var(--muted)]">
+            {calendar.isPrimary ? "Primary calendar" : "Synced calendar"}
+            {calendar.timezone ? ` · ${calendar.timezone}` : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={[
+              "rounded-full border px-2 py-0.5 text-xs font-semibold",
+              calendar.isSelected
+                ? "border-[var(--positive)] text-[var(--positive)]"
+                : "border-[var(--line)] text-[var(--muted)]",
+            ].join(" ")}
+          >
+            {calendar.isSelected ? "Shown" : "Hidden"}
+          </span>
+          <form action={updateCalendarSelection}>
+            <input name="calendarId" type="hidden" value={calendar.id} />
+            <input
+              name="isSelected"
+              type="hidden"
+              value={calendar.isSelected ? "false" : "true"}
+            />
+            <CalendarSelectionButton isSelected={calendar.isSelected} />
+          </form>
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-[var(--muted)]">
+        {calendar.eventCount} cached events
+      </p>
     </div>
   );
 }

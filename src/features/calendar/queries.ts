@@ -15,11 +15,12 @@ export type CalendarPageData = Awaited<ReturnType<typeof getCalendarPageData>>;
 type CalendarStatusTone = "attention" | "neutral" | "ready";
 
 export async function getCalendarPageData(userId: string) {
-  const [connection, latestSyncRun, calendarCounts, upcomingEvents] =
+  const [connection, latestSyncRun, calendarCounts, calendarSources, upcomingEvents] =
     await Promise.all([
       getGoogleCalendarConnectionStatus({ db, userId }),
       getLatestCalendarSyncRun(userId),
       getCalendarCounts(userId),
+      getCalendarSources(userId),
       getUpcomingCalendarEvents(userId),
     ]);
   const hasReadonlyScope = Boolean(
@@ -34,6 +35,7 @@ export async function getCalendarPageData(userId: string) {
 
   return {
     calendars: calendarCounts.calendars,
+    calendarSources,
     connection: {
       accountEmail: connection?.accountEmail ?? "Not connected",
       badgeLabel: connectionReady
@@ -48,9 +50,42 @@ export async function getCalendarPageData(userId: string) {
       tone,
     },
     events: calendarCounts.events,
+    selectedCalendars: calendarCounts.selectedCalendars,
     latestSyncRun,
     upcomingEvents,
   };
+}
+
+async function getCalendarSources(userId: string) {
+  const rows = await db
+    .select({
+      color: calendarCalendars.color,
+      eventCount: sql<number>`count(${calendarEvents.id})::int`,
+      id: calendarCalendars.id,
+      isPrimary: calendarCalendars.isPrimary,
+      isSelected: calendarCalendars.isSelected,
+      name: calendarCalendars.name,
+      timezone: calendarCalendars.timezone,
+    })
+    .from(calendarCalendars)
+    .leftJoin(calendarEvents, eq(calendarEvents.calendarId, calendarCalendars.id))
+    .where(
+      and(
+        eq(calendarCalendars.userId, userId),
+        eq(calendarCalendars.isDeleted, false),
+      ),
+    )
+    .groupBy(
+      calendarCalendars.id,
+      calendarCalendars.color,
+      calendarCalendars.isPrimary,
+      calendarCalendars.isSelected,
+      calendarCalendars.name,
+      calendarCalendars.timezone,
+    )
+    .orderBy(desc(calendarCalendars.isPrimary), asc(calendarCalendars.name));
+
+  return rows;
 }
 
 async function getUpcomingCalendarEvents(userId: string) {
@@ -119,11 +154,21 @@ async function getLatestCalendarSyncRun(userId: string) {
 }
 
 async function getCalendarCounts(userId: string) {
-  const [[calendarCount], [eventCount]] = await Promise.all([
+  const [[calendarCount], [selectedCalendarCount], [eventCount]] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(calendarCalendars)
       .where(eq(calendarCalendars.userId, userId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(calendarCalendars)
+      .where(
+        and(
+          eq(calendarCalendars.userId, userId),
+          eq(calendarCalendars.isSelected, true),
+          eq(calendarCalendars.isDeleted, false),
+        ),
+      ),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(calendarEvents)
@@ -133,5 +178,6 @@ async function getCalendarCounts(userId: string) {
   return {
     calendars: calendarCount?.count ?? 0,
     events: eventCount?.count ?? 0,
+    selectedCalendars: selectedCalendarCount?.count ?? 0,
   };
 }
