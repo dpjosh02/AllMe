@@ -176,6 +176,7 @@ function agendaRow(
     id: "event-1",
     isAllDay: false,
     location: null,
+    localReviewStatus: null,
     startAt: new Date("2026-05-02T15:00:00.000Z"),
     startDate: null,
     status: "confirmed",

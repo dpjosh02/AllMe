@@ -64,6 +64,13 @@
       "when": 1777785985904,
       "tag": "0008_huge_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777832949824,
+      "tag": "0009_furry_hardball",
+      "breakpoints": true
     }
   ]
 }

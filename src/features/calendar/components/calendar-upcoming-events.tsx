@@ -12,8 +12,10 @@ type UpcomingCalendarEvent = CalendarPageData["upcomingEvents"][number];
 
 export function CalendarUpcomingEvents({
   events,
+  updateEventReviewStatus,
 }: {
   events: UpcomingCalendarEvent[];
+  updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventDetail | null>(
     null,
@@ -46,6 +48,7 @@ export function CalendarUpcomingEvents({
       <CalendarEventDetailDrawer
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
+        updateEventReviewStatus={updateEventReviewStatus}
       />
     </>
   );
@@ -111,6 +114,7 @@ function toEventDetail(event: UpcomingCalendarEvent): CalendarEventDetail {
     id: event.id,
     isAllDay: event.isAllDay,
     location: event.location,
+    localReviewStatus: event.localReviewStatus ?? "none",
     startDate: event.startDate,
     startsAt: event.startAt,
     status: event.status,

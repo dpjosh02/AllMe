@@ -1,6 +1,11 @@
 import { addDaysToDateKey } from "@/features/today/date";
 
 export type CalendarAgendaEventStatus = "cancelled" | "confirmed" | "tentative";
+export type CalendarEventLocalReviewStatus =
+  | "done"
+  | "ignored"
+  | "needs_prep"
+  | "none";
 
 export type TodayAgendaSourceRow = {
   calendarColor: string | null;
@@ -15,6 +20,7 @@ export type TodayAgendaSourceRow = {
   id: string;
   isAllDay: boolean;
   location: string | null;
+  localReviewStatus: CalendarEventLocalReviewStatus | null;
   startAt: Date | null;
   startDate: string | null;
   status: CalendarAgendaEventStatus;
@@ -32,6 +38,7 @@ export type TodayAgendaItem = {
   id: string;
   isAllDay: boolean;
   location: string | null;
+  localReviewStatus: CalendarEventLocalReviewStatus;
   source: "google_calendar";
   startDate: string | null;
   startsAt: Date | null;
@@ -152,6 +159,7 @@ function toTodayAgendaItem(row: TodayAgendaSourceRow): TodayAgendaItem {
     id: row.id,
     isAllDay: row.isAllDay,
     location: row.location,
+    localReviewStatus: row.localReviewStatus ?? "none",
     source: "google_calendar",
     startDate: row.startDate,
     startsAt: row.startAt,

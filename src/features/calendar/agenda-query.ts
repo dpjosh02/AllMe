@@ -7,7 +7,11 @@ import {
 } from "@/features/calendar/agenda-read-model";
 import { addDaysToDateKey } from "@/features/today/date";
 import { db } from "@/server/db";
-import { calendarCalendars, calendarEvents } from "@/server/db/schema";
+import {
+  calendarCalendars,
+  calendarEventAnnotations,
+  calendarEvents,
+} from "@/server/db/schema";
 
 export type GetTodayAgendaInput = {
   dateKey: string;
@@ -40,6 +44,7 @@ export async function getTodayAgenda({
       id: calendarEvents.id,
       isAllDay: calendarEvents.isAllDay,
       location: calendarEvents.location,
+      localReviewStatus: calendarEventAnnotations.reviewStatus,
       startAt: calendarEvents.startAt,
       startDate: calendarEvents.startDate,
       status: calendarEvents.status,
@@ -49,6 +54,13 @@ export async function getTodayAgenda({
     .innerJoin(
       calendarCalendars,
       eq(calendarEvents.calendarId, calendarCalendars.id),
+    )
+    .leftJoin(
+      calendarEventAnnotations,
+      and(
+        eq(calendarEventAnnotations.eventId, calendarEvents.id),
+        eq(calendarEventAnnotations.userId, userId),
+      ),
     )
     .where(
       and(

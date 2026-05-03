@@ -45,6 +45,13 @@ export const calendarSyncKind = pgEnum("calendar_sync_kind", [
   "recovery_full",
 ]);
 
+export const calendarEventReviewStatus = pgEnum("calendar_event_review_status", [
+  "none",
+  "needs_prep",
+  "done",
+  "ignored",
+]);
+
 export const financeCategoryAssignmentSource = pgEnum(
   "finance_category_assignment_source",
   ["manual", "rule", "system", "uncategorized"],
@@ -250,6 +257,42 @@ export const calendarEvents = pgTable(
     userIcalUidIdx: index("calendar_events_user_ical_uid_idx").on(
       table.userId,
       table.sourceIcalUid,
+    ),
+  }),
+);
+
+export const calendarEventAnnotations = pgTable(
+  "calendar_event_annotations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => calendarEvents.id, { onDelete: "cascade" }),
+    linkedNoteId: uuid("linked_note_id").references(() => notes.id, {
+      onDelete: "set null",
+    }),
+    reviewStatus: calendarEventReviewStatus("review_status")
+      .notNull()
+      .default("none"),
+    localNote: text("local_note"),
+    isPinned: boolean("is_pinned").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userEventUnique: uniqueIndex("calendar_event_annotations_user_event_unique").on(
+      table.userId,
+      table.eventId,
+    ),
+    userReviewStatusIdx: index(
+      "calendar_event_annotations_user_review_status_idx",
+    ).on(table.userId, table.reviewStatus),
+    userLinkedNoteIdx: index("calendar_event_annotations_user_linked_note_idx").on(
+      table.userId,
+      table.linkedNoteId,
     ),
   }),
 );

@@ -4,6 +4,13 @@ import { X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
+import { useFormStatus } from "react-dom";
+
+export type CalendarEventReviewStatus =
+  | "done"
+  | "ignored"
+  | "needs_prep"
+  | "none";
 
 export type CalendarEventDetail = {
   calendarColor: string | null;
@@ -15,6 +22,7 @@ export type CalendarEventDetail = {
   id: string;
   isAllDay: boolean;
   location: string | null;
+  localReviewStatus: CalendarEventReviewStatus;
   startDate: string | null;
   startsAt: Date | null;
   status: string;
@@ -24,9 +32,11 @@ export type CalendarEventDetail = {
 export function CalendarEventDetailDrawer({
   event,
   onClose,
+  updateEventReviewStatus,
 }: {
   event: CalendarEventDetail | null;
   onClose: () => void;
+  updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   useEffect(() => {
     if (!event) {
@@ -53,6 +63,11 @@ export function CalendarEventDetailDrawer({
   const todayHref = todayDateKey
     ? { pathname: "/today", query: { date: todayDateKey } }
     : null;
+
+  async function saveEventReviewStatus(formData: FormData) {
+    await updateEventReviewStatus(formData);
+    onClose();
+  }
 
   return (
     <div
@@ -117,6 +132,36 @@ export function CalendarEventDetailDrawer({
             </div>
           ) : null}
 
+          <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="allme-kicker">AllMe state</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Local planning context only. Google Calendar is not changed.
+                </p>
+              </div>
+              <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
+                {getReviewStatusLabel(event.localReviewStatus)}
+              </span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {eventReviewStatusOptions.map((option) => (
+                <form action={saveEventReviewStatus} key={option.value}>
+                  <input name="eventId" type="hidden" value={event.id} />
+                  <input
+                    name="reviewStatus"
+                    type="hidden"
+                    value={option.value}
+                  />
+                  <EventReviewStatusButton
+                    isActive={event.localReviewStatus === option.value}
+                    label={option.label}
+                  />
+                </form>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-5 flex flex-wrap gap-3">
             {todayHref ? (
               <Link
@@ -141,6 +186,32 @@ export function CalendarEventDetailDrawer({
         </div>
       </section>
     </div>
+  );
+}
+
+function EventReviewStatusButton({
+  isActive,
+  label,
+}: {
+  isActive: boolean;
+  label: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      aria-pressed={isActive}
+      className={[
+        "rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-60",
+        isActive
+          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+          : "border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]",
+      ].join(" ")}
+      disabled={pending}
+      type="submit"
+    >
+      {pending ? "Saving..." : label}
+    </button>
   );
 }
 
@@ -209,6 +280,13 @@ function formatStatus(status: string) {
   return status.slice(0, 1).toUpperCase() + status.slice(1);
 }
 
+function getReviewStatusLabel(status: CalendarEventReviewStatus) {
+  return (
+    eventReviewStatusOptions.find((option) => option.value === status)?.label ??
+    "None"
+  );
+}
+
 function isSameLocalDate(left: Date, right: Date) {
   return eventDateFormatter.format(left) === eventDateFormatter.format(right);
 }
@@ -226,3 +304,13 @@ const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
 });
+
+const eventReviewStatusOptions: {
+  label: string;
+  value: CalendarEventReviewStatus;
+}[] = [
+  { label: "None", value: "none" },
+  { label: "Needs prep", value: "needs_prep" },
+  { label: "Done", value: "done" },
+  { label: "Ignored", value: "ignored" },
+];

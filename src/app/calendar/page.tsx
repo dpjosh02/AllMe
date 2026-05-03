@@ -17,6 +17,7 @@ import {
 } from "@/components/layout/page-scaffold";
 import {
   syncGoogleCalendarNow,
+  updateCalendarEventReviewStatus,
   updateCalendarSelection,
 } from "@/features/calendar/actions";
 import { CalendarPlanningFilter } from "@/features/calendar/components/calendar-planning-filter";
@@ -108,7 +109,10 @@ export default async function CalendarPage() {
               <p className="-mt-2 mb-3 text-xs font-semibold text-[var(--muted)]">
                 {data.selectedCalendars}/{data.calendars} calendars shown
               </p>
-              <CalendarWeekPlanner weekAgenda={data.weekAgenda} />
+              <CalendarWeekPlanner
+                updateEventReviewStatus={updateCalendarEventReviewStatus}
+                weekAgenda={data.weekAgenda}
+              />
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -125,7 +129,10 @@ export default async function CalendarPage() {
               icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}
               title="Next events"
             >
-              <CalendarUpcomingEvents events={data.upcomingEvents} />
+              <CalendarUpcomingEvents
+                events={data.upcomingEvents}
+                updateEventReviewStatus={updateCalendarEventReviewStatus}
+              />
             </PageSection>
           </AllMeCard>
         </PageGridItem>

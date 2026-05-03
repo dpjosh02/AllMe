@@ -13,8 +13,10 @@ type WeekAgendaDayData = CalendarPageData["weekAgenda"][number];
 type WeekAgendaItemData = WeekAgendaDayData["items"][number];
 
 export function CalendarWeekPlanner({
+  updateEventReviewStatus,
   weekAgenda,
 }: {
+  updateEventReviewStatus: (formData: FormData) => Promise<void>;
   weekAgenda: CalendarPageData["weekAgenda"];
 }) {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventDetail | null>(
@@ -37,6 +39,7 @@ export function CalendarWeekPlanner({
       <CalendarEventDetailDrawer
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
+        updateEventReviewStatus={updateEventReviewStatus}
       />
     </>
   );
@@ -130,9 +133,11 @@ function WeekAgendaItem({
         />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <p className="min-w-0 truncate text-xs font-semibold">
-              {item.title}
-            </p>
+            <div className="min-w-0">
+              <p className="min-w-0 truncate text-xs font-semibold">
+                {item.title}
+              </p>
+            </div>
             <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
               {timeLabel}
             </span>
@@ -159,6 +164,7 @@ function toEventDetail(item: WeekAgendaItemData): CalendarEventDetail {
     id: item.id,
     isAllDay: item.isAllDay,
     location: item.location,
+    localReviewStatus: item.localReviewStatus,
     startDate: item.startDate,
     startsAt: item.startsAt,
     status: item.status,

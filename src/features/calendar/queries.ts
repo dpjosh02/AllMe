@@ -9,6 +9,7 @@ import { getLocalDateKey } from "@/features/today/date";
 import { db } from "@/server/db";
 import {
   calendarCalendars,
+  calendarEventAnnotations,
   calendarEvents,
   calendarSyncRuns,
   userSettings,
@@ -130,6 +131,7 @@ async function getUpcomingCalendarEvents(userId: string) {
       id: calendarEvents.id,
       isAllDay: calendarEvents.isAllDay,
       location: calendarEvents.location,
+      localReviewStatus: calendarEventAnnotations.reviewStatus,
       startAt: calendarEvents.startAt,
       startDate: calendarEvents.startDate,
       status: calendarEvents.status,
@@ -139,6 +141,13 @@ async function getUpcomingCalendarEvents(userId: string) {
     .innerJoin(
       calendarCalendars,
       eq(calendarEvents.calendarId, calendarCalendars.id),
+    )
+    .leftJoin(
+      calendarEventAnnotations,
+      and(
+        eq(calendarEventAnnotations.eventId, calendarEvents.id),
+        eq(calendarEventAnnotations.userId, userId),
+      ),
     )
     .where(
       and(
