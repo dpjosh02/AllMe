@@ -195,72 +195,7 @@ export default async function SettingsPage() {
         </PageGridItem>
 
         <PageGridItem span="half">
-          <StatusCard
-            detail={
-              data.calendar.hasConnection
-                ? "Google Calendar read-only access metadata is present. Tokens and secret values stay hidden."
-                : "Calendar sync is not connected yet. OAuth will request read-only calendar access when hosted Google sign-in is used."
-            }
-            icon={<CalendarDays aria-hidden="true" className="h-5 w-5" />}
-            kicker="Integrations"
-            label="Calendar"
-            rows={[
-              ["Status", data.calendar.status],
-              ["Account", data.calendar.accountEmail],
-              ["Scope", data.calendar.scopeStatus],
-              [
-                "Latest run",
-                data.calendar.latestSyncRun
-                  ? formatImportStatus(data.calendar.latestSyncRun.status)
-                  : "No runs",
-              ],
-              [
-                "Last sync",
-                data.calendar.lastSyncedAt
-                  ? dateFormatter.format(data.calendar.lastSyncedAt)
-                  : "Never",
-              ],
-              [
-                "Events scanned",
-                data.calendar.latestSyncRun
-                  ? String(data.calendar.latestSyncRun.eventsScanned)
-                  : "--",
-              ],
-              [
-                "Inserted",
-                data.calendar.latestSyncRun
-                  ? String(data.calendar.latestSyncRun.eventsInserted)
-                  : "--",
-              ],
-              [
-                "Updated",
-                data.calendar.latestSyncRun
-                  ? String(data.calendar.latestSyncRun.eventsUpdated)
-                  : "--",
-              ],
-              [
-                "Cancelled",
-                data.calendar.latestSyncRun
-                  ? String(data.calendar.latestSyncRun.eventsCancelled)
-                  : "--",
-              ],
-              [
-                "Skipped",
-                data.calendar.latestSyncRun
-                  ? String(data.calendar.latestSyncRun.eventsSkipped)
-                  : "--",
-              ],
-              [
-                "Failure detail",
-                data.calendar.latestSyncRun?.hasErrorSummary
-                  ? "Stored, hidden"
-                  : "None",
-              ],
-              ["Secret values", data.calendar.secretValues],
-            ]}
-            statusLabel={data.calendar.badgeLabel}
-            tone={data.calendar.tone}
-          />
+          <CalendarHealthCard calendar={data.calendar} />
         </PageGridItem>
 
         <PageGridItem span="half">
@@ -522,6 +457,68 @@ function ImportHealthCard({
             </div>
           ) : null}
         </div>
+      </div>
+    </AllMeCard>
+  );
+}
+
+function CalendarHealthCard({
+  calendar,
+}: {
+  calendar: Awaited<ReturnType<typeof getSettingsPageData>>["calendar"];
+}) {
+  const latest = calendar.latestSyncRun;
+
+  return (
+    <AllMeCard variant="status">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(16rem,0.48fr)_minmax(0,1.52fr)] 2xl:items-start">
+        <div>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <p className="allme-kicker">Integrations</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
+                Calendar
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                {calendar.hasConnection
+                  ? "Google Calendar read-only access metadata is present. Tokens and secret values stay hidden."
+                  : "Calendar sync is not connected yet. OAuth will request read-only calendar access when hosted Google sign-in is used."}
+              </p>
+            </div>
+            <CalendarDays
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0 text-[var(--accent)]"
+            />
+          </div>
+          <StatusPill label={calendar.badgeLabel} tone={calendar.tone} />
+        </div>
+
+        <MetricGrid>
+          {[
+            ["Status", calendar.status],
+            ["Account", calendar.accountEmail],
+            ["Scope", calendar.scopeStatus],
+            ["Latest run", formatImportStatus(latest?.status)],
+            [
+              "Last sync",
+              calendar.lastSyncedAt
+                ? dateFormatter.format(calendar.lastSyncedAt)
+                : "Never",
+            ],
+            ["Events scanned", latest ? String(latest.eventsScanned) : "--"],
+            ["Inserted", latest ? String(latest.eventsInserted) : "--"],
+            ["Updated", latest ? String(latest.eventsUpdated) : "--"],
+            ["Cancelled", latest ? String(latest.eventsCancelled) : "--"],
+            ["Skipped", latest ? String(latest.eventsSkipped) : "--"],
+            [
+              "Failure detail",
+              latest?.hasErrorSummary ? "Stored, hidden" : "None",
+            ],
+            ["Secret values", calendar.secretValues],
+          ].map(([rowLabel, value]) => (
+            <KeyValueRow key={rowLabel} label={rowLabel} value={value} />
+          ))}
+        </MetricGrid>
       </div>
     </AllMeCard>
   );
