@@ -28,10 +28,10 @@ import { requirePageUser } from "@/server/auth/guards";
 export const dynamic = "force-dynamic";
 
 const nextSteps = [
-  "Run a manual full sync from Google Calendar",
-  "Verify synced events in the local Postgres cache",
-  "Wire the Today agenda to cached calendar events",
-  "Add incremental sync once the first full sync is stable",
+  "Keep manual sync using stored Google incremental tokens",
+  "Expose selected-calendar controls after sync metadata is stable",
+  "Add a weekly planning surface backed by cached events",
+  "Defer editing and bidirectional writes until read-only sync is durable",
 ];
 
 export default async function CalendarPage() {
@@ -221,7 +221,7 @@ export default async function CalendarPage() {
         <PageGridItem span="full">
           <AllMeCard variant="status">
             <PageSection
-              description="Calendar remains foundation-first: local cache, visible sync health, then Today agenda consumption."
+              description="Calendar is now foundation-first and token-aware: keep the local cache reliable before adding richer planning UI."
               eyebrow="Build order"
               title="Next slices"
             >

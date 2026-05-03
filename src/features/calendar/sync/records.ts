@@ -173,6 +173,35 @@ export async function updateCalendarSyncToken({
     );
 }
 
+export async function getCalendarSyncTokenMap({
+  connectionId,
+  db,
+  userId,
+}: {
+  connectionId: string;
+  db: Database;
+  userId: string;
+}) {
+  const calendars = await db
+    .select({
+      sourceCalendarId: calendarCalendars.sourceCalendarId,
+      syncToken: calendarCalendars.syncToken,
+    })
+    .from(calendarCalendars)
+    .where(
+      and(
+        eq(calendarCalendars.userId, userId),
+        eq(calendarCalendars.connectionId, connectionId),
+      ),
+    );
+
+  return new Map(
+    calendars
+      .filter((calendar) => calendar.syncToken)
+      .map((calendar) => [calendar.sourceCalendarId, calendar.syncToken as string]),
+  );
+}
+
 function addStoredCalendarToLookup(
   calendarIdsBySourceId: Map<string, string>,
   storedCalendar:

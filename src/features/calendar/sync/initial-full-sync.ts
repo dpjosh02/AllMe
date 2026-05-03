@@ -4,8 +4,12 @@ import {
   type GoogleCalendarConnectionInput,
 } from "@/features/calendar/sync/connection";
 import { importCalendarSnapshot } from "@/features/calendar/sync/importer";
-import { createCalendarSyncRun, markCalendarSyncRunFailed } from "@/features/calendar/sync/lifecycle";
+import {
+  createCalendarSyncRun,
+  markCalendarSyncRunFailed,
+} from "@/features/calendar/sync/lifecycle";
 import type { CalendarSyncSnapshot } from "@/features/calendar/sync/plan";
+import { getCalendarSyncTokenMap } from "@/features/calendar/sync/records";
 import type { GoogleCalendarAccessToken } from "@/server/auth/google-calendar-token";
 import { db as defaultDb } from "@/server/db";
 import type { db as appDb } from "@/server/db";
@@ -15,6 +19,7 @@ type Database = typeof appDb;
 type InitialFullSyncDependencies = {
   createSyncRun?: typeof createCalendarSyncRun;
   db?: Database;
+  getSyncTokenMap?: typeof getCalendarSyncTokenMap;
   importSnapshot?: typeof importCalendarSnapshot;
   markSyncRunFailed?: typeof markCalendarSyncRunFailed;
   now?: Date;
@@ -23,6 +28,13 @@ type InitialFullSyncDependencies = {
 };
 
 export type ExecuteInitialGoogleCalendarFullSyncInput = {
+  token: GoogleCalendarAccessToken;
+  userId: string;
+  windowEnd?: Date;
+  windowStart?: Date;
+} & InitialFullSyncDependencies;
+
+export type ExecuteGoogleCalendarSyncInput = {
   token: GoogleCalendarAccessToken;
   userId: string;
   windowEnd?: Date;
@@ -39,6 +51,21 @@ export async function syncInitialGoogleCalendarFullSync() {
   const token = await resolveGoogleCalendarAccessToken({ userId: user.id });
 
   return executeInitialGoogleCalendarFullSync({
+    token,
+    userId: user.id,
+  });
+}
+
+export async function syncGoogleCalendarIncremental() {
+  const [{ requireOwnerUser }, { resolveGoogleCalendarAccessToken }] =
+    await Promise.all([
+      import("@/server/auth/guards"),
+      import("@/server/auth/google-calendar-token"),
+    ]);
+  const user = await requireOwnerUser();
+  const token = await resolveGoogleCalendarAccessToken({ userId: user.id });
+
+  return executeGoogleCalendarSync({
     token,
     userId: user.id,
   });
@@ -81,10 +108,14 @@ export async function executeInitialGoogleCalendarFullSync({
     db,
     markSyncRunFailed,
     readSnapshot,
+    syncMode: {
+      syncKind: "full",
+      syncTokenByCalendarId: new Map(),
+      windowEnd: syncWindow.windowEnd,
+      windowStart: syncWindow.windowStart,
+    },
     syncRunId: syncRun.id,
     userId,
-    windowEnd: syncWindow.windowEnd,
-    windowStart: syncWindow.windowStart,
   });
 
   return importSnapshot({
@@ -97,6 +128,68 @@ export async function executeInitialGoogleCalendarFullSync({
     userId,
     windowEnd: syncWindow.windowEnd,
     windowStart: syncWindow.windowStart,
+  });
+}
+
+export async function executeGoogleCalendarSync({
+  createSyncRun = createCalendarSyncRun,
+  db = defaultDb,
+  getSyncTokenMap = getCalendarSyncTokenMap,
+  importSnapshot = importCalendarSnapshot,
+  markSyncRunFailed = markCalendarSyncRunFailed,
+  now = new Date(),
+  readSnapshot = readGoogleCalendarSnapshot,
+  token,
+  upsertConnection = upsertGoogleCalendarConnection,
+  userId,
+  windowEnd,
+  windowStart,
+}: ExecuteGoogleCalendarSyncInput) {
+  const connection = await upsertConnection({
+    db,
+    input: toGoogleCalendarConnectionInput(token),
+    userId,
+  });
+  const syncTokenByCalendarId = await getSyncTokenMap({
+    connectionId: connection.id,
+    db,
+    userId,
+  });
+  const syncMode = getGoogleCalendarSyncMode({
+    now,
+    syncTokenByCalendarId,
+    windowEnd,
+    windowStart,
+  });
+  const syncRun = await createSyncRun({
+    connectionId: connection.id,
+    db,
+    startedAt: now,
+    syncKind: syncMode.syncKind,
+    userId,
+    windowEnd: syncMode.windowEnd,
+    windowStart: syncMode.windowStart,
+  });
+  const snapshot = await readSnapshotOrMarkFailed({
+    accessToken: token.accessToken,
+    db,
+    markSyncRunFailed,
+    readSnapshot,
+    syncMode,
+    syncRunId: syncRun.id,
+    userId,
+  });
+
+  return importSnapshot({
+    connectionId: connection.id,
+    db,
+    snapshot,
+    startedAt: now,
+    syncKind: syncMode.syncKind,
+    syncRunId: syncRun.id,
+    userId,
+    windowEnd: syncMode.windowEnd,
+    windowStart: syncMode.windowStart,
   });
 }
 
@@ -115,31 +208,52 @@ function getInitialFullSyncWindow({
   };
 }
 
+function getGoogleCalendarSyncMode({
+  now,
+  syncTokenByCalendarId,
+  windowEnd,
+  windowStart,
+}: {
+  now: Date;
+  syncTokenByCalendarId: Map<string, string>;
+  windowEnd?: Date;
+  windowStart?: Date;
+}) {
+  if (syncTokenByCalendarId.size > 0) {
+    return {
+      syncKind: "incremental" as const,
+      syncTokenByCalendarId,
+      windowEnd: undefined,
+      windowStart: undefined,
+    };
+  }
+
+  return {
+    syncKind: "full" as const,
+    syncTokenByCalendarId,
+    ...getInitialFullSyncWindow({ now, windowEnd, windowStart }),
+  };
+}
+
 async function readSnapshotOrMarkFailed({
   accessToken,
   db,
   markSyncRunFailed,
   readSnapshot,
+  syncMode,
   syncRunId,
   userId,
-  windowEnd,
-  windowStart,
 }: {
   accessToken: string;
   db: Database;
   markSyncRunFailed: typeof markCalendarSyncRunFailed;
   readSnapshot: typeof readGoogleCalendarSnapshot;
+  syncMode: ReturnType<typeof getGoogleCalendarSyncMode>;
   syncRunId: string;
   userId: string;
-  windowEnd: Date;
-  windowStart: Date;
 }): Promise<CalendarSyncSnapshot> {
   try {
-    return await readSnapshot({
-      accessToken,
-      timeMax: windowEnd,
-      timeMin: windowStart,
-    });
+    return await readSnapshot(toGoogleCalendarReadConfig(accessToken, syncMode));
   } catch (error) {
     await markSyncRunFailed({
       db,
@@ -150,6 +264,24 @@ async function readSnapshotOrMarkFailed({
 
     throw error;
   }
+}
+
+function toGoogleCalendarReadConfig(
+  accessToken: string,
+  syncMode: ReturnType<typeof getGoogleCalendarSyncMode>,
+) {
+  if (syncMode.syncKind === "incremental") {
+    return {
+      accessToken,
+      syncTokenByCalendarId: syncMode.syncTokenByCalendarId,
+    };
+  }
+
+  return {
+    accessToken,
+    timeMax: syncMode.windowEnd,
+    timeMin: syncMode.windowStart,
+  };
 }
 
 function toGoogleCalendarConnectionInput(

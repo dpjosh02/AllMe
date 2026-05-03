@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { syncInitialGoogleCalendarFullSync } from "@/features/calendar/sync/initial-full-sync";
+import { syncGoogleCalendarIncremental } from "@/features/calendar/sync/initial-full-sync";
 
 export async function syncGoogleCalendarNow() {
-  await syncInitialGoogleCalendarFullSync();
+  await syncGoogleCalendarIncremental();
 
   revalidatePath("/calendar");
   revalidatePath("/settings");
