@@ -122,10 +122,10 @@ function WeekAgendaItem({
       onClick={openEvent}
       type="button"
     >
-      <div className="flex items-start gap-2">
+      <div className="grid grid-cols-[0.75rem_minmax(0,1fr)] items-center gap-2">
         <span
           aria-hidden="true"
-          className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
+          className="h-2 w-2 justify-self-center rounded-full border border-[var(--line)]"
           style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
         />
         <div className="min-w-0 flex-1">
