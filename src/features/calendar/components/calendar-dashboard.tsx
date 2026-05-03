@@ -88,7 +88,7 @@ export function CalendarDashboardInteractive({
   return (
     <>
       <PageGridItem span="full">
-        <AllMeCard className="p-4" variant="metrics">
+        <AllMeCard className="p-3 sm:p-4" variant="metrics">
           <div className="grid gap-3 md:grid-cols-4">
             <TodayAgendaLinkStat
               detail="Open today's operating view."
@@ -140,9 +140,9 @@ export function CalendarDashboardInteractive({
         </AllMeCard>
       </PageGridItem>
 
-      <PageGridItem span="full">
+      <PageGridItem span="seven">
         <AllMeCard
-          className="flex max-h-[38rem] min-h-0 flex-col"
+          className="flex h-[34rem] min-h-0 flex-col"
           variant="activity"
         >
           <PageSection
@@ -172,9 +172,9 @@ export function CalendarDashboardInteractive({
         </AllMeCard>
       </PageGridItem>
 
-      <PageGridItem span="full">
+      <PageGridItem span="five">
         <AllMeCard
-          className="flex max-h-[28rem] min-h-0 flex-col overflow-hidden"
+          className="flex h-[34rem] min-h-0 flex-col overflow-hidden"
           variant="activity"
         >
           <PageSection
@@ -212,25 +212,25 @@ function TodayActionStrip({
 }) {
   if (events.length === 0) {
     return (
-      <div className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+      <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
         <p className="text-sm font-semibold text-[var(--foreground)]">
           Today is reviewed
-        </p>
-        <p className="mt-1 text-xs text-[var(--muted)]">
-          No selected-calendar events need prep or review right now.
+          <span className="ml-2 text-xs font-medium text-[var(--muted)]">
+            No selected-calendar events need prep or review.
+          </span>
         </p>
       </div>
     );
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+    <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-[var(--foreground)]">
             Today action queue
           </p>
-          <p className="mt-1 text-xs text-[var(--muted)]">
+          <p className="text-xs text-[var(--muted)]">
             Prep or review these before the day moves.
           </p>
         </div>
@@ -238,10 +238,10 @@ function TodayActionStrip({
           {formatEventCount(events.length)}
         </span>
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
         {events.slice(0, 4).map((event) => (
           <button
-            className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-left transition hover:border-[var(--accent)]"
+            className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-left transition hover:border-[var(--accent)]"
             key={event.id}
             onClick={() => openEvent(event)}
             type="button"
@@ -298,7 +298,7 @@ function CalendarReviewFocusControls({
         </button>
       ))}
       {reviewFocus !== "all" ? (
-        <div className="basis-full pt-1 text-xs font-semibold text-[var(--muted)]">
+        <div className="basis-full text-xs font-semibold text-[var(--muted)]">
           Showing {formatEventCount(focusedEventCount)} marked{" "}
           {getReviewFocusLabel(reviewFocus)} ·{" "}
           <button
@@ -378,7 +378,7 @@ function SummaryCardContent({
         <p className="allme-kicker">{label}</p>
         {icon ? <span className="text-[var(--accent)]">{icon}</span> : null}
       </div>
-      <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{value}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-[-0.04em]">{value}</p>
       <p className="mt-1 truncate text-xs text-[var(--muted)]">{detail}</p>
     </>
   );
@@ -386,7 +386,7 @@ function SummaryCardContent({
 
 function getSummaryCardClassName({ isActive }: { isActive: boolean }) {
   return [
-    "group block w-full rounded-2xl border bg-[var(--empty)] px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--panel)] hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
+    "group block w-full rounded-xl border bg-[var(--empty)] px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--panel)] hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
     isActive
       ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[0_0_0_3px_var(--accent-soft)]"
       : "border-[var(--line)]",
