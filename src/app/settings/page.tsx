@@ -209,10 +209,52 @@ export default async function SettingsPage() {
               ["Account", data.calendar.accountEmail],
               ["Scope", data.calendar.scopeStatus],
               [
+                "Latest run",
+                data.calendar.latestSyncRun
+                  ? formatImportStatus(data.calendar.latestSyncRun.status)
+                  : "No runs",
+              ],
+              [
                 "Last sync",
                 data.calendar.lastSyncedAt
                   ? dateFormatter.format(data.calendar.lastSyncedAt)
                   : "Never",
+              ],
+              [
+                "Events scanned",
+                data.calendar.latestSyncRun
+                  ? String(data.calendar.latestSyncRun.eventsScanned)
+                  : "--",
+              ],
+              [
+                "Inserted",
+                data.calendar.latestSyncRun
+                  ? String(data.calendar.latestSyncRun.eventsInserted)
+                  : "--",
+              ],
+              [
+                "Updated",
+                data.calendar.latestSyncRun
+                  ? String(data.calendar.latestSyncRun.eventsUpdated)
+                  : "--",
+              ],
+              [
+                "Cancelled",
+                data.calendar.latestSyncRun
+                  ? String(data.calendar.latestSyncRun.eventsCancelled)
+                  : "--",
+              ],
+              [
+                "Skipped",
+                data.calendar.latestSyncRun
+                  ? String(data.calendar.latestSyncRun.eventsSkipped)
+                  : "--",
+              ],
+              [
+                "Failure detail",
+                data.calendar.latestSyncRun?.hasErrorSummary
+                  ? "Stored, hidden"
+                  : "None",
               ],
               ["Secret values", data.calendar.secretValues],
             ]}

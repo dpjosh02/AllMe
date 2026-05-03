@@ -7,7 +7,12 @@ import {
 import { serverEnv } from "@/lib/env";
 import { resolveAuthBoundary } from "@/server/auth/access-control";
 import { db } from "@/server/db";
-import { financeImportRuns, userSettings, users } from "@/server/db/schema";
+import {
+  calendarSyncRuns,
+  financeImportRuns,
+  userSettings,
+  users,
+} from "@/server/db/schema";
 
 export const timezoneOptions = [
   "America/Chicago",
@@ -26,6 +31,17 @@ type CalendarSettingsStatus = {
   badgeLabel: string;
   hasConnection: boolean;
   lastSyncedAt: Date | null;
+  latestSyncRun: {
+    createdAt: Date;
+    eventsCancelled: number;
+    eventsInserted: number;
+    eventsScanned: number;
+    eventsSkipped: number;
+    eventsUpdated: number;
+    finishedAt: Date | null;
+    hasErrorSummary: boolean;
+    status: string;
+  } | null;
   ready: boolean;
   scopeStatus: string;
   secretValues: string;
@@ -77,10 +93,16 @@ export async function getSettingsPageData(userId: string) {
 }
 
 async function getCalendarStatus(userId: string): Promise<CalendarSettingsStatus> {
-  const connection = await getGoogleCalendarConnectionStatus({ db, userId });
+  const [connection, latestSyncRun] = await Promise.all([
+    getGoogleCalendarConnectionStatus({ db, userId }),
+    getLatestCalendarSyncRun(userId),
+  ]);
 
   if (!connection) {
-    return getEmptyCalendarStatus();
+    return {
+      ...getEmptyCalendarStatus(),
+      latestSyncRun,
+    };
   }
 
   const hasReadonlyScope = connection.scopes.includes(googleCalendarReadonlyScope);
@@ -92,6 +114,7 @@ async function getCalendarStatus(userId: string): Promise<CalendarSettingsStatus
     badgeLabel: ready ? "Connected" : "Needs reauthorization",
     hasConnection: true,
     lastSyncedAt: connection.lastSyncedAt,
+    latestSyncRun,
     ready,
     scopeStatus: hasReadonlyScope ? "Read-only granted" : "Scope missing",
     secretValues: "Hidden",
@@ -107,6 +130,7 @@ function getEmptyCalendarStatus(): CalendarSettingsStatus {
     badgeLabel: "Not connected",
     hasConnection: false,
     lastSyncedAt: null,
+    latestSyncRun: null,
     ready: false,
     scopeStatus: "Not granted",
     secretValues: "Hidden",
@@ -114,6 +138,27 @@ function getEmptyCalendarStatus(): CalendarSettingsStatus {
     tone: "neutral" satisfies SettingsStatusTone,
     updatedAt: null,
   };
+}
+
+async function getLatestCalendarSyncRun(userId: string) {
+  const [run] = await db
+    .select({
+      createdAt: calendarSyncRuns.createdAt,
+      eventsCancelled: calendarSyncRuns.eventsCancelled,
+      eventsInserted: calendarSyncRuns.eventsInserted,
+      eventsScanned: calendarSyncRuns.eventsScanned,
+      eventsSkipped: calendarSyncRuns.eventsSkipped,
+      eventsUpdated: calendarSyncRuns.eventsUpdated,
+      finishedAt: calendarSyncRuns.finishedAt,
+      hasErrorSummary: sql<boolean>`${calendarSyncRuns.errorSummary} is not null`,
+      status: calendarSyncRuns.status,
+    })
+    .from(calendarSyncRuns)
+    .where(eq(calendarSyncRuns.userId, userId))
+    .orderBy(desc(calendarSyncRuns.createdAt))
+    .limit(1);
+
+  return run ?? null;
 }
 
 export async function getOwnerByEmail(email: string) {
