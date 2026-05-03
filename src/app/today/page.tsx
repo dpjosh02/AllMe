@@ -184,12 +184,25 @@ export default async function TodayPage({
           <div className="grid h-full gap-5">
             <AllMeCard variant="status">
               <PageSection
-                description="Calendar connection comes later. This card reserves the agenda surface that will feed the daily command view."
+                description="Cached Calendar events for the selected day. Today never reads directly from Google."
                 eyebrow="Agenda"
                 icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}
                 title="Schedule context"
               >
-                <StatusPill label="Planned" tone="neutral" />
+                {data.agendaItems.length > 0 ? (
+                  <div className="grid gap-2">
+                    {data.agendaItems.map((item) => (
+                      <AgendaItemRow item={item} key={item.id} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-3">
+                    <StatusPill label="No events" tone="neutral" />
+                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                      Run Calendar sync to populate this local agenda cache.
+                    </p>
+                  </div>
+                )}
               </PageSection>
             </AllMeCard>
 
@@ -214,3 +227,37 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
 });
+
+const timeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function AgendaItemRow({
+  item,
+}: {
+  item: Awaited<ReturnType<typeof getTodayPageData>>["agendaItems"][number];
+}) {
+  const timeLabel = item.isAllDay
+    ? "All day"
+    : item.startsAt
+      ? timeFormatter.format(item.startsAt)
+      : "Time TBD";
+
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{item.title}</p>
+          <p className="mt-1 truncate text-xs text-[var(--muted)]">
+            {item.calendarName}
+            {item.location ? ` · ${item.location}` : ""}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
+          {timeLabel}
+        </span>
+      </div>
+    </div>
+  );
+}

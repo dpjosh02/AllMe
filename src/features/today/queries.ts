@@ -1,5 +1,6 @@
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 
+import { getTodayAgenda } from "@/features/calendar/agenda-query";
 import {
   getLocalDateKey,
   formatDisplayDate,
@@ -31,6 +32,7 @@ export async function getTodayPageData({
     dateKey,
     displayDate: formatDisplayDate(dateKey),
     dailyNote,
+    agendaItems: await getTodayAgenda({ dateKey, timezone, userId }),
     isViewingToday: dateKey === localTodayKey,
     localTodayKey,
     quickCaptures: await getQuickCaptures(userId),
