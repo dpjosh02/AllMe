@@ -54,6 +54,7 @@ export function CalendarDashboardInteractive({
   );
   const todayAgenda = effectiveWeekAgenda[0];
   const todayAgendaItems = todayAgenda?.items ?? [];
+  const todayActionItems = getTodayActionItems(todayAgendaItems);
   const nextUpcomingEvent = effectiveUpcomingEvents[0] ?? null;
   const todayNeedsPrepCount = getReviewStatusCount(
     todayAgendaItems,
@@ -130,6 +131,7 @@ export function CalendarDashboardInteractive({
               value={String(todayDoneCount)}
             />
           </div>
+          <TodayActionStrip events={todayActionItems} openEvent={openEvent} />
           <CalendarReviewFocusControls
             focusedEventCount={focusedEventCount}
             reviewFocus={reviewFocus}
@@ -198,6 +200,73 @@ export function CalendarDashboardInteractive({
         updateEventReviewStatus={updateEventReviewStatus}
       />
     </>
+  );
+}
+
+function TodayActionStrip({
+  events,
+  openEvent,
+}: {
+  events: CalendarPageData["weekAgenda"][number]["items"];
+  openEvent: (event: CalendarPageData["weekAgenda"][number]["items"][number]) => void;
+}) {
+  if (events.length === 0) {
+    return (
+      <div className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+        <p className="text-sm font-semibold text-[var(--foreground)]">
+          Today is reviewed
+        </p>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          No selected-calendar events need prep or review right now.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-[var(--foreground)]">
+            Today action queue
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Prep or review these before the day moves.
+          </p>
+        </div>
+        <span className="rounded-full border border-[var(--line)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
+          {formatEventCount(events.length)}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        {events.slice(0, 4).map((event) => (
+          <button
+            className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-left transition hover:border-[var(--accent)]"
+            key={event.id}
+            onClick={() => openEvent(event)}
+            type="button"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-sm font-semibold text-[var(--foreground)]">
+                {event.title}
+              </p>
+              <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
+                {getCompactAgendaItemTime(event)}
+              </span>
+            </div>
+            <p className="mt-1 truncate text-xs text-[var(--muted)]">
+              {getReviewFocusLabel(event.localReviewStatus ?? "none")}
+              {event.location ? ` · ${event.location}` : ""}
+            </p>
+          </button>
+        ))}
+      </div>
+      {events.length > 4 ? (
+        <p className="mt-2 text-xs font-semibold text-[var(--muted)]">
+          +{events.length - 4} more visible in the Planning view.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -387,6 +456,16 @@ function getReviewStatusCount(
   ).length;
 }
 
+function getTodayActionItems(
+  events: CalendarPageData["weekAgenda"][number]["items"],
+) {
+  return events.filter((event) => {
+    const reviewStatus = event.localReviewStatus ?? "none";
+
+    return reviewStatus === "needs_prep" || reviewStatus === "none";
+  });
+}
+
 function getFocusedWeekEventCount(
   weekAgenda: CalendarPageData["weekAgenda"],
   reviewFocus: CalendarEventReviewStatus,
@@ -422,6 +501,18 @@ function getCompactEventTime(event: CalendarPageData["upcomingEvents"][number]) 
   }
 
   return event.startAt ? compactEventTimeFormatter.format(event.startAt) : "TBD";
+}
+
+function getCompactAgendaItemTime(
+  event: CalendarPageData["weekAgenda"][number]["items"][number],
+) {
+  if (event.isAllDay) {
+    return "All day";
+  }
+
+  return event.startsAt
+    ? compactEventTimeFormatter.format(event.startsAt)
+    : "TBD";
 }
 
 function getReviewFocusLabel(reviewFocus: CalendarReviewFocus) {
