@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getTodayAgendaItems,
   type TodayAgendaSourceRow,
-} from "@/features/calendar/agenda";
+} from "@/features/calendar/agenda-read-model";
 
 describe("calendar agenda helpers", () => {
   it("includes timed events that intersect the local day", () => {
@@ -64,7 +64,7 @@ describe("calendar agenda helpers", () => {
     ).toEqual([]);
   });
 
-  it("excludes cancelled events and events from hidden calendars", () => {
+  it("excludes cancelled events", () => {
     const items = getTodayAgendaItems({
       dateKey: "2026-05-02",
       rows: [
@@ -73,6 +73,18 @@ describe("calendar agenda helpers", () => {
           status: "cancelled",
           title: "Cancelled event",
         }),
+        agendaRow({ id: "visible", title: "Visible event" }),
+      ],
+      timezone: "America/Chicago",
+    });
+
+    expect(items.map((item) => item.id)).toEqual(["visible"]);
+  });
+
+  it("excludes events from unselected or deleted calendars", () => {
+    const items = getTodayAgendaItems({
+      dateKey: "2026-05-02",
+      rows: [
         agendaRow({
           calendarIsSelected: false,
           id: "unselected",
