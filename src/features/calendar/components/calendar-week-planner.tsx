@@ -26,7 +26,7 @@ export function CalendarWeekPlanner({
   return (
     <>
       <div className="min-h-0 overflow-y-auto pr-1">
-        <div className="grid auto-rows-[minmax(15rem,15rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
+        <div className="grid auto-rows-[minmax(17rem,17rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
           {weekAgenda.map((day) => (
             <WeekAgendaDay
               day={day}

@@ -85,13 +85,12 @@ export function AppPageShell({
   );
 }
 
-export function PageHero({ eyebrow, right, subtitle, title }: PageHeroProps) {
+export function PageHero({ right, subtitle, title }: PageHeroProps) {
   return (
     <AllMeCard className="overflow-hidden p-5 sm:p-6">
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-stretch">
         <div>
-          <div className="allme-kicker text-[var(--accent)]">{eyebrow}</div>
-          <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+          <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
             {title}
           </h1>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-[var(--muted)] sm:text-base">
@@ -129,20 +128,18 @@ export function PageGridItem({
 export function PageSection({
   children,
   className,
-  eyebrow,
   icon,
   title,
 }: PageSectionProps) {
-  const hasHeader = eyebrow || title || icon;
+  const hasHeader = title || icon;
 
   return (
     <section className={cn("grid gap-4", className)}>
       {hasHeader ? (
         <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
           <div>
-            {eyebrow ? <p className="allme-kicker">{eyebrow}</p> : null}
             {title ? (
-              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
+              <h2 className="text-2xl font-semibold tracking-[-0.03em]">
                 {title}
               </h2>
             ) : null}
