@@ -46,7 +46,7 @@ export function getTodayAgendaItems({
   rows: TodayAgendaSourceRow[];
   timezone: string;
 }) {
-  const dayWindow = getUtcDayWindow({ dateKey, timezone });
+  const dayWindow = getTodayAgendaDayWindow({ dateKey, timezone });
 
   return rows
     .filter((row) => shouldIncludeAgendaRow({ dayWindow, row, dateKey }))
@@ -60,7 +60,7 @@ function shouldIncludeAgendaRow({
   row,
 }: {
   dateKey: string;
-  dayWindow: UtcDayWindow;
+  dayWindow: TodayAgendaDayWindow;
   row: TodayAgendaSourceRow;
 }) {
   if (row.status === "cancelled" || !row.calendarIsSelected || row.calendarIsDeleted) {
@@ -103,7 +103,7 @@ function isTimedEventInDayWindow({
   endAt,
   startAt,
 }: {
-  dayWindow: UtcDayWindow;
+  dayWindow: TodayAgendaDayWindow;
   endAt: Date | null;
   startAt: Date | null;
 }) {
@@ -157,18 +157,18 @@ function toTodayAgendaItem(row: TodayAgendaSourceRow): TodayAgendaItem {
   };
 }
 
-type UtcDayWindow = {
+export type TodayAgendaDayWindow = {
   end: Date;
   start: Date;
 };
 
-function getUtcDayWindow({
+export function getTodayAgendaDayWindow({
   dateKey,
   timezone,
 }: {
   dateKey: string;
   timezone: string;
-}): UtcDayWindow {
+}): TodayAgendaDayWindow {
   return {
     end: getUtcInstantForLocalDateTime({
       dateKey: addDaysToDateKey(dateKey, 1),
