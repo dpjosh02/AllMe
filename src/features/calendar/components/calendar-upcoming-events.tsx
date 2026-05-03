@@ -1,11 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
-import {
-  CalendarEventDetailDrawer,
-  type CalendarEventDetail,
-} from "@/features/calendar/components/calendar-event-detail-drawer";
+import type { CalendarEventReviewStatus } from "@/features/calendar/components/calendar-event-detail-drawer";
 import { CalendarEventReviewBadge } from "@/features/calendar/components/calendar-event-review-badge";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
@@ -13,45 +8,38 @@ type UpcomingCalendarEvent = CalendarPageData["upcomingEvents"][number];
 
 export function CalendarUpcomingEvents({
   events,
-  updateEventReviewStatus,
+  openEvent,
+  reviewFocus,
 }: {
   events: UpcomingCalendarEvent[];
-  updateEventReviewStatus: (formData: FormData) => Promise<void>;
+  openEvent: (event: UpcomingCalendarEvent) => void;
+  reviewFocus: CalendarEventReviewStatus | "all";
 }) {
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEventDetail | null>(
-    null,
-  );
-
   if (events.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
         <p className="text-lg font-semibold">No upcoming events</p>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          Run Calendar sync to refresh the local cache.
+          {reviewFocus === "all"
+            ? "Run Calendar sync to refresh the local cache."
+            : "No upcoming events match the current focus."}
         </p>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="min-h-0 overflow-y-auto pr-1">
-        <div className="grid gap-2">
-          {events.map((event) => (
-            <UpcomingEventRow
-              event={event}
-              key={event.id}
-              openEvent={() => setSelectedEvent(toEventDetail(event))}
-            />
-          ))}
-        </div>
+    <div className="min-h-0 overflow-y-auto pr-1">
+      <div className="grid gap-2">
+        {events.map((event) => (
+          <UpcomingEventRow
+            event={event}
+            key={event.id}
+            openEvent={() => openEvent(event)}
+          />
+        ))}
       </div>
-      <CalendarEventDetailDrawer
-        event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
-        updateEventReviewStatus={updateEventReviewStatus}
-      />
-    </>
+    </div>
   );
 }
 
@@ -62,6 +50,7 @@ function UpcomingEventRow({
   event: UpcomingCalendarEvent;
   openEvent: () => void;
 }) {
+  const reviewStatus = event.localReviewStatus ?? "none";
   const dateLabel = event.isAllDay
     ? event.startDate
       ? eventDateFormatter.format(toLocalDate(event.startDate))
@@ -77,7 +66,10 @@ function UpcomingEventRow({
 
   return (
     <button
-      className="w-full rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-left transition hover:border-[var(--accent)]"
+      className={[
+        "w-full rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-left transition hover:border-[var(--accent)]",
+        reviewStatus === "ignored" ? "opacity-55" : "",
+      ].join(" ")}
       onClick={openEvent}
       type="button"
     >
@@ -92,9 +84,7 @@ function UpcomingEventRow({
             <p className="truncate text-sm font-semibold">{event.title}</p>
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-            <CalendarEventReviewBadge
-              status={event.localReviewStatus ?? "none"}
-            />
+            <CalendarEventReviewBadge status={reviewStatus} />
             <p className="truncate text-xs text-[var(--muted)]">
               {event.calendarName} · {dateLabel}
               {event.location ? ` · ${event.location}` : ""}
@@ -107,25 +97,6 @@ function UpcomingEventRow({
       </div>
     </button>
   );
-}
-
-function toEventDetail(event: UpcomingCalendarEvent): CalendarEventDetail {
-  return {
-    calendarColor: event.calendarColor,
-    calendarName: event.calendarName,
-    description: event.description,
-    endDate: event.endDate,
-    endsAt: event.endAt,
-    htmlLink: event.htmlLink,
-    id: event.id,
-    isAllDay: event.isAllDay,
-    location: event.location,
-    localReviewStatus: event.localReviewStatus ?? "none",
-    startDate: event.startDate,
-    startsAt: event.startAt,
-    status: event.status,
-    title: event.title,
-  };
 }
 
 function toLocalDate(dateKey: string) {

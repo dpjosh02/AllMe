@@ -1,56 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
-import {
-  CalendarEventDetailDrawer,
-  type CalendarEventDetail,
-} from "@/features/calendar/components/calendar-event-detail-drawer";
+import type { CalendarEventReviewStatus } from "@/features/calendar/components/calendar-event-detail-drawer";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
 type WeekAgendaDayData = CalendarPageData["weekAgenda"][number];
 type WeekAgendaItemData = WeekAgendaDayData["items"][number];
 
 export function CalendarWeekPlanner({
-  updateEventReviewStatus,
+  openEvent,
+  reviewFocus,
   weekAgenda,
 }: {
-  updateEventReviewStatus: (formData: FormData) => Promise<void>;
+  openEvent: (item: WeekAgendaItemData) => void;
+  reviewFocus: CalendarEventReviewStatus | "all";
   weekAgenda: CalendarPageData["weekAgenda"];
 }) {
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEventDetail | null>(
-    null,
-  );
-
   return (
-    <>
-      <div className="min-h-0 overflow-y-auto pr-1">
-        <div className="grid auto-rows-[minmax(17rem,17rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
-          {weekAgenda.map((day) => (
-            <WeekAgendaDay
-              day={day}
-              key={day.dateKey}
-              openEvent={(item) => setSelectedEvent(toEventDetail(item))}
-            />
-          ))}
-        </div>
+    <div className="min-h-0 overflow-y-auto pr-1">
+      <div className="grid auto-rows-[minmax(17rem,17rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
+        {weekAgenda.map((day) => (
+          <WeekAgendaDay
+            day={day}
+            key={day.dateKey}
+            openEvent={openEvent}
+            reviewFocus={reviewFocus}
+          />
+        ))}
       </div>
-      <CalendarEventDetailDrawer
-        event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
-        updateEventReviewStatus={updateEventReviewStatus}
-      />
-    </>
+    </div>
   );
 }
 
 function WeekAgendaDay({
   day,
   openEvent,
+  reviewFocus,
 }: {
   day: WeekAgendaDayData;
   openEvent: (item: WeekAgendaItemData) => void;
+  reviewFocus: CalendarEventReviewStatus | "all";
 }) {
   const isQuiet = day.items.length === 0;
   const todayHref = {
@@ -79,7 +69,7 @@ function WeekAgendaDay({
 
       {isQuiet ? (
         <p className="mt-6 rounded-lg border border-dashed border-[var(--line)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
-          No cached events
+          {reviewFocus === "all" ? "No cached events" : "No matching events"}
         </p>
       ) : (
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
@@ -113,6 +103,7 @@ function WeekAgendaItem({
   item: WeekAgendaItemData;
   openEvent: () => void;
 }) {
+  const reviewStatus = item.localReviewStatus ?? "none";
   const timeLabel = item.isAllDay
     ? "All day"
     : item.startsAt
@@ -121,7 +112,10 @@ function WeekAgendaItem({
 
   return (
     <button
-      className="w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 text-left transition hover:border-[var(--accent)]"
+      className={[
+        "w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 text-left transition hover:border-[var(--accent)]",
+        reviewStatus === "ignored" ? "opacity-55" : "",
+      ].join(" ")}
       onClick={openEvent}
       type="button"
     >
@@ -151,25 +145,6 @@ function WeekAgendaItem({
       </div>
     </button>
   );
-}
-
-function toEventDetail(item: WeekAgendaItemData): CalendarEventDetail {
-  return {
-    calendarColor: item.calendarColor,
-    calendarName: item.calendarName,
-    description: item.description,
-    endDate: item.endDate,
-    endsAt: item.endsAt,
-    htmlLink: item.htmlLink,
-    id: item.id,
-    isAllDay: item.isAllDay,
-    location: item.location,
-    localReviewStatus: item.localReviewStatus,
-    startDate: item.startDate,
-    startsAt: item.startsAt,
-    status: item.status,
-    title: item.title,
-  };
 }
 
 function toLocalDate(dateKey: string) {

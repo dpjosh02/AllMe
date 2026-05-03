@@ -1,10 +1,4 @@
-import {
-  CalendarDays,
-  Flag,
-  PlugZap,
-  CheckCircle2,
-} from "lucide-react";
-import type { ReactNode } from "react";
+import { PlugZap } from "lucide-react";
 
 import {
   AllMeCard,
@@ -21,9 +15,7 @@ import {
   updateCalendarEventReviewStatus,
   updateCalendarSelection,
 } from "@/features/calendar/actions";
-import { CalendarPlanningFilter } from "@/features/calendar/components/calendar-planning-filter";
-import { CalendarUpcomingEvents } from "@/features/calendar/components/calendar-upcoming-events";
-import { CalendarWeekPlanner } from "@/features/calendar/components/calendar-week-planner";
+import { CalendarDashboardInteractive } from "@/features/calendar/components/calendar-dashboard";
 import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
 import {
   getCalendarPageData,
@@ -50,12 +42,6 @@ export default async function CalendarPage() {
   const todayAgenda = data.weekAgenda[0];
   const todayAgendaItems = todayAgenda?.items ?? [];
   const nextUpcomingEvent = data.upcomingEvents[0] ?? null;
-  const todayNeedsPrepCount = todayAgendaItems.filter(
-    (event) => event.localReviewStatus === "needs_prep",
-  ).length;
-  const todayDoneCount = todayAgendaItems.filter(
-    (event) => event.localReviewStatus === "done",
-  ).length;
 
   return (
     <AppPageShell>
@@ -95,86 +81,11 @@ export default async function CalendarPage() {
       />
 
       <PageGrid>
-        <PageGridItem span="full">
-          <AllMeCard className="p-4" variant="metrics">
-            <div className="grid gap-3 md:grid-cols-4">
-              <TodayAgendaStat
-                detail="Cached selected-calendar items for the current local day."
-                label="Today"
-                value={formatEventCount(todayAgendaItems.length)}
-              />
-              <TodayAgendaStat
-                detail={nextUpcomingEvent?.title ?? "No selected-calendar event queued."}
-                label="Next event"
-                value={
-                  nextUpcomingEvent
-                    ? getCompactEventTime(nextUpcomingEvent)
-                    : "None"
-                }
-              />
-              <TodayAgendaStat
-                detail="Events marked for preparation."
-                icon={<Flag aria-hidden="true" className="h-4 w-4" />}
-                label="Needs prep"
-                value={String(todayNeedsPrepCount)}
-              />
-              <TodayAgendaStat
-                detail="Events already marked complete."
-                icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
-                label="Done"
-                value={String(todayDoneCount)}
-              />
-            </div>
-          </AllMeCard>
-        </PageGridItem>
-
-        <PageGridItem span="full">
-          <AllMeCard
-            className="flex max-h-[38rem] min-h-0 flex-col"
-            variant="activity"
-          >
-            <PageSection
-              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
-              description={`Selected-calendar plan for the next seven local days in ${data.timezone}.`}
-              eyebrow="Planning"
-              icon={
-                <CalendarPlanningFilter
-                  calendars={data.calendarSources}
-                  updateCalendarSelection={updateCalendarSelection}
-                />
-              }
-              title="Next 7 days"
-            >
-              <p className="-mt-2 mb-3 text-xs font-semibold text-[var(--muted)]">
-                {data.selectedCalendars}/{data.calendars} calendars shown
-              </p>
-              <CalendarWeekPlanner
-                updateEventReviewStatus={updateCalendarEventReviewStatus}
-                weekAgenda={data.weekAgenda}
-              />
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
-
-        <PageGridItem span="full">
-          <AllMeCard
-            className="flex max-h-[28rem] min-h-0 flex-col overflow-hidden"
-            variant="activity"
-          >
-            <PageSection
-              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
-              description="Quick access to upcoming cached events from selected calendars."
-              eyebrow="Agenda"
-              icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}
-              title="Next events"
-            >
-              <CalendarUpcomingEvents
-                events={data.upcomingEvents}
-                updateEventReviewStatus={updateCalendarEventReviewStatus}
-              />
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
+        <CalendarDashboardInteractive
+          data={data}
+          updateCalendarSelection={updateCalendarSelection}
+          updateEventReviewStatus={updateCalendarEventReviewStatus}
+        />
 
         <PageGridItem span="full">
           <AllMeCard variant="status">
@@ -257,29 +168,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
 });
-
-function TodayAgendaStat({
-  detail,
-  icon,
-  label,
-  value,
-}: {
-  detail: string;
-  icon?: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="allme-kicker">{label}</p>
-        {icon ? <span className="text-[var(--accent)]">{icon}</span> : null}
-      </div>
-      <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{value}</p>
-      <p className="mt-1 truncate text-xs text-[var(--muted)]">{detail}</p>
-    </div>
-  );
-}
 
 function HeroContextChip({ label, value }: { label: string; value: string }) {
   return (
