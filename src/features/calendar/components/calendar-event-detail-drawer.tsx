@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 export type CalendarEventReviewStatus =
@@ -38,11 +38,33 @@ export function CalendarEventDetailDrawer({
   onClose: () => void;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
-  useEffect(() => {
-    if (!event) {
-      return;
-    }
+  if (!event) {
+    return null;
+  }
 
+  return (
+    <CalendarEventDetailDrawerContent
+      event={event}
+      key={event.id}
+      onClose={onClose}
+      updateEventReviewStatus={updateEventReviewStatus}
+    />
+  );
+}
+
+function CalendarEventDetailDrawerContent({
+  event,
+  onClose,
+  updateEventReviewStatus,
+}: {
+  event: CalendarEventDetail;
+  onClose: () => void;
+  updateEventReviewStatus: (formData: FormData) => Promise<void>;
+}) {
+  const [currentReviewStatus, setCurrentReviewStatus] =
+    useState<CalendarEventReviewStatus>(event.localReviewStatus);
+
+  useEffect(() => {
     function closeOnEscape(keyboardEvent: KeyboardEvent) {
       if (keyboardEvent.key === "Escape") {
         onClose();
@@ -52,11 +74,7 @@ export function CalendarEventDetailDrawer({
     document.addEventListener("keydown", closeOnEscape);
 
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [event, onClose]);
-
-  if (!event) {
-    return null;
-  }
+  }, [onClose]);
 
   const timeLabel = getEventTimeLabel(event);
   const todayDateKey = getEventTodayDateKey(event);
@@ -66,7 +84,7 @@ export function CalendarEventDetailDrawer({
 
   async function saveEventReviewStatus(formData: FormData) {
     await updateEventReviewStatus(formData);
-    onClose();
+    setCurrentReviewStatus(parseReviewStatus(formData));
   }
 
   return (
@@ -141,7 +159,7 @@ export function CalendarEventDetailDrawer({
                 </p>
               </div>
               <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
-                {getReviewStatusLabel(event.localReviewStatus)}
+                {getReviewStatusLabel(currentReviewStatus)}
               </span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -154,7 +172,7 @@ export function CalendarEventDetailDrawer({
                     value={option.value}
                   />
                   <EventReviewStatusButton
-                    isActive={event.localReviewStatus === option.value}
+                    isActive={currentReviewStatus === option.value}
                     label={option.label}
                   />
                 </form>
@@ -285,6 +303,20 @@ function getReviewStatusLabel(status: CalendarEventReviewStatus) {
     eventReviewStatusOptions.find((option) => option.value === status)?.label ??
     "None"
   );
+}
+
+function parseReviewStatus(formData: FormData): CalendarEventReviewStatus {
+  const reviewStatus = String(formData.get("reviewStatus") ?? "");
+
+  if (isReviewStatus(reviewStatus)) {
+    return reviewStatus;
+  }
+
+  return "none";
+}
+
+function isReviewStatus(value: string): value is CalendarEventReviewStatus {
+  return eventReviewStatusOptions.some((option) => option.value === value);
 }
 
 function isSameLocalDate(left: Date, right: Date) {
