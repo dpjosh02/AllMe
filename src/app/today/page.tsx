@@ -182,7 +182,10 @@ export default async function TodayPage({
 
         <PageGridItem span="support" className="min-h-0">
           <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-5">
-            <AllMeCard className="flex min-h-0 flex-col overflow-hidden" variant="status">
+            <AllMeCard
+              className="flex max-h-[24rem] min-h-0 flex-col overflow-hidden"
+              variant="status"
+            >
               <PageSection
                 className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
                 description="Cached Calendar events for the selected day. Today never reads directly from Google."
