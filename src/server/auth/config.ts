@@ -15,6 +15,7 @@ import {
   isOwnerEmail,
   resolveAuthorizationDecision,
 } from "@/server/auth/access-control";
+import { upsertGoogleOAuthToken } from "@/server/auth/oauth-token-store";
 import { db } from "@/server/db";
 
 const googleAuthScopes = [
@@ -94,6 +95,23 @@ export const authOptions: NextAuthConfig = {
         });
 
         if (hasGoogleCalendarReadonlyScope(account?.scope)) {
+          if (account?.access_token) {
+            await upsertGoogleOAuthToken({
+              db,
+              input: {
+                accessToken: account.access_token,
+                accountEmail: user.email,
+                expiresAt: account.expires_at
+                  ? new Date(account.expires_at * 1000)
+                  : null,
+                providerAccountId: account.providerAccountId,
+                refreshToken: account.refresh_token,
+                scopes: account.scope,
+              },
+              userId: owner.id,
+            });
+          }
+
           await upsertGoogleCalendarConnection({
             db,
             input: {

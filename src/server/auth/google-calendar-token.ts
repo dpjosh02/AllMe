@@ -6,6 +6,11 @@ import {
   hasGoogleCalendarReadonlyScope,
 } from "@/features/calendar/sync/connection";
 import { serverEnv } from "@/lib/env";
+import { db } from "@/server/db";
+import {
+  getStoredGoogleOAuthAccessToken,
+  StoredOAuthTokenUnavailableError,
+} from "@/server/auth/oauth-token-store";
 
 export type GoogleCalendarAccessToken = {
   accessToken: string;
@@ -22,7 +27,19 @@ export class GoogleCalendarAccessTokenUnavailableError extends Error {
   }
 }
 
-export async function resolveGoogleCalendarAccessToken() {
+export async function resolveGoogleCalendarAccessToken({
+  userId,
+}: {
+  userId: string;
+}) {
+  try {
+    return await getStoredGoogleOAuthAccessToken({ db, userId });
+  } catch (error) {
+    if (!(error instanceof StoredOAuthTokenUnavailableError)) {
+      throw error;
+    }
+  }
+
   if (!serverEnv.AUTH_SECRET) {
     throw new GoogleCalendarAccessTokenUnavailableError(
       "Auth secret is required to resolve the Google Calendar token",
@@ -41,7 +58,12 @@ export async function resolveGoogleCalendarAccessToken() {
 
 export async function getGoogleCalendarAccessTokenReadiness() {
   try {
-    await resolveGoogleCalendarAccessToken();
+    const [{ requireOwnerUser }] = await Promise.all([
+      import("@/server/auth/guards"),
+    ]);
+    const user = await requireOwnerUser();
+
+    await resolveGoogleCalendarAccessToken({ userId: user.id });
 
     return { ready: true, reason: "Token available" };
   } catch (error) {

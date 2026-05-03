@@ -59,6 +59,35 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const authOAuthTokens = pgTable(
+  "auth_oauth_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id"),
+    accountEmail: text("account_email").notNull(),
+    accessTokenCiphertext: text("access_token_ciphertext").notNull(),
+    refreshTokenCiphertext: text("refresh_token_ciphertext"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userProviderUnique: uniqueIndex("auth_oauth_tokens_user_provider_unique").on(
+      table.userId,
+      table.provider,
+    ),
+    userProviderAccountIdx: index("auth_oauth_tokens_user_provider_account_idx").on(
+      table.userId,
+      table.providerAccountId,
+    ),
+  }),
+);
+
 export const userSettings = pgTable("user_settings", {
   userId: uuid("user_id")
     .primaryKey()

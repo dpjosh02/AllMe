@@ -35,10 +35,8 @@ export async function syncInitialGoogleCalendarFullSync() {
       import("@/server/auth/guards"),
       import("@/server/auth/google-calendar-token"),
     ]);
-  const [user, token] = await Promise.all([
-    requireOwnerUser(),
-    resolveGoogleCalendarAccessToken(),
-  ]);
+  const user = await requireOwnerUser();
+  const token = await resolveGoogleCalendarAccessToken({ userId: user.id });
 
   return executeInitialGoogleCalendarFullSync({
     token,
