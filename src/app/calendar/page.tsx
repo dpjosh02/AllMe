@@ -4,7 +4,6 @@ import {
   PlugZap,
   ShieldCheck,
 } from "lucide-react";
-import Link from "next/link";
 
 import {
   AllMeCard,
@@ -21,6 +20,8 @@ import {
   updateCalendarSelection,
 } from "@/features/calendar/actions";
 import { CalendarPlanningFilter } from "@/features/calendar/components/calendar-planning-filter";
+import { CalendarUpcomingEvents } from "@/features/calendar/components/calendar-upcoming-events";
+import { CalendarWeekPlanner } from "@/features/calendar/components/calendar-week-planner";
 import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
 import {
   getCalendarPageData,
@@ -72,10 +73,10 @@ export default async function CalendarPage() {
                 }
               />
               <HeroContextChip
-                label="Synced"
+                label="Last sync"
                 value={
                   data.latestSyncRun
-                    ? dateFormatter.format(data.latestSyncRun.createdAt)
+                    ? shortSyncFormatter.format(data.latestSyncRun.createdAt)
                     : "Never"
                 }
               />
@@ -104,13 +105,10 @@ export default async function CalendarPage() {
               }
               title="Next 7 days"
             >
-              <div className="min-h-0 overflow-y-auto pr-1">
-                <div className="grid auto-rows-[minmax(13rem,13rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
-                  {data.weekAgenda.map((day) => (
-                    <WeekAgendaDay day={day} key={day.dateKey} />
-                  ))}
-                </div>
-              </div>
+              <p className="-mt-2 mb-3 text-xs font-semibold text-[var(--muted)]">
+                {data.selectedCalendars}/{data.calendars} calendars shown
+              </p>
+              <CalendarWeekPlanner weekAgenda={data.weekAgenda} />
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -127,22 +125,7 @@ export default async function CalendarPage() {
               icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}
               title="Next events"
             >
-              {data.upcomingEvents.length > 0 ? (
-                <div className="min-h-0 overflow-y-auto pr-1">
-                  <div className="grid gap-2">
-                    {data.upcomingEvents.map((event) => (
-                      <UpcomingEventRow event={event} key={event.id} />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
-                  <p className="text-lg font-semibold">No upcoming events</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    Run Calendar sync to refresh the local cache.
-                  </p>
-                </div>
-              )}
+              <CalendarUpcomingEvents events={data.upcomingEvents} />
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -266,15 +249,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 });
 
-const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-});
-
-const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-});
-
 function MetricTile({
   detail,
   label,
@@ -290,144 +264,6 @@ function MetricTile({
       <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{value}</p>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</p>
     </div>
-  );
-}
-
-function UpcomingEventRow({
-  event,
-}: {
-  event: CalendarPageData["upcomingEvents"][number];
-}) {
-  const dateLabel = event.isAllDay
-    ? event.startDate
-      ? eventDateFormatter.format(toLocalDate(event.startDate))
-      : "Date TBD"
-    : event.startAt
-      ? eventDateFormatter.format(event.startAt)
-      : "Date TBD";
-  const timeLabel = event.isAllDay
-    ? "All day"
-    : event.startAt
-      ? eventTimeFormatter.format(event.startAt)
-      : "Time TBD";
-
-  return (
-    <button
-      className="w-full rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-left transition hover:border-[var(--accent)]"
-      type="button"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
-              style={{ backgroundColor: event.calendarColor ?? "var(--accent)" }}
-            />
-            <p className="truncate text-sm font-semibold">{event.title}</p>
-          </div>
-          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-            {dateLabel}
-            {event.location ? ` · ${event.location}` : ""}
-          </p>
-        </div>
-        <span className="shrink-0 rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
-          {timeLabel}
-        </span>
-      </div>
-    </button>
-  );
-}
-
-function WeekAgendaDay({
-  day,
-}: {
-  day: CalendarPageData["weekAgenda"][number];
-}) {
-  const isQuiet = day.items.length === 0;
-  const todayHref = {
-    pathname: "/today",
-    query: { date: day.dateKey },
-  };
-
-  return (
-    <div className="flex min-h-0 flex-col rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3 transition hover:border-[var(--accent)]">
-      <div className="flex items-start justify-between gap-2">
-        <Link
-          className="min-w-0 rounded-lg transition hover:text-[var(--accent)]"
-          href={todayHref}
-        >
-          <p className="text-sm font-semibold">
-            {weekdayFormatter.format(toLocalDate(day.dateKey))}
-          </p>
-          <p className="text-xs text-[var(--muted)]">
-            {shortDateFormatter.format(toLocalDate(day.dateKey))}
-          </p>
-        </Link>
-        <span className="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
-          {day.items.length}
-        </span>
-      </div>
-
-      {isQuiet ? (
-        <p className="mt-6 rounded-lg border border-dashed border-[var(--line)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
-          No cached events
-        </p>
-      ) : (
-        <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
-          <div className="grid gap-2">
-            {day.items.slice(0, 8).map((item) => (
-              <WeekAgendaItem item={item} key={item.id} />
-            ))}
-          </div>
-          {day.items.length > 8 ? (
-            <Link
-              className="mt-2 inline-flex text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
-              href={todayHref}
-            >
-              +{day.items.length - 8} more
-            </Link>
-          ) : null}
-        </div>
-      )}
-      <Link
-        className="mt-3 inline-flex text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--accent)]"
-        href={todayHref}
-      >
-        Open day
-      </Link>
-    </div>
-  );
-}
-
-function WeekAgendaItem({
-  item,
-}: {
-  item: CalendarPageData["weekAgenda"][number]["items"][number];
-}) {
-  const timeLabel = item.isAllDay
-    ? "All day"
-    : item.startsAt
-      ? eventTimeFormatter.format(item.startsAt)
-      : "Time TBD";
-
-  return (
-    <button
-      className="w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 text-left transition hover:border-[var(--accent)]"
-      type="button"
-    >
-      <div className="flex items-start gap-2">
-        <span
-          aria-hidden="true"
-          className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
-          style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
-        />
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold">{item.title}</p>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">{timeLabel}</p>
-        </div>
-      </div>
-    </button>
   );
 }
 
@@ -448,19 +284,16 @@ function getCompactEventLabel(
   }
 
   return event.startAt
-    ? `${eventTimeFormatter.format(event.startAt)} ${event.title}`
+    ? `${compactEventTimeFormatter.format(event.startAt)} ${event.title}`
     : event.title;
 }
 
-function toLocalDate(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00`);
-}
-
-const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
+const shortSyncFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
 });
 
-const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
+const compactEventTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
 });

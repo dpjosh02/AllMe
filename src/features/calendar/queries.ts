@@ -123,13 +123,16 @@ async function getUpcomingCalendarEvents(userId: string) {
     .select({
       calendarColor: calendarCalendars.color,
       calendarName: calendarCalendars.name,
+      description: calendarEvents.description,
       endAt: calendarEvents.endAt,
       endDate: calendarEvents.endDate,
+      htmlLink: calendarEvents.htmlLink,
       id: calendarEvents.id,
       isAllDay: calendarEvents.isAllDay,
       location: calendarEvents.location,
       startAt: calendarEvents.startAt,
       startDate: calendarEvents.startDate,
+      status: calendarEvents.status,
       title: calendarEvents.title,
     })
     .from(calendarEvents)

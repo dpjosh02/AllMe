@@ -8,6 +8,7 @@ export type TodayAgendaSourceRow = {
   calendarIsDeleted: boolean;
   calendarIsSelected: boolean;
   calendarName: string;
+  description: string | null;
   endAt: Date | null;
   endDate: string | null;
   htmlLink: string | null;
@@ -24,6 +25,7 @@ export type TodayAgendaItem = {
   calendarColor: string | null;
   calendarId: string;
   calendarName: string;
+  description: string | null;
   endDate: string | null;
   endsAt: Date | null;
   htmlLink: string | null;
@@ -143,6 +145,7 @@ function toTodayAgendaItem(row: TodayAgendaSourceRow): TodayAgendaItem {
     calendarColor: row.calendarColor,
     calendarId: row.calendarId,
     calendarName: row.calendarName,
+    description: row.description,
     endDate: row.endDate,
     endsAt: row.endAt,
     htmlLink: row.htmlLink,

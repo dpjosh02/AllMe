@@ -169,6 +169,7 @@ function agendaRow(
     calendarIsDeleted: false,
     calendarIsSelected: true,
     calendarName: "Personal",
+    description: null,
     endAt: new Date("2026-05-02T15:30:00.000Z"),
     endDate: null,
     htmlLink: null,

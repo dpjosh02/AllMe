@@ -33,6 +33,7 @@ export async function getTodayAgenda({
       calendarIsDeleted: calendarCalendars.isDeleted,
       calendarIsSelected: calendarCalendars.isSelected,
       calendarName: calendarCalendars.name,
+      description: calendarEvents.description,
       endAt: calendarEvents.endAt,
       endDate: calendarEvents.endDate,
       htmlLink: calendarEvents.htmlLink,
