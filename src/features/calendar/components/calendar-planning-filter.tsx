@@ -25,6 +25,20 @@ export function CalendarPlanningFilter({
   const [view, setView] = useState<FilterView>("root");
   const menuRef = useRef<HTMLDivElement>(null);
   const selectedCount = calendars.filter((calendar) => calendar.isSelected).length;
+  const holidayCalendarCount = calendars.filter(isHolidayCalendar).length;
+
+  async function applyCalendarVisibility(
+    calendarIds: string[],
+    isSelected: boolean,
+  ) {
+    for (const calendarId of calendarIds) {
+      const formData = new FormData();
+
+      formData.set("calendarId", calendarId);
+      formData.set("isSelected", String(isSelected));
+      await updateCalendarSelection(formData);
+    }
+  }
 
   function closeMenu() {
     setIsOpen(false);
@@ -90,8 +104,36 @@ export function CalendarPlanningFilter({
             {view === "root" ? (
               <RootFilterView
                 calendarCount={calendars.length}
+                hideAllCalendars={() =>
+                  applyCalendarVisibility(
+                    calendars
+                      .filter((calendar) => calendar.isSelected)
+                      .map((calendar) => calendar.id),
+                    false,
+                  )
+                }
+                hideHolidayCalendars={() =>
+                  applyCalendarVisibility(
+                    calendars
+                      .filter(
+                        (calendar) =>
+                          calendar.isSelected && isHolidayCalendar(calendar),
+                      )
+                      .map((calendar) => calendar.id),
+                    false,
+                  )
+                }
+                holidayCalendarCount={holidayCalendarCount}
                 selectedCount={selectedCount}
                 showCalendars={() => setView("calendars")}
+                showAllCalendars={() =>
+                  applyCalendarVisibility(
+                    calendars
+                      .filter((calendar) => !calendar.isSelected)
+                      .map((calendar) => calendar.id),
+                    true,
+                  )
+                }
               />
             ) : (
               <CalendarFilterView
@@ -110,13 +152,41 @@ export function CalendarPlanningFilter({
 
 function RootFilterView({
   calendarCount,
+  hideAllCalendars,
+  hideHolidayCalendars,
+  holidayCalendarCount,
   selectedCount,
   showCalendars,
+  showAllCalendars,
 }: {
   calendarCount: number;
+  hideAllCalendars: () => Promise<void>;
+  hideHolidayCalendars: () => Promise<void>;
+  holidayCalendarCount: number;
   selectedCount: number;
   showCalendars: () => void;
+  showAllCalendars: () => Promise<void>;
 }) {
+  const [pendingQuickAction, setPendingQuickAction] = useState<string | null>(
+    null,
+  );
+  const noVisibleCalendars = selectedCount === 0;
+  const allCalendarsVisible = selectedCount === calendarCount;
+  const hasHolidayCalendars = holidayCalendarCount > 0;
+
+  async function runQuickAction(
+    actionName: string,
+    action: () => Promise<void>,
+  ) {
+    setPendingQuickAction(actionName);
+
+    try {
+      await action();
+    } finally {
+      setPendingQuickAction(null);
+    }
+  }
+
   return (
     <div>
       <div className="mb-3">
@@ -144,7 +214,61 @@ function RootFilterView({
           className="h-4 w-4 shrink-0 text-[var(--accent)]"
         />
       </button>
+
+      <div className="mt-3 grid gap-2">
+        <CalendarQuickActionButton
+          disabled={allCalendarsVisible || pendingQuickAction !== null}
+          isPending={pendingQuickAction === "show-all"}
+          label="Show all calendars"
+          onClick={() => {
+            void runQuickAction("show-all", showAllCalendars);
+          }}
+        />
+        <CalendarQuickActionButton
+          disabled={noVisibleCalendars || pendingQuickAction !== null}
+          isPending={pendingQuickAction === "hide-all"}
+          label="Hide all calendars"
+          onClick={() => {
+            void runQuickAction("hide-all", hideAllCalendars);
+          }}
+        />
+        <CalendarQuickActionButton
+          disabled={
+            !hasHolidayCalendars ||
+            noVisibleCalendars ||
+            pendingQuickAction !== null
+          }
+          isPending={pendingQuickAction === "hide-holidays"}
+          label="Hide holidays"
+          onClick={() => {
+            void runQuickAction("hide-holidays", hideHolidayCalendars);
+          }}
+        />
+      </div>
     </div>
+  );
+}
+
+function CalendarQuickActionButton({
+  disabled,
+  isPending,
+  label,
+  onClick,
+}: {
+  disabled: boolean;
+  isPending: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-left text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-45"
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      {isPending ? "Updating..." : label}
+    </button>
   );
 }
 
@@ -240,4 +364,8 @@ function CompactCalendarRow({
       </form>
     </div>
   );
+}
+
+function isHolidayCalendar(calendar: CalendarFilterSource) {
+  return /holiday/i.test(calendar.name);
 }

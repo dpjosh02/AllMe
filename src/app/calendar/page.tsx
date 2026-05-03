@@ -1,9 +1,10 @@
 import {
   CalendarDays,
-  Clock3,
+  Flag,
   PlugZap,
-  ShieldCheck,
+  CheckCircle2,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import {
   AllMeCard,
@@ -47,7 +48,14 @@ export default async function CalendarPage() {
   ]);
   const canSync = data.connection.isReady && tokenReadiness.ready;
   const todayAgenda = data.weekAgenda[0];
+  const todayAgendaItems = todayAgenda?.items ?? [];
   const nextUpcomingEvent = data.upcomingEvents[0] ?? null;
+  const todayNeedsPrepCount = todayAgendaItems.filter(
+    (event) => event.localReviewStatus === "needs_prep",
+  ).length;
+  const todayDoneCount = todayAgendaItems.filter(
+    (event) => event.localReviewStatus === "done",
+  ).length;
 
   return (
     <AppPageShell>
@@ -61,20 +69,18 @@ export default async function CalendarPage() {
             <div className="grid w-full min-w-[18rem] gap-2 sm:grid-cols-3">
               <HeroContextChip
                 label="Today"
-                value={`${todayAgenda?.items.length ?? 0} ${
-                  todayAgenda?.items.length === 1 ? "event" : "events"
-                }`}
+                value={formatEventCount(todayAgendaItems.length)}
               />
               <HeroContextChip
                 label="Next"
                 value={
                   nextUpcomingEvent
-                    ? getCompactEventLabel(nextUpcomingEvent)
-                    : "No upcoming"
+                    ? getCompactEventTime(nextUpcomingEvent)
+                    : "None"
                 }
               />
               <HeroContextChip
-                label="Last sync"
+                label="Sync"
                 value={
                   data.latestSyncRun
                     ? shortSyncFormatter.format(data.latestSyncRun.createdAt)
@@ -89,6 +95,39 @@ export default async function CalendarPage() {
       />
 
       <PageGrid>
+        <PageGridItem span="full">
+          <AllMeCard className="p-4" variant="metrics">
+            <div className="grid gap-3 md:grid-cols-4">
+              <TodayAgendaStat
+                detail="Cached selected-calendar items for the current local day."
+                label="Today"
+                value={formatEventCount(todayAgendaItems.length)}
+              />
+              <TodayAgendaStat
+                detail={nextUpcomingEvent?.title ?? "No selected-calendar event queued."}
+                label="Next event"
+                value={
+                  nextUpcomingEvent
+                    ? getCompactEventTime(nextUpcomingEvent)
+                    : "None"
+                }
+              />
+              <TodayAgendaStat
+                detail="Events marked for preparation."
+                icon={<Flag aria-hidden="true" className="h-4 w-4" />}
+                label="Needs prep"
+                value={String(todayNeedsPrepCount)}
+              />
+              <TodayAgendaStat
+                detail="Events already marked complete."
+                icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
+                label="Done"
+                value={String(todayDoneCount)}
+              />
+            </div>
+          </AllMeCard>
+        </PageGridItem>
+
         <PageGridItem span="full">
           <AllMeCard
             className="flex max-h-[38rem] min-h-0 flex-col"
@@ -138,55 +177,24 @@ export default async function CalendarPage() {
         </PageGridItem>
 
         <PageGridItem span="full">
-          <AllMeCard variant="activity">
-            <PageSection
-              description="Current local Calendar cache feeding Today and planning."
-              eyebrow="Summary"
-              icon={<Clock3 aria-hidden="true" className="h-6 w-6" />}
-              title="Agenda cache"
-            >
-              <div className="grid gap-3 md:grid-cols-3">
-                <MetricTile
-                  detail={`${data.selectedCalendars} shown in Today`}
-                  label="Calendars"
-                  value={String(data.calendars)}
-                />
-                <MetricTile
-                  detail="Cached event rows"
-                  label="Events"
-                  value={String(data.events)}
-                />
-                <MetricTile
-                  detail={
-                    data.latestSyncRun
-                      ? dateFormatter.format(data.latestSyncRun.createdAt)
-                      : "No sync runs yet"
-                  }
-                  label="Latest sync"
-                  value={data.latestSyncRun?.status ?? "None"}
-                />
-              </div>
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
-
-        <PageGridItem span="full">
           <AllMeCard variant="status">
             <PageSection
-              description="Compact health details for Google Calendar access and the latest local import run."
-              eyebrow="System status"
               icon={<PlugZap aria-hidden="true" className="h-6 w-6" />}
-              title="Sync and connection"
+              title="Calendar system"
             >
-              <MetricGrid className="lg:grid-cols-4">
+              <MetricGrid className="lg:grid-cols-6">
+                <KeyValueRow
+                  label="Calendars"
+                  value={`${data.selectedCalendars}/${data.calendars} shown`}
+                />
+                <KeyValueRow label="Events" value={String(data.events)} />
                 <KeyValueRow label="Status" value={data.connection.status} />
-                <KeyValueRow label="Account" value={data.connection.accountEmail} />
                 <KeyValueRow
                   label="Read token"
                   value={tokenReadiness.ready ? "Available" : "Reauthorize"}
                 />
                 <KeyValueRow
-                  label="Latest run"
+                  label="Sync run"
                   value={data.latestSyncRun?.status ?? "None"}
                 />
                 <KeyValueRow
@@ -197,7 +205,6 @@ export default async function CalendarPage() {
                       : "Never"
                   }
                 />
-                <KeyValueRow label="Secret values" value="Hidden" />
                 {data.latestSyncRun ? (
                   <>
                     <KeyValueRow
@@ -217,32 +224,27 @@ export default async function CalendarPage() {
                   Calendar access before running the first sync.
                 </p>
               ) : null}
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
 
-        <PageGridItem span="full">
-          <AllMeCard variant="status">
-            <PageSection
-              description="Deferred roadmap items remain intentionally separate from the main planning surface."
-              eyebrow="Roadmap"
-              title="Later slices"
-            >
-              <div className="grid gap-3 md:grid-cols-3">
-                {nextSteps.map((step, index) => (
-                  <div
-                    className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3"
-                    key={step}
-                  >
-                    <p className="allme-kicker text-[var(--accent)]">
-                      Step {index + 1}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">
-                      {step}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <details className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+                <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
+                  Later slices
+                </summary>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  {nextSteps.map((step, index) => (
+                    <div
+                      className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2"
+                      key={step}
+                    >
+                      <p className="allme-kicker text-[var(--accent)]">
+                        Step {index + 1}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--foreground)]">
+                        {step}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </details>
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -256,43 +258,50 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 });
 
-function MetricTile({
+function TodayAgendaStat({
   detail,
+  icon,
   label,
   value,
 }: {
   detail: string;
+  icon?: ReactNode;
   label: string;
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
-      <p className="allme-kicker">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</p>
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="allme-kicker">{label}</p>
+        {icon ? <span className="text-[var(--accent)]">{icon}</span> : null}
+      </div>
+      <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{value}</p>
+      <p className="mt-1 truncate text-xs text-[var(--muted)]">{detail}</p>
     </div>
   );
 }
 
 function HeroContextChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
+    <div className="min-w-0 rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
       <p className="allme-kicker text-[0.58rem]">{label}</p>
-      <p className="mt-1 truncate text-xs font-semibold">{value}</p>
+      <p className="mt-1 whitespace-nowrap text-xs font-semibold">{value}</p>
     </div>
   );
 }
 
-function getCompactEventLabel(
+function getCompactEventTime(
   event: CalendarPageData["upcomingEvents"][number],
 ) {
   if (event.isAllDay) {
-    return event.title;
+    return "All day";
   }
 
-  return event.startAt
-    ? `${compactEventTimeFormatter.format(event.startAt)} ${event.title}`
-    : event.title;
+  return event.startAt ? compactEventTimeFormatter.format(event.startAt) : "TBD";
+}
+
+function formatEventCount(count: number) {
+  return `${count} ${count === 1 ? "event" : "events"}`;
 }
 
 const shortSyncFormatter = new Intl.DateTimeFormat("en-US", {
