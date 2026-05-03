@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ne, sql } from "drizzle-orm";
 
 import {
   getGoogleCalendarConnectionStatus,
@@ -15,11 +15,13 @@ export type CalendarPageData = Awaited<ReturnType<typeof getCalendarPageData>>;
 type CalendarStatusTone = "attention" | "neutral" | "ready";
 
 export async function getCalendarPageData(userId: string) {
-  const [connection, latestSyncRun, calendarCounts] = await Promise.all([
-    getGoogleCalendarConnectionStatus({ db, userId }),
-    getLatestCalendarSyncRun(userId),
-    getCalendarCounts(userId),
-  ]);
+  const [connection, latestSyncRun, calendarCounts, upcomingEvents] =
+    await Promise.all([
+      getGoogleCalendarConnectionStatus({ db, userId }),
+      getLatestCalendarSyncRun(userId),
+      getCalendarCounts(userId),
+      getUpcomingCalendarEvents(userId),
+    ]);
   const hasReadonlyScope = Boolean(
     connection?.scopes.includes(googleCalendarReadonlyScope),
   );
@@ -47,7 +49,48 @@ export async function getCalendarPageData(userId: string) {
     },
     events: calendarCounts.events,
     latestSyncRun,
+    upcomingEvents,
   };
+}
+
+async function getUpcomingCalendarEvents(userId: string) {
+  const rows = await db
+    .select({
+      calendarColor: calendarCalendars.color,
+      calendarName: calendarCalendars.name,
+      endAt: calendarEvents.endAt,
+      endDate: calendarEvents.endDate,
+      id: calendarEvents.id,
+      isAllDay: calendarEvents.isAllDay,
+      location: calendarEvents.location,
+      startAt: calendarEvents.startAt,
+      startDate: calendarEvents.startDate,
+      title: calendarEvents.title,
+    })
+    .from(calendarEvents)
+    .innerJoin(
+      calendarCalendars,
+      eq(calendarEvents.calendarId, calendarCalendars.id),
+    )
+    .where(
+      and(
+        eq(calendarEvents.userId, userId),
+        eq(calendarCalendars.userId, userId),
+        eq(calendarCalendars.isSelected, true),
+        eq(calendarCalendars.isDeleted, false),
+        ne(calendarEvents.status, "cancelled"),
+        gte(
+          sql`coalesce(${calendarEvents.startAt}, ${calendarEvents.startDate})`,
+          new Date(),
+        ),
+      ),
+    )
+    .orderBy(
+      asc(sql`coalesce(${calendarEvents.startAt}, ${calendarEvents.startDate})`),
+    )
+    .limit(8);
+
+  return rows;
 }
 
 async function getLatestCalendarSyncRun(userId: string) {

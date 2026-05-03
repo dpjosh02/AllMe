@@ -18,7 +18,10 @@ import {
 } from "@/components/layout/page-scaffold";
 import { syncGoogleCalendarNow } from "@/features/calendar/actions";
 import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
-import { getCalendarPageData } from "@/features/calendar/queries";
+import {
+  getCalendarPageData,
+  type CalendarPageData,
+} from "@/features/calendar/queries";
 import { getGoogleCalendarAccessTokenReadiness } from "@/server/auth/google-calendar-token";
 import { requirePageUser } from "@/server/auth/guards";
 
@@ -29,12 +32,6 @@ const nextSteps = [
   "Verify synced events in the local Postgres cache",
   "Wire the Today agenda to cached calendar events",
   "Add incremental sync once the first full sync is stable",
-];
-
-const weekPlaceholders = [
-  { day: "Today", detail: "Agenda will appear after Google Calendar sync" },
-  { day: "Tomorrow", detail: "Reserved for upcoming events" },
-  { day: "This week", detail: "Week view will use cached event rows" },
 ];
 
 export default async function CalendarPage() {
@@ -145,26 +142,33 @@ export default async function CalendarPage() {
         </PageGridItem>
 
         <PageGridItem span="half">
-          <AllMeCard variant="activity">
+          <AllMeCard
+            className="flex max-h-[28rem] min-h-0 flex-col overflow-hidden"
+            variant="activity"
+          >
             <PageSection
-              description="A lightweight preview of the weekly planning shape before event sync exists."
-              eyebrow="Week"
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+              description="A compact local-cache preview. This is still read-only and intentionally not a full calendar UI yet."
+              eyebrow="Upcoming"
               icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}
-              title="Planning view"
+              title="Next events"
             >
-              <div className="grid gap-3">
-                {weekPlaceholders.map((item) => (
-                  <div
-                    className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3"
-                    key={item.day}
-                  >
-                    <p className="text-sm font-semibold">{item.day}</p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
-                      {item.detail}
-                    </p>
+              {data.upcomingEvents.length > 0 ? (
+                <div className="min-h-0 overflow-y-auto pr-1">
+                  <div className="grid gap-2">
+                    {data.upcomingEvents.map((event) => (
+                      <UpcomingEventRow event={event} key={event.id} />
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
+                  <p className="text-lg font-semibold">No upcoming events</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    Run Calendar sync to refresh the local cache.
+                  </p>
+                </div>
+              )}
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -249,6 +253,15 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 });
 
+const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+});
+
+const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 function MetricTile({
   detail,
   label,
@@ -263,6 +276,42 @@ function MetricTile({
       <p className="allme-kicker">{label}</p>
       <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{value}</p>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</p>
+    </div>
+  );
+}
+
+function UpcomingEventRow({
+  event,
+}: {
+  event: CalendarPageData["upcomingEvents"][number];
+}) {
+  const dateLabel = event.isAllDay
+    ? event.startDate
+      ? eventDateFormatter.format(new Date(`${event.startDate}T00:00:00`))
+      : "Date TBD"
+    : event.startAt
+      ? eventDateFormatter.format(event.startAt)
+      : "Date TBD";
+  const timeLabel = event.isAllDay
+    ? "All day"
+    : event.startAt
+      ? eventTimeFormatter.format(event.startAt)
+      : "Time TBD";
+
+  return (
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{event.title}</p>
+          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+            {dateLabel}
+            {event.location ? ` · ${event.location}` : ""}
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
+          {timeLabel}
+        </span>
+      </div>
     </div>
   );
 }
