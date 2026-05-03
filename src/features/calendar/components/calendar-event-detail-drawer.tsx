@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
@@ -48,6 +49,10 @@ export function CalendarEventDetailDrawer({
   }
 
   const timeLabel = getEventTimeLabel(event);
+  const todayDateKey = getEventTodayDateKey(event);
+  const todayHref = todayDateKey
+    ? { pathname: "/today", query: { date: todayDateKey } }
+    : null;
 
   return (
     <div
@@ -112,16 +117,27 @@ export function CalendarEventDetailDrawer({
             </div>
           ) : null}
 
-          {event.htmlLink ? (
-            <a
-              className="mt-5 inline-flex rounded-full border border-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              href={event.htmlLink}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Open in Google Calendar
-            </a>
-          ) : null}
+          <div className="mt-5 flex flex-wrap gap-3">
+            {todayHref ? (
+              <Link
+                className="inline-flex rounded-full border border-[var(--accent)] bg-[var(--accent)]/10 px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                href={todayHref}
+                onClick={onClose}
+              >
+                Review day in Today
+              </Link>
+            ) : null}
+            {event.htmlLink ? (
+              <a
+                className="inline-flex rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                href={event.htmlLink}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open in Google Calendar
+              </a>
+            ) : null}
+          </div>
         </div>
       </section>
     </div>
@@ -171,6 +187,22 @@ export function getEventTimeLabel(event: CalendarEventDetail) {
 
 function formatDateKey(dateKey: string) {
   return eventDateFormatter.format(new Date(`${dateKey}T00:00:00`));
+}
+
+function getEventTodayDateKey(event: CalendarEventDetail) {
+  if (event.startDate) {
+    return event.startDate;
+  }
+
+  if (!event.startsAt) {
+    return null;
+  }
+
+  return [
+    event.startsAt.getFullYear(),
+    String(event.startsAt.getMonth() + 1).padStart(2, "0"),
+    String(event.startsAt.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function formatStatus(status: string) {
