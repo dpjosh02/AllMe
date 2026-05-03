@@ -195,18 +195,29 @@ export default async function TodayPage({
               >
                 {data.agendaItems.length > 0 ? (
                   <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusPill
-                        label={`${data.agendaItems.length} ${
-                          data.agendaItems.length === 1 ? "event" : "events"
-                        }`}
-                        tone="ready"
-                      />
-                      {data.agendaItems.some((item) => item.isAllDay) ? (
-                        <span className="text-xs font-semibold text-[var(--muted)]">
-                          All-day first
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusPill
+                          label={`${data.agendaItems.length} ${
+                            data.agendaItems.length === 1 ? "event" : "events"
+                          }`}
+                          tone="ready"
+                        />
+                        <span className="rounded-full border border-[var(--line)] px-2 py-1 text-xs font-semibold text-[var(--muted)]">
+                          {data.agendaSource.selectedCalendars} selected calendars
                         </span>
-                      ) : null}
+                        {data.agendaItems.some((item) => item.isAllDay) ? (
+                          <span className="text-xs font-semibold text-[var(--muted)]">
+                            All-day first
+                          </span>
+                        ) : null}
+                      </div>
+                      <Link
+                        className="text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
+                        href="/calendar"
+                      >
+                        Manage
+                      </Link>
                     </div>
                     <div className="min-h-0 overflow-y-auto pr-1">
                       <div className="grid gap-2">
@@ -220,8 +231,15 @@ export default async function TodayPage({
                   <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-3">
                     <StatusPill label="No events" tone="neutral" />
                     <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                      Run Calendar sync to populate this local agenda cache.
+                      Run Calendar sync or review selected calendars to populate this
+                      local agenda cache.
                     </p>
+                    <Link
+                      className="mt-3 inline-flex text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
+                      href="/calendar"
+                    >
+                      Manage calendars
+                    </Link>
                   </div>
                 )}
               </PageSection>
@@ -269,7 +287,14 @@ function AgendaItemRow({
     <div className="rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{item.title}</p>
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
+              style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
+            />
+            <p className="truncate text-sm font-semibold">{item.title}</p>
+          </div>
           {item.location ? (
             <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
               {item.location}

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getTodayAgenda } from "@/features/calendar/agenda-query";
 import {
@@ -7,7 +7,7 @@ import {
   isDateKey,
 } from "@/features/today/date";
 import { db } from "@/server/db";
-import { notes, userSettings } from "@/server/db/schema";
+import { calendarCalendars, notes, userSettings } from "@/server/db/schema";
 
 export type TodayPageData = Awaited<ReturnType<typeof getTodayPageData>>;
 
@@ -29,6 +29,7 @@ export async function getTodayPageData({
   const dailyNote = await ensureDailyNote({ dateKey, userId });
 
   return {
+    agendaSource: await getAgendaSourceSummary(userId),
     dateKey,
     displayDate: formatDisplayDate(dateKey),
     dailyNote,
@@ -38,6 +39,25 @@ export async function getTodayPageData({
     quickCaptures: await getQuickCaptures(userId),
     recentDailyNotes: await getRecentDailyNotes(userId),
     timezone,
+  };
+}
+
+async function getAgendaSourceSummary(userId: string) {
+  const [summary] = await db
+    .select({
+      selectedCalendars: sql<number>`count(*)::int`,
+    })
+    .from(calendarCalendars)
+    .where(
+      and(
+        eq(calendarCalendars.userId, userId),
+        eq(calendarCalendars.isSelected, true),
+        eq(calendarCalendars.isDeleted, false),
+      ),
+    );
+
+  return {
+    selectedCalendars: summary?.selectedCalendars ?? 0,
   };
 }
 
