@@ -24,6 +24,9 @@ type CalendarReviewFocus = CalendarEventReviewStatus | "all";
 type CalendarDashboardEvent =
   | CalendarPageData["upcomingEvents"][number]
   | CalendarPageData["weekAgenda"][number]["items"][number];
+type CalendarEventCollectionItem = {
+  localReviewStatus: CalendarEventReviewStatus | null;
+};
 
 export function CalendarDashboardInteractive({
   data,
@@ -48,6 +51,8 @@ export function CalendarDashboardInteractive({
   const todayDoneCount = getReviewStatusCount(todayAgendaItems, "done");
   const filteredWeekAgenda = filterWeekAgenda(data.weekAgenda, reviewFocus);
   const filteredUpcomingEvents = filterEvents(data.upcomingEvents, reviewFocus);
+  const focusedEventCount =
+    reviewFocus === "all" ? 0 : getFocusedWeekEventCount(data.weekAgenda, reviewFocus);
 
   function openEvent(event: CalendarDashboardEvent) {
     setSelectedEvent(toEventDetail(event));
@@ -100,6 +105,7 @@ export function CalendarDashboardInteractive({
             />
           </div>
           <CalendarReviewFocusControls
+            focusedEventCount={focusedEventCount}
             reviewFocus={reviewFocus}
             setReviewFocus={setReviewFocus}
           />
@@ -169,9 +175,11 @@ export function CalendarDashboardInteractive({
 }
 
 function CalendarReviewFocusControls({
+  focusedEventCount,
   reviewFocus,
   setReviewFocus,
 }: {
+  focusedEventCount: number;
   reviewFocus: CalendarReviewFocus;
   setReviewFocus: (reviewFocus: CalendarReviewFocus) => void;
 }) {
@@ -185,9 +193,9 @@ function CalendarReviewFocusControls({
         <button
           aria-pressed={reviewFocus === option.value}
           className={[
-            "rounded-full border px-3 py-1 text-xs font-semibold transition",
+            "rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition",
             reviewFocus === option.value
-              ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+              ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--panel-strong)] shadow-[0_0_0_3px_var(--accent-soft)]"
               : "border-[var(--line)] bg-[var(--empty)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]",
           ].join(" ")}
           key={option.value}
@@ -197,6 +205,19 @@ function CalendarReviewFocusControls({
           {option.label}
         </button>
       ))}
+      {reviewFocus !== "all" ? (
+        <div className="basis-full pt-1 text-xs font-semibold text-[var(--muted)]">
+          Showing {formatEventCount(focusedEventCount)} marked{" "}
+          {getReviewFocusLabel(reviewFocus)} ·{" "}
+          <button
+            className="text-[var(--accent)] transition hover:text-[var(--foreground)]"
+            onClick={() => setReviewFocus("all")}
+            type="button"
+          >
+            Clear filter
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -273,8 +294,10 @@ function SummaryCardContent({
 
 function getSummaryCardClassName({ isActive }: { isActive: boolean }) {
   return [
-    "block w-full rounded-2xl border bg-[var(--empty)] px-4 py-3 text-left transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50",
-    isActive ? "border-[var(--accent)]" : "border-[var(--line)]",
+    "group block w-full rounded-2xl border bg-[var(--empty)] px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--panel)] hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
+    isActive
+      ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[0_0_0_3px_var(--accent-soft)]"
+      : "border-[var(--line)]",
   ].join(" ");
 }
 
@@ -292,7 +315,7 @@ function filterWeekAgenda(
   }));
 }
 
-function filterEvents<T extends { localReviewStatus: CalendarEventReviewStatus | null }>(
+function filterEvents<T extends CalendarEventCollectionItem>(
   events: T[],
   reviewFocus: CalendarReviewFocus,
 ) {
@@ -306,12 +329,22 @@ function filterEvents<T extends { localReviewStatus: CalendarEventReviewStatus |
 }
 
 function getReviewStatusCount(
-  events: Array<{ localReviewStatus: CalendarEventReviewStatus | null }>,
+  events: CalendarEventCollectionItem[],
   reviewStatus: CalendarEventReviewStatus,
 ) {
   return events.filter(
     (event) => (event.localReviewStatus ?? "none") === reviewStatus,
   ).length;
+}
+
+function getFocusedWeekEventCount(
+  weekAgenda: CalendarPageData["weekAgenda"],
+  reviewFocus: CalendarEventReviewStatus,
+) {
+  return weekAgenda.reduce(
+    (count, day) => count + filterEvents(day.items, reviewFocus).length,
+    0,
+  );
 }
 
 function toEventDetail(event: CalendarDashboardEvent): CalendarEventDetail {
@@ -352,7 +385,7 @@ function getReviewFocusLabel(reviewFocus: CalendarReviewFocus) {
     case "needs_prep":
       return "Needs prep";
     case "none":
-      return "No state";
+      return "Unreviewed";
   }
 }
 
@@ -368,7 +401,7 @@ const reviewFocusOptions: Array<{
   { label: "Needs prep", value: "needs_prep" },
   { label: "Done", value: "done" },
   { label: "Ignored", value: "ignored" },
-  { label: "No state", value: "none" },
+  { label: "Unreviewed", value: "none" },
 ];
 
 const compactEventTimeFormatter = new Intl.DateTimeFormat("en-US", {
