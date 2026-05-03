@@ -8,15 +8,33 @@ export function CalendarSelectionButton({
   isSelected: boolean;
 }) {
   const { pending } = useFormStatus();
-  const nextLabel = isSelected ? "Hide" : "Show";
 
   return (
     <button
-      className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
+      aria-pressed={isSelected}
+      className={[
+        "relative inline-flex h-6 w-11 items-center rounded-full border transition disabled:cursor-wait disabled:opacity-60",
+        isSelected
+          ? "border-[var(--positive)] bg-[var(--positive)]/20"
+          : "border-[var(--line)] bg-[var(--empty)]",
+      ].join(" ")}
       disabled={pending}
       type="submit"
     >
-      {pending ? "Saving" : nextLabel}
+      <span className="sr-only">
+        {pending
+          ? "Saving calendar visibility"
+          : isSelected
+            ? "Hide calendar"
+            : "Show calendar"}
+      </span>
+      <span
+        aria-hidden="true"
+        className={[
+          "h-4 w-4 rounded-full bg-[var(--foreground)] transition",
+          isSelected ? "translate-x-5" : "translate-x-1",
+        ].join(" ")}
+      />
     </button>
   );
 }

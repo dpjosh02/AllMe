@@ -17,7 +17,6 @@ import {
   PageGridItem,
   PageHero,
   PageSection,
-  StatusPill,
 } from "@/components/layout/page-scaffold";
 import {
   syncGoogleCalendarNow,
@@ -35,9 +34,8 @@ import { requirePageUser } from "@/server/auth/guards";
 export const dynamic = "force-dynamic";
 
 const nextSteps = [
-  "Keep manual sync using stored Google incremental tokens",
-  "Use selected calendars consistently across Today and future planning views",
   "Promote weekly day review into guided planning workflow",
+  "Prepare read-only event detail drawer and event-linked notes",
   "Defer editing and bidirectional writes until read-only sync is durable",
 ];
 
@@ -48,15 +46,43 @@ export default async function CalendarPage() {
     getGoogleCalendarAccessTokenReadiness(),
   ]);
   const canSync = data.connection.isReady && tokenReadiness.ready;
+  const todayAgenda = data.weekAgenda[0];
+  const nextUpcomingEvent = data.upcomingEvents[0] ?? null;
 
   return (
     <AppPageShell>
       <PageHero
         eyebrow="Calendar"
         right={
-          <form action={syncGoogleCalendarNow} className="flex justify-end">
-            <SyncGoogleCalendarButton disabled={!canSync} />
-          </form>
+          <div className="flex flex-col items-end gap-3">
+            <form action={syncGoogleCalendarNow} className="flex justify-end">
+              <SyncGoogleCalendarButton disabled={!canSync} />
+            </form>
+            <div className="grid w-full min-w-[18rem] gap-2 sm:grid-cols-3">
+              <HeroContextChip
+                label="Today"
+                value={`${todayAgenda?.items.length ?? 0} ${
+                  todayAgenda?.items.length === 1 ? "event" : "events"
+                }`}
+              />
+              <HeroContextChip
+                label="Next"
+                value={
+                  nextUpcomingEvent
+                    ? getCompactEventLabel(nextUpcomingEvent)
+                    : "No upcoming"
+                }
+              />
+              <HeroContextChip
+                label="Synced"
+                value={
+                  data.latestSyncRun
+                    ? dateFormatter.format(data.latestSyncRun.createdAt)
+                    : "Never"
+                }
+              />
+            </div>
+          </div>
         }
         subtitle="A schedule layer for daily context, weekly planning, and event-linked notes backed by local cached provider data."
         title="Schedule context"
@@ -65,18 +91,18 @@ export default async function CalendarPage() {
       <PageGrid>
         <PageGridItem span="full">
           <AllMeCard
-            className="flex max-h-[32rem] min-h-0 flex-col overflow-hidden"
+            className="flex max-h-[30rem] min-h-0 flex-col overflow-hidden"
             variant="activity"
           >
             <PageSection
               className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
-              description={`Read-only selected-calendar plan for the next seven local days in ${data.timezone}.`}
+              description={`Selected-calendar plan for the next seven local days in ${data.timezone}.`}
               eyebrow="Planning"
               icon={<StretchHorizontal aria-hidden="true" className="h-6 w-6" />}
               title="Next 7 days"
             >
               <div className="min-h-0 overflow-y-auto pr-1">
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+                <div className="grid auto-rows-[minmax(13rem,13rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
                   {data.weekAgenda.map((day) => (
                     <WeekAgendaDay day={day} key={day.dateKey} />
                   ))}
@@ -86,47 +112,15 @@ export default async function CalendarPage() {
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="full">
-          <AllMeCard
-            className="flex max-h-[24rem] min-h-0 flex-col overflow-hidden"
-            variant="activity"
-          >
-            <PageSection
-              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
-              description="Choose which synced calendars are visible in AllMe."
-              eyebrow="Sources"
-              icon={<Eye aria-hidden="true" className="h-6 w-6" />}
-              title="Calendars in AllMe"
-            >
-              {data.calendarSources.length > 0 ? (
-                <div className="min-h-0 overflow-y-auto pr-1">
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {data.calendarSources.map((calendar) => (
-                      <CalendarSourceRow calendar={calendar} key={calendar.id} />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
-                  <p className="text-lg font-semibold">No calendars synced yet</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    Run Calendar sync after connecting Google Calendar.
-                  </p>
-                </div>
-              )}
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
-
-        <PageGridItem span="half">
+        <PageGridItem span="primary">
           <AllMeCard
             className="flex max-h-[28rem] min-h-0 flex-col overflow-hidden"
             variant="activity"
           >
             <PageSection
               className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
-              description="A compact local-cache preview. This is still read-only and intentionally not a full calendar UI yet."
-              eyebrow="Upcoming"
+              description="Quick access to upcoming cached events from selected calendars."
+              eyebrow="Agenda"
               icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}
               title="Next events"
             >
@@ -150,60 +144,15 @@ export default async function CalendarPage() {
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="half">
-          <AllMeCard variant="status">
-            <PageSection
-              description="The manual sync writes a local lifecycle row before provider reads, then imports only after Google returns data."
-              eyebrow="Sync"
-              icon={<ShieldCheck aria-hidden="true" className="h-6 w-6" />}
-              title="Latest run"
-            >
-              {data.latestSyncRun ? (
-                <MetricGrid>
-                  <KeyValueRow label="Status" value={data.latestSyncRun.status} />
-                  <KeyValueRow
-                    label="Scanned"
-                    value={String(data.latestSyncRun.eventsScanned)}
-                  />
-                  <KeyValueRow
-                    label="Inserted"
-                    value={String(data.latestSyncRun.eventsInserted)}
-                  />
-                  <KeyValueRow
-                    label="Cancelled"
-                    value={String(data.latestSyncRun.eventsCancelled)}
-                  />
-                  <KeyValueRow
-                    label="Skipped"
-                    value={String(data.latestSyncRun.eventsSkipped)}
-                  />
-                  <KeyValueRow
-                    label="Failure detail"
-                    value={data.latestSyncRun.hasErrorSummary ? "Hidden" : "None"}
-                  />
-                </MetricGrid>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
-                  <p className="text-lg font-semibold">No sync runs yet</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    Use the manual sync control after reauthorizing Google
-                    Calendar access.
-                  </p>
-                </div>
-              )}
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
-
-        <PageGridItem span="primary">
+        <PageGridItem span="support">
           <AllMeCard variant="activity">
             <PageSection
-              description="This is the local agenda surface Today will consume. Provider reads stay behind the sync boundary."
-              eyebrow="Agenda"
+              description="Current local Calendar cache feeding Today and planning."
+              eyebrow="Summary"
               icon={<Clock3 aria-hidden="true" className="h-6 w-6" />}
-              title="Today"
+              title="Agenda cache"
             >
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3">
                 <MetricTile
                   detail={`${data.selectedCalendars} shown in Today`}
                   label="Calendars"
@@ -228,20 +177,56 @@ export default async function CalendarPage() {
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="support">
+        <PageGridItem span="full">
+          <AllMeCard
+            className="flex max-h-[18rem] min-h-0 flex-col overflow-hidden"
+            variant="activity"
+          >
+            <PageSection
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+              description="Choose which synced calendars are visible in AllMe."
+              eyebrow="Sources"
+              icon={<Eye aria-hidden="true" className="h-6 w-6" />}
+              title="Calendars in AllMe"
+            >
+              {data.calendarSources.length > 0 ? (
+                <div className="min-h-0 overflow-y-auto pr-1">
+                  <div className="grid gap-2">
+                    {data.calendarSources.map((calendar) => (
+                      <CalendarSourceRow calendar={calendar} key={calendar.id} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
+                  <p className="text-lg font-semibold">No calendars synced yet</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    Run Calendar sync after connecting Google Calendar.
+                  </p>
+                </div>
+              )}
+            </PageSection>
+          </AllMeCard>
+        </PageGridItem>
+
+        <PageGridItem span="full">
           <AllMeCard variant="status">
             <PageSection
-              description="Connection health is based on non-secret OAuth metadata and local sync state. Tokens stay inside the auth boundary."
-              eyebrow="Connection"
+              description="Compact health details for Google Calendar access and the latest local import run."
+              eyebrow="System status"
               icon={<PlugZap aria-hidden="true" className="h-6 w-6" />}
-              title="Google Calendar"
+              title="Sync and connection"
             >
-              <MetricGrid className="md:grid-cols-1">
+              <MetricGrid className="lg:grid-cols-4">
                 <KeyValueRow label="Status" value={data.connection.status} />
                 <KeyValueRow label="Account" value={data.connection.accountEmail} />
                 <KeyValueRow
                   label="Read token"
                   value={tokenReadiness.ready ? "Available" : "Reauthorize"}
+                />
+                <KeyValueRow
+                  label="Latest run"
+                  value={data.latestSyncRun?.status ?? "None"}
                 />
                 <KeyValueRow
                   label="Last sync"
@@ -252,6 +237,18 @@ export default async function CalendarPage() {
                   }
                 />
                 <KeyValueRow label="Secret values" value="Hidden" />
+                {data.latestSyncRun ? (
+                  <>
+                    <KeyValueRow
+                      label="Scanned"
+                      value={String(data.latestSyncRun.eventsScanned)}
+                    />
+                    <KeyValueRow
+                      label="Inserted"
+                      value={String(data.latestSyncRun.eventsInserted)}
+                    />
+                  </>
+                ) : null}
               </MetricGrid>
               {!tokenReadiness.ready ? (
                 <p className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
@@ -266,14 +263,14 @@ export default async function CalendarPage() {
         <PageGridItem span="full">
           <AllMeCard variant="status">
             <PageSection
-              description="Calendar is now foundation-first and token-aware: keep the local cache reliable before adding richer planning UI."
-              eyebrow="Build order"
-              title="Next slices"
+              description="Deferred roadmap items remain intentionally separate from the main planning surface."
+              eyebrow="Roadmap"
+              title="Later slices"
             >
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-3">
                 {nextSteps.map((step, index) => (
                   <div
-                    className="rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4"
+                    className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3"
                     key={step}
                   >
                     <p className="allme-kicker text-[var(--accent)]">
@@ -332,7 +329,7 @@ function UpcomingEventRow({
 }) {
   const dateLabel = event.isAllDay
     ? event.startDate
-      ? eventDateFormatter.format(new Date(`${event.startDate}T00:00:00`))
+      ? eventDateFormatter.format(toLocalDate(event.startDate))
       : "Date TBD"
     : event.startAt
       ? eventDateFormatter.format(event.startAt)
@@ -344,10 +341,20 @@ function UpcomingEventRow({
       : "Time TBD";
 
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
+    <button
+      className="w-full rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-left transition hover:border-[var(--accent)]"
+      type="button"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{event.title}</p>
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
+              style={{ backgroundColor: event.calendarColor ?? "var(--accent)" }}
+            />
+            <p className="truncate text-sm font-semibold">{event.title}</p>
+          </div>
           <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
             {dateLabel}
             {event.location ? ` · ${event.location}` : ""}
@@ -357,7 +364,7 @@ function UpcomingEventRow({
           {timeLabel}
         </span>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -367,8 +374,8 @@ function CalendarSourceRow({
   calendar: CalendarPageData["calendarSources"][number];
 }) {
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
-      <div className="flex items-start justify-between gap-4">
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
@@ -378,9 +385,10 @@ function CalendarSourceRow({
             />
             <p className="truncate text-sm font-semibold">{calendar.name}</p>
           </div>
-          <p className="mt-1 truncate text-xs text-[var(--muted)]">
+          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
             {calendar.isPrimary ? "Primary calendar" : "Synced calendar"}
             {calendar.timezone ? ` · ${calendar.timezone}` : ""}
+            {` · ${calendar.eventCount} cached events`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -392,7 +400,7 @@ function CalendarSourceRow({
                 : "border-[var(--line)] text-[var(--muted)]",
             ].join(" ")}
           >
-            {calendar.isSelected ? "Shown" : "Hidden"}
+            {calendar.isSelected ? "Selected" : "Hidden"}
           </span>
           <form action={updateCalendarSelection}>
             <input name="calendarId" type="hidden" value={calendar.id} />
@@ -405,9 +413,6 @@ function CalendarSourceRow({
           </form>
         </div>
       </div>
-      <p className="mt-2 text-xs text-[var(--muted)]">
-        {calendar.eventCount} cached events
-      </p>
     </div>
   );
 }
@@ -424,7 +429,7 @@ function WeekAgendaDay({
   };
 
   return (
-    <div className="min-h-[12rem] rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3 transition hover:border-[var(--accent)]">
+    <div className="flex min-h-0 flex-col rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3 transition hover:border-[var(--accent)]">
       <div className="flex items-start justify-between gap-2">
         <Link
           className="min-w-0 rounded-lg transition hover:text-[var(--accent)]"
@@ -447,16 +452,18 @@ function WeekAgendaDay({
           No cached events
         </p>
       ) : (
-        <div className="mt-3 grid gap-2">
-          {day.items.slice(0, 4).map((item) => (
-            <WeekAgendaItem item={item} key={item.id} />
-          ))}
-          {day.items.length > 4 ? (
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="grid gap-2">
+            {day.items.slice(0, 8).map((item) => (
+              <WeekAgendaItem item={item} key={item.id} />
+            ))}
+          </div>
+          {day.items.length > 8 ? (
             <Link
-              className="text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
+              className="mt-2 inline-flex text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
               href={todayHref}
             >
-              +{day.items.length - 4} more
+              +{day.items.length - 8} more
             </Link>
           ) : null}
         </div>
@@ -483,7 +490,10 @@ function WeekAgendaItem({
       : "Time TBD";
 
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5">
+    <button
+      className="w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 text-left transition hover:border-[var(--accent)]"
+      type="button"
+    >
       <div className="flex items-start gap-2">
         <span
           aria-hidden="true"
@@ -495,8 +505,29 @@ function WeekAgendaItem({
           <p className="mt-0.5 text-xs text-[var(--muted)]">{timeLabel}</p>
         </div>
       </div>
+    </button>
+  );
+}
+
+function HeroContextChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
+      <p className="allme-kicker text-[0.58rem]">{label}</p>
+      <p className="mt-1 truncate text-xs font-semibold">{value}</p>
     </div>
   );
+}
+
+function getCompactEventLabel(
+  event: CalendarPageData["upcomingEvents"][number],
+) {
+  if (event.isAllDay) {
+    return event.title;
+  }
+
+  return event.startAt
+    ? `${eventTimeFormatter.format(event.startAt)} ${event.title}`
+    : event.title;
 }
 
 function toLocalDate(dateKey: string) {
