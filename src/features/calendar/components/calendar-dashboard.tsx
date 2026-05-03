@@ -140,9 +140,9 @@ export function CalendarDashboardInteractive({
         </AllMeCard>
       </PageGridItem>
 
-      <PageGridItem span="seven">
+      <PageGridItem span="full">
         <AllMeCard
-          className="flex h-[34rem] min-h-0 flex-col"
+          className="flex max-h-[38rem] min-h-0 flex-col"
           variant="activity"
         >
           <PageSection
@@ -172,9 +172,9 @@ export function CalendarDashboardInteractive({
         </AllMeCard>
       </PageGridItem>
 
-      <PageGridItem span="five">
+      <PageGridItem span="full">
         <AllMeCard
-          className="flex h-[34rem] min-h-0 flex-col overflow-hidden"
+          className="flex max-h-[28rem] min-h-0 flex-col overflow-hidden"
           variant="activity"
         >
           <PageSection
