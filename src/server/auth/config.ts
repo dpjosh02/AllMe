@@ -1,5 +1,6 @@
 import GoogleProvider from "next-auth/providers/google";
-import type { NextAuthConfig } from "next-auth";
+import type { Account, NextAuthConfig } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 
 import {
   googleCalendarReadonlyScope,
@@ -53,7 +54,7 @@ export const authOptions: NextAuthConfig = {
 
       return Response.redirect(new URL("/unauthorized", request.nextUrl.origin));
     },
-    jwt({ token, user }) {
+    jwt({ account, token, user }) {
       if (user?.email) {
         token.email = user.email;
       }
@@ -65,6 +66,8 @@ export const authOptions: NextAuthConfig = {
       if (user?.image) {
         token.picture = user.image;
       }
+
+      syncGoogleCalendarJwtClaims(token, account);
 
       return token;
     },
@@ -127,3 +130,25 @@ export const authOptions: NextAuthConfig = {
         ]
       : [],
 };
+
+function syncGoogleCalendarJwtClaims(
+  token: JWT,
+  account: Account | null | undefined,
+) {
+  if (account?.provider !== "google") {
+    return;
+  }
+
+  if (account.access_token && hasGoogleCalendarReadonlyScope(account.scope)) {
+    token.googleCalendarAccessToken = account.access_token;
+    token.googleCalendarAccessTokenExpiresAt = account.expires_at ?? null;
+    token.googleCalendarProviderAccountId = account.providerAccountId ?? null;
+    token.googleCalendarScopes = account.scope ?? null;
+    return;
+  }
+
+  delete token.googleCalendarAccessToken;
+  delete token.googleCalendarAccessTokenExpiresAt;
+  delete token.googleCalendarProviderAccountId;
+  delete token.googleCalendarScopes;
+}

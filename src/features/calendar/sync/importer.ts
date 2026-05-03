@@ -24,7 +24,9 @@ export type ImportCalendarSnapshotInput = {
   connectionId: string;
   db: Database;
   snapshot: CalendarSyncSnapshot;
+  startedAt?: Date;
   syncKind?: "full" | "incremental" | "recovery_full";
+  syncRunId?: string;
   userId: string;
   windowEnd?: Date;
   windowStart?: Date;
@@ -33,23 +35,26 @@ export type ImportCalendarSnapshotInput = {
 export async function importCalendarSnapshot({
   connectionId,
   db,
+  startedAt = new Date(),
   snapshot,
   syncKind = "full",
+  syncRunId,
   userId,
   windowEnd,
   windowStart,
 }: ImportCalendarSnapshotInput) {
-  const startedAt = new Date();
   const plan = createCalendarSyncImportPlan(snapshot, { observedAt: startedAt });
-  const syncRun = await createCalendarSyncRun({
-    connectionId,
-    db,
-    startedAt,
-    syncKind,
-    userId,
-    windowEnd,
-    windowStart,
-  });
+  const syncRun = syncRunId
+    ? { id: syncRunId }
+    : await createCalendarSyncRun({
+        connectionId,
+        db,
+        startedAt,
+        syncKind,
+        userId,
+        windowEnd,
+        windowStart,
+      });
 
   try {
     const calendarIdsBySourceId = await upsertCalendarRecords({
