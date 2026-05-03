@@ -180,20 +180,23 @@ export default async function TodayPage({
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="support">
-          <div className="grid h-full gap-5">
-            <AllMeCard variant="status">
+        <PageGridItem span="support" className="min-h-0">
+          <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-5">
+            <AllMeCard className="flex min-h-0 flex-col overflow-hidden" variant="status">
               <PageSection
+                className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
                 description="Cached Calendar events for the selected day. Today never reads directly from Google."
                 eyebrow="Agenda"
                 icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}
                 title="Schedule context"
               >
                 {data.agendaItems.length > 0 ? (
-                  <div className="grid gap-2">
-                    {data.agendaItems.map((item) => (
-                      <AgendaItemRow item={item} key={item.id} />
-                    ))}
+                  <div className="min-h-0 overflow-y-auto pr-1">
+                    <div className="grid gap-2">
+                      {data.agendaItems.map((item) => (
+                        <AgendaItemRow item={item} key={item.id} />
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-3">
