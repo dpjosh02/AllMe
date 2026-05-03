@@ -32,10 +32,15 @@ export type CalendarEventDetail = {
 export function CalendarEventDetailDrawer({
   event,
   onClose,
+  onReviewStatusChange,
   updateEventReviewStatus,
 }: {
   event: CalendarEventDetail | null;
   onClose: () => void;
+  onReviewStatusChange?: (
+    eventId: string,
+    reviewStatus: CalendarEventReviewStatus,
+  ) => void;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   if (!event) {
@@ -47,6 +52,7 @@ export function CalendarEventDetailDrawer({
       event={event}
       key={event.id}
       onClose={onClose}
+      onReviewStatusChange={onReviewStatusChange}
       updateEventReviewStatus={updateEventReviewStatus}
     />
   );
@@ -55,10 +61,15 @@ export function CalendarEventDetailDrawer({
 function CalendarEventDetailDrawerContent({
   event,
   onClose,
+  onReviewStatusChange,
   updateEventReviewStatus,
 }: {
   event: CalendarEventDetail;
   onClose: () => void;
+  onReviewStatusChange?: (
+    eventId: string,
+    reviewStatus: CalendarEventReviewStatus,
+  ) => void;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   const [currentReviewStatus, setCurrentReviewStatus] =
@@ -84,7 +95,10 @@ function CalendarEventDetailDrawerContent({
 
   async function saveEventReviewStatus(formData: FormData) {
     await updateEventReviewStatus(formData);
-    setCurrentReviewStatus(parseReviewStatus(formData));
+    const nextReviewStatus = parseReviewStatus(formData);
+
+    setCurrentReviewStatus(nextReviewStatus);
+    onReviewStatusChange?.(event.id, nextReviewStatus);
   }
 
   return (

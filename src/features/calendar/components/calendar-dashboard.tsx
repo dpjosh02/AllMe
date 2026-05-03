@@ -38,24 +38,50 @@ export function CalendarDashboardInteractive({
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   const [reviewFocus, setReviewFocus] = useState<CalendarReviewFocus>("all");
+  const [reviewStatusOverrides, setReviewStatusOverrides] = useState<
+    Record<string, CalendarEventReviewStatus>
+  >({});
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventDetail | null>(
     null,
   );
-  const todayAgenda = data.weekAgenda[0];
+  const effectiveWeekAgenda = applyWeekAgendaReviewStatusOverrides(
+    data.weekAgenda,
+    reviewStatusOverrides,
+  );
+  const effectiveUpcomingEvents = applyEventReviewStatusOverrides(
+    data.upcomingEvents,
+    reviewStatusOverrides,
+  );
+  const todayAgenda = effectiveWeekAgenda[0];
   const todayAgendaItems = todayAgenda?.items ?? [];
-  const nextUpcomingEvent = data.upcomingEvents[0] ?? null;
+  const nextUpcomingEvent = effectiveUpcomingEvents[0] ?? null;
   const todayNeedsPrepCount = getReviewStatusCount(
     todayAgendaItems,
     "needs_prep",
   );
   const todayDoneCount = getReviewStatusCount(todayAgendaItems, "done");
-  const filteredWeekAgenda = filterWeekAgenda(data.weekAgenda, reviewFocus);
-  const filteredUpcomingEvents = filterEvents(data.upcomingEvents, reviewFocus);
+  const filteredWeekAgenda = filterWeekAgenda(effectiveWeekAgenda, reviewFocus);
+  const filteredUpcomingEvents = filterEvents(
+    effectiveUpcomingEvents,
+    reviewFocus,
+  );
   const focusedEventCount =
-    reviewFocus === "all" ? 0 : getFocusedWeekEventCount(data.weekAgenda, reviewFocus);
+    reviewFocus === "all"
+      ? 0
+      : getFocusedWeekEventCount(effectiveWeekAgenda, reviewFocus);
 
   function openEvent(event: CalendarDashboardEvent) {
     setSelectedEvent(toEventDetail(event));
+  }
+
+  function updateLocalReviewStatus(
+    eventId: string,
+    reviewStatus: CalendarEventReviewStatus,
+  ) {
+    setReviewStatusOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [eventId]: reviewStatus,
+    }));
   }
 
   return (
@@ -168,6 +194,7 @@ export function CalendarDashboardInteractive({
       <CalendarEventDetailDrawer
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
+        onReviewStatusChange={updateLocalReviewStatus}
         updateEventReviewStatus={updateEventReviewStatus}
       />
     </>
@@ -309,6 +336,33 @@ function filterWeekAgenda(
     ...day,
     items: filterEvents(day.items, reviewFocus),
   }));
+}
+
+function applyWeekAgendaReviewStatusOverrides(
+  weekAgenda: CalendarPageData["weekAgenda"],
+  reviewStatusOverrides: Record<string, CalendarEventReviewStatus>,
+) {
+  return weekAgenda.map((day) => ({
+    ...day,
+    items: applyEventReviewStatusOverrides(day.items, reviewStatusOverrides),
+  }));
+}
+
+function applyEventReviewStatusOverrides<
+  T extends { id: string; localReviewStatus: CalendarEventReviewStatus | null },
+>(events: T[], reviewStatusOverrides: Record<string, CalendarEventReviewStatus>) {
+  return events.map((event) => {
+    const reviewStatusOverride = reviewStatusOverrides[event.id];
+
+    if (!reviewStatusOverride) {
+      return event;
+    }
+
+    return {
+      ...event,
+      localReviewStatus: reviewStatusOverride,
+    };
+  });
 }
 
 function filterEvents<T extends CalendarEventCollectionItem>(
