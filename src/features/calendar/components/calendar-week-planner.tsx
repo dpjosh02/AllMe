@@ -7,6 +7,7 @@ import {
   CalendarEventDetailDrawer,
   type CalendarEventDetail,
 } from "@/features/calendar/components/calendar-event-detail-drawer";
+import { CalendarEventReviewBadge } from "@/features/calendar/components/calendar-event-review-badge";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
 type WeekAgendaDayData = CalendarPageData["weekAgenda"][number];
@@ -142,10 +143,15 @@ function WeekAgendaItem({
               {timeLabel}
             </span>
           </div>
-          {item.location ? (
-            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-              {item.location}
-            </p>
+          {item.location || item.localReviewStatus !== "none" ? (
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+              <CalendarEventReviewBadge status={item.localReviewStatus} />
+              {item.location ? (
+                <p className="truncate text-xs text-[var(--muted)]">
+                  {item.location}
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

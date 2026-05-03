@@ -6,6 +6,7 @@ import {
   CalendarEventDetailDrawer,
   type CalendarEventDetail,
 } from "@/features/calendar/components/calendar-event-detail-drawer";
+import { CalendarEventReviewBadge } from "@/features/calendar/components/calendar-event-review-badge";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
 type UpcomingCalendarEvent = CalendarPageData["upcomingEvents"][number];
@@ -90,10 +91,15 @@ function UpcomingEventRow({
             />
             <p className="truncate text-sm font-semibold">{event.title}</p>
           </div>
-          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-            {event.calendarName} · {dateLabel}
-            {event.location ? ` · ${event.location}` : ""}
-          </p>
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+            <CalendarEventReviewBadge
+              status={event.localReviewStatus ?? "none"}
+            />
+            <p className="truncate text-xs text-[var(--muted)]">
+              {event.calendarName} · {dateLabel}
+              {event.location ? ` · ${event.location}` : ""}
+            </p>
+          </div>
         </div>
         <span className="shrink-0 rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
           {timeLabel}
