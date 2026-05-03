@@ -1,6 +1,12 @@
 import GoogleProvider from "next-auth/providers/google";
 import type { NextAuthConfig } from "next-auth";
 
+import {
+  googleCalendarReadonlyScope,
+  hasGoogleCalendarReadonlyScope,
+  upsertGoogleCalendarConnection,
+  upsertOwnerUserFromGoogleProfile,
+} from "@/features/calendar/sync/connection";
 import { serverEnv } from "@/lib/env";
 import {
   isProductRoute,
@@ -8,6 +14,14 @@ import {
   isOwnerEmail,
   resolveAuthorizationDecision,
 } from "@/server/auth/access-control";
+import { db } from "@/server/db";
+
+const googleAuthScopes = [
+  "openid",
+  "email",
+  "profile",
+  googleCalendarReadonlyScope,
+].join(" ");
 
 export const authOptions: NextAuthConfig = {
   callbacks: {
@@ -63,8 +77,34 @@ export const authOptions: NextAuthConfig = {
 
       return session;
     },
-    signIn({ user }) {
-      return isOwnerEmail(user.email, serverEnv.ALLME_IMPORT_USER_EMAIL);
+    async signIn({ account, user }) {
+      if (!isOwnerEmail(user.email, serverEnv.ALLME_IMPORT_USER_EMAIL)) {
+        return false;
+      }
+
+      if (user.email) {
+        const owner = await upsertOwnerUserFromGoogleProfile({
+          db,
+          email: user.email,
+          image: user.image,
+          name: user.name,
+        });
+
+        if (hasGoogleCalendarReadonlyScope(account?.scope)) {
+          await upsertGoogleCalendarConnection({
+            db,
+            input: {
+              accountEmail: user.email,
+              displayName: "Google Calendar",
+              providerAccountId: account?.providerAccountId,
+              scopes: account?.scope,
+            },
+            userId: owner.id,
+          });
+        }
+      }
+
+      return true;
     },
   },
   session: {
@@ -74,6 +114,13 @@ export const authOptions: NextAuthConfig = {
     serverEnv.AUTH_GOOGLE_ID && serverEnv.AUTH_GOOGLE_SECRET
       ? [
           GoogleProvider({
+            authorization: {
+              params: {
+                access_type: "offline",
+                prompt: "consent",
+                scope: googleAuthScopes,
+              },
+            },
             clientId: serverEnv.AUTH_GOOGLE_ID,
             clientSecret: serverEnv.AUTH_GOOGLE_SECRET,
           }),

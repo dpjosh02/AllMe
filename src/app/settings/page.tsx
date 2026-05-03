@@ -2,6 +2,7 @@ import {
   CircleAlert,
   CircleDollarSign,
   Clock3,
+  CalendarDays,
   KeyRound,
   PlugZap,
   ShieldCheck,
@@ -193,7 +194,34 @@ export default async function SettingsPage() {
           <ImportHealthCard importHealth={data.importHealth} />
         </PageGridItem>
 
-        <PageGridItem span="full">
+        <PageGridItem span="half">
+          <StatusCard
+            detail={
+              data.calendar.hasConnection
+                ? "Google Calendar read-only access metadata is present. Tokens and secret values stay hidden."
+                : "Calendar sync is not connected yet. OAuth will request read-only calendar access when hosted Google sign-in is used."
+            }
+            icon={<CalendarDays aria-hidden="true" className="h-5 w-5" />}
+            kicker="Integrations"
+            label="Calendar"
+            rows={[
+              ["Status", data.calendar.status],
+              ["Account", data.calendar.accountEmail],
+              ["Scope", data.calendar.scopeStatus],
+              [
+                "Last sync",
+                data.calendar.lastSyncedAt
+                  ? dateFormatter.format(data.calendar.lastSyncedAt)
+                  : "Never",
+              ],
+              ["Secret values", data.calendar.secretValues],
+            ]}
+            statusLabel={data.calendar.badgeLabel}
+            tone={data.calendar.tone}
+          />
+        </PageGridItem>
+
+        <PageGridItem span="half">
           <AllMeCard variant="status">
             <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:items-start">
               <div>

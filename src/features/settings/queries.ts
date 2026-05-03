@@ -1,5 +1,9 @@
 import { desc, eq, sql } from "drizzle-orm";
 
+import {
+  getGoogleCalendarConnectionStatus,
+  googleCalendarReadonlyScope,
+} from "@/features/calendar/sync/connection";
 import { serverEnv } from "@/lib/env";
 import { resolveAuthBoundary } from "@/server/auth/access-control";
 import { db } from "@/server/db";
@@ -17,6 +21,18 @@ export const currencyOptions = ["USD", "EUR", "GBP", "CAD"] as const;
 
 export type SettingsPageData = Awaited<ReturnType<typeof getSettingsPageData>>;
 export type SettingsStatusTone = "attention" | "neutral" | "ready";
+type CalendarSettingsStatus = {
+  accountEmail: string;
+  badgeLabel: string;
+  hasConnection: boolean;
+  lastSyncedAt: Date | null;
+  ready: boolean;
+  scopeStatus: string;
+  secretValues: string;
+  status: string;
+  tone: SettingsStatusTone;
+  updatedAt: Date | null;
+};
 
 export async function getSettingsPageData(userId: string) {
   const ownerEmail = serverEnv.ALLME_IMPORT_USER_EMAIL ?? null;
@@ -47,6 +63,7 @@ export async function getSettingsPageData(userId: string) {
   return {
     auth: getAuthStatus(),
     authBoundary: getAuthBoundaryStatus(Boolean(ownerEmail)),
+    calendar: owner ? await getCalendarStatus(owner.id) : getEmptyCalendarStatus(),
     fintable: getFintableStatus(),
     importHealth: owner ? await getImportHealth(owner.id) : null,
     owner: {
@@ -56,6 +73,46 @@ export async function getSettingsPageData(userId: string) {
       name: owner?.name ?? null,
     },
     settings,
+  };
+}
+
+async function getCalendarStatus(userId: string): Promise<CalendarSettingsStatus> {
+  const connection = await getGoogleCalendarConnectionStatus({ db, userId });
+
+  if (!connection) {
+    return getEmptyCalendarStatus();
+  }
+
+  const hasReadonlyScope = connection.scopes.includes(googleCalendarReadonlyScope);
+  const ready = connection.status === "active" && hasReadonlyScope;
+  const tone: SettingsStatusTone = ready ? "ready" : "attention";
+
+  return {
+    accountEmail: connection.accountEmail ?? "Hidden",
+    badgeLabel: ready ? "Connected" : "Needs reauthorization",
+    hasConnection: true,
+    lastSyncedAt: connection.lastSyncedAt,
+    ready,
+    scopeStatus: hasReadonlyScope ? "Read-only granted" : "Scope missing",
+    secretValues: "Hidden",
+    status: connection.status,
+    tone,
+    updatedAt: connection.updatedAt,
+  };
+}
+
+function getEmptyCalendarStatus(): CalendarSettingsStatus {
+  return {
+    accountEmail: "Not connected",
+    badgeLabel: "Not connected",
+    hasConnection: false,
+    lastSyncedAt: null,
+    ready: false,
+    scopeStatus: "Not granted",
+    secretValues: "Hidden",
+    status: "not_connected",
+    tone: "neutral" satisfies SettingsStatusTone,
+    updatedAt: null,
   };
 }
 
