@@ -3,7 +3,6 @@ import {
   Clock3,
   PlugZap,
   ShieldCheck,
-  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -21,7 +20,7 @@ import {
   syncGoogleCalendarNow,
   updateCalendarSelection,
 } from "@/features/calendar/actions";
-import { CalendarSelectionButton } from "@/features/calendar/components/calendar-selection-button";
+import { CalendarPlanningFilter } from "@/features/calendar/components/calendar-planning-filter";
 import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
 import {
   getCalendarPageData,
@@ -97,7 +96,12 @@ export default async function CalendarPage() {
               className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description={`Selected-calendar plan for the next seven local days in ${data.timezone}.`}
               eyebrow="Planning"
-              icon={<PlanningFilterMenu calendars={data.calendarSources} />}
+              icon={
+                <CalendarPlanningFilter
+                  calendars={data.calendarSources}
+                  updateCalendarSelection={updateCalendarSelection}
+                />
+              }
               title="Next 7 days"
             >
               <div className="min-h-0 overflow-y-auto pr-1">
@@ -332,104 +336,6 @@ function UpcomingEventRow({
         </span>
       </div>
     </button>
-  );
-}
-
-function CalendarSourceRow({
-  calendar,
-}: {
-  calendar: CalendarPageData["calendarSources"][number];
-}) {
-  return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--line)]"
-              style={{ backgroundColor: calendar.color ?? "var(--accent)" }}
-            />
-            <p className="truncate text-sm font-semibold">{calendar.name}</p>
-          </div>
-          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-            {calendar.isPrimary ? "Primary calendar" : "Synced calendar"}
-            {calendar.timezone ? ` · ${calendar.timezone}` : ""}
-            {` · ${calendar.eventCount} cached events`}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span
-            className={[
-              "rounded-full border px-2 py-0.5 text-xs font-semibold",
-              calendar.isSelected
-                ? "border-[var(--positive)] text-[var(--positive)]"
-                : "border-[var(--line)] text-[var(--muted)]",
-            ].join(" ")}
-          >
-            {calendar.isSelected ? "Selected" : "Hidden"}
-          </span>
-          <form action={updateCalendarSelection}>
-            <input name="calendarId" type="hidden" value={calendar.id} />
-            <input
-              name="isSelected"
-              type="hidden"
-              value={calendar.isSelected ? "false" : "true"}
-            />
-            <CalendarSelectionButton isSelected={calendar.isSelected} />
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlanningFilterMenu({
-  calendars,
-}: {
-  calendars: CalendarPageData["calendarSources"];
-}) {
-  return (
-    <div className="group/filter relative">
-      <button
-        aria-label="Open Calendar filters"
-        className="allme-control inline-flex h-10 w-10 items-center justify-center p-0"
-        type="button"
-      >
-        <SlidersHorizontal aria-hidden="true" className="h-5 w-5" />
-      </button>
-
-      <div className="invisible absolute right-0 top-12 z-30 w-[min(24rem,calc(100vw-3rem))] opacity-0 transition group-hover/filter:visible group-hover/filter:opacity-100 group-focus-within/filter:visible group-focus-within/filter:opacity-100">
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-3 shadow-2xl">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <p className="allme-kicker">Filters</p>
-              <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
-                Calendars
-              </p>
-            </div>
-            <span className="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
-              {calendars.filter((calendar) => calendar.isSelected).length}/
-              {calendars.length}
-            </span>
-          </div>
-
-          {calendars.length > 0 ? (
-            <div className="max-h-72 overflow-y-auto pr-1">
-              <div className="grid gap-2">
-                {calendars.map((calendar) => (
-                  <CalendarSourceRow calendar={calendar} key={calendar.id} />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-sm text-[var(--muted)]">
-              No calendars synced yet.
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 

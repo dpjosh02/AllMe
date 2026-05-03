@@ -13,7 +13,7 @@ export function CalendarSelectionButton({
     <button
       aria-pressed={isSelected}
       className={[
-        "relative inline-flex h-6 w-11 items-center rounded-full border transition disabled:cursor-wait disabled:opacity-60",
+        "relative inline-flex h-5 w-9 items-center rounded-full border transition disabled:cursor-wait disabled:opacity-60",
         isSelected
           ? "border-[var(--positive)] bg-[var(--positive)]/20"
           : "border-[var(--line)] bg-[var(--empty)]",
@@ -31,8 +31,8 @@ export function CalendarSelectionButton({
       <span
         aria-hidden="true"
         className={[
-          "h-4 w-4 rounded-full bg-[var(--foreground)] transition",
-          isSelected ? "translate-x-5" : "translate-x-1",
+          "h-3.5 w-3.5 rounded-full bg-[var(--foreground)] transition",
+          isSelected ? "translate-x-4" : "translate-x-1",
         ].join(" ")}
       />
     </button>
