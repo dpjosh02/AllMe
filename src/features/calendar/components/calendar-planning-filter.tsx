@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CalendarSelectionButton } from "@/features/calendar/components/calendar-selection-button";
 
@@ -23,7 +23,42 @@ export function CalendarPlanningFilter({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<FilterView>("root");
+  const menuRef = useRef<HTMLDivElement>(null);
   const selectedCount = calendars.filter((calendar) => calendar.isSelected).length;
+
+  function closeMenu() {
+    setIsOpen(false);
+    setView("root");
+  }
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !menuRef.current?.contains(event.target)
+      ) {
+        closeMenu();
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isOpen]);
 
   function toggleOpen() {
     setIsOpen((current) => {
@@ -38,7 +73,7 @@ export function CalendarPlanningFilter({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         aria-expanded={isOpen}
         aria-label="Open Calendar filters"
