@@ -34,7 +34,6 @@ export async function upsertCalendarRecords({
         isPrimary: calendar.isPrimary,
         isSelected: calendar.isSelected,
         isDeleted: calendar.isDeleted,
-        syncToken: calendar.syncToken,
         rawPayload: calendar.rawPayload,
       })
       .onConflictDoUpdate({
@@ -51,7 +50,6 @@ export async function upsertCalendarRecords({
           accessRole: calendar.accessRole,
           isPrimary: calendar.isPrimary,
           isDeleted: calendar.isDeleted,
-          syncToken: calendar.syncToken,
           rawPayload: calendar.rawPayload,
           updatedAt: new Date(),
         },

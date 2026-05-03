@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { db as appDb } from "@/server/db";
 import { calendarConnections, users } from "@/server/db/schema";
@@ -125,6 +125,31 @@ export async function getGoogleCalendarConnectionStatus({
     .limit(1);
 
   return connection ?? null;
+}
+
+export async function markGoogleCalendarConnectionSynced({
+  connectionId,
+  db,
+  syncedAt,
+  userId,
+}: {
+  connectionId: string;
+  db: Database;
+  syncedAt: Date;
+  userId: string;
+}) {
+  await db
+    .update(calendarConnections)
+    .set({
+      lastSyncedAt: syncedAt,
+      updatedAt: syncedAt,
+    })
+    .where(
+      and(
+        eq(calendarConnections.id, connectionId),
+        eq(calendarConnections.userId, userId),
+      ),
+    );
 }
 
 function requireStoredRow<T>(row: T | undefined, message: string) {
