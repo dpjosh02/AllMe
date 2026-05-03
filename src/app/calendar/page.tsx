@@ -1,10 +1,9 @@
 import {
   CalendarDays,
   Clock3,
-  Eye,
   PlugZap,
   ShieldCheck,
-  StretchHorizontal,
+  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -91,14 +90,14 @@ export default async function CalendarPage() {
       <PageGrid>
         <PageGridItem span="full">
           <AllMeCard
-            className="flex max-h-[30rem] min-h-0 flex-col overflow-hidden"
+            className="flex max-h-[30rem] min-h-0 flex-col"
             variant="activity"
           >
             <PageSection
               className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description={`Selected-calendar plan for the next seven local days in ${data.timezone}.`}
               eyebrow="Planning"
-              icon={<StretchHorizontal aria-hidden="true" className="h-6 w-6" />}
+              icon={<PlanningFilterMenu calendars={data.calendarSources} />}
               title="Next 7 days"
             >
               <div className="min-h-0 overflow-y-auto pr-1">
@@ -112,7 +111,7 @@ export default async function CalendarPage() {
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="primary">
+        <PageGridItem span="full">
           <AllMeCard
             className="flex max-h-[28rem] min-h-0 flex-col overflow-hidden"
             variant="activity"
@@ -144,7 +143,7 @@ export default async function CalendarPage() {
           </AllMeCard>
         </PageGridItem>
 
-        <PageGridItem span="support">
+        <PageGridItem span="full">
           <AllMeCard variant="activity">
             <PageSection
               description="Current local Calendar cache feeding Today and planning."
@@ -152,7 +151,7 @@ export default async function CalendarPage() {
               icon={<Clock3 aria-hidden="true" className="h-6 w-6" />}
               title="Agenda cache"
             >
-              <div className="grid gap-3">
+              <div className="grid gap-3 md:grid-cols-3">
                 <MetricTile
                   detail={`${data.selectedCalendars} shown in Today`}
                   label="Calendars"
@@ -173,38 +172,6 @@ export default async function CalendarPage() {
                   value={data.latestSyncRun?.status ?? "None"}
                 />
               </div>
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
-
-        <PageGridItem span="full">
-          <AllMeCard
-            className="flex max-h-[18rem] min-h-0 flex-col overflow-hidden"
-            variant="activity"
-          >
-            <PageSection
-              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
-              description="Choose which synced calendars are visible in AllMe."
-              eyebrow="Sources"
-              icon={<Eye aria-hidden="true" className="h-6 w-6" />}
-              title="Calendars in AllMe"
-            >
-              {data.calendarSources.length > 0 ? (
-                <div className="min-h-0 overflow-y-auto pr-1">
-                  <div className="grid gap-2">
-                    {data.calendarSources.map((calendar) => (
-                      <CalendarSourceRow calendar={calendar} key={calendar.id} />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
-                  <p className="text-lg font-semibold">No calendars synced yet</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    Run Calendar sync after connecting Google Calendar.
-                  </p>
-                </div>
-              )}
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -411,6 +378,55 @@ function CalendarSourceRow({
             />
             <CalendarSelectionButton isSelected={calendar.isSelected} />
           </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlanningFilterMenu({
+  calendars,
+}: {
+  calendars: CalendarPageData["calendarSources"];
+}) {
+  return (
+    <div className="group/filter relative">
+      <button
+        aria-label="Open Calendar filters"
+        className="allme-control inline-flex h-10 w-10 items-center justify-center p-0"
+        type="button"
+      >
+        <SlidersHorizontal aria-hidden="true" className="h-5 w-5" />
+      </button>
+
+      <div className="invisible absolute right-0 top-12 z-30 w-[min(24rem,calc(100vw-3rem))] opacity-0 transition group-hover/filter:visible group-hover/filter:opacity-100 group-focus-within/filter:visible group-focus-within/filter:opacity-100">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-3 shadow-2xl">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="allme-kicker">Filters</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+                Calendars
+              </p>
+            </div>
+            <span className="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
+              {calendars.filter((calendar) => calendar.isSelected).length}/
+              {calendars.length}
+            </span>
+          </div>
+
+          {calendars.length > 0 ? (
+            <div className="max-h-72 overflow-y-auto pr-1">
+              <div className="grid gap-2">
+                {calendars.map((calendar) => (
+                  <CalendarSourceRow calendar={calendar} key={calendar.id} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-sm text-[var(--muted)]">
+              No calendars synced yet.
+            </p>
+          )}
         </div>
       </div>
     </div>
