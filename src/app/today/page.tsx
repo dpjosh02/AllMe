@@ -191,11 +191,26 @@ export default async function TodayPage({
                 title="Schedule context"
               >
                 {data.agendaItems.length > 0 ? (
-                  <div className="min-h-0 overflow-y-auto pr-1">
-                    <div className="grid gap-2">
-                      {data.agendaItems.map((item) => (
-                        <AgendaItemRow item={item} key={item.id} />
-                      ))}
+                  <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill
+                        label={`${data.agendaItems.length} ${
+                          data.agendaItems.length === 1 ? "event" : "events"
+                        }`}
+                        tone="ready"
+                      />
+                      {data.agendaItems.some((item) => item.isAllDay) ? (
+                        <span className="text-xs font-semibold text-[var(--muted)]">
+                          All-day first
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="min-h-0 overflow-y-auto pr-1">
+                      <div className="grid gap-2">
+                        {data.agendaItems.map((item) => (
+                          <AgendaItemRow item={item} key={item.id} />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -258,7 +273,13 @@ function AgendaItemRow({
             </p>
           ) : null}
         </div>
-        <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
+        <span
+          className={`shrink-0 rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold ${
+            item.isAllDay
+              ? "bg-[var(--panel-strong)] text-[var(--foreground)]"
+              : "text-[var(--accent)]"
+          }`}
+        >
           {timeLabel}
         </span>
       </div>
