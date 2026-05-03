@@ -21,7 +21,7 @@ export function SyncGoogleCalendarButton({
         aria-hidden="true"
         className={`h-4 w-4 ${pending ? "animate-spin" : ""}`}
       />
-      {pending ? "Syncing..." : "Sync Calendar"}
+      {pending ? "Syncing..." : "Sync Google Calendar"}
     </button>
   );
 }

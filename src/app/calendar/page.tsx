@@ -53,100 +53,15 @@ export default async function CalendarPage() {
       <PageHero
         eyebrow="Calendar"
         right={
-          <div className="flex h-full flex-col justify-between rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="allme-kicker">Integration</p>
-                <p className="mt-2 text-lg font-semibold">Google Calendar</p>
-              </div>
-              <StatusPill
-                label={data.connection.badgeLabel}
-                tone={data.connection.tone}
-              />
-            </div>
-            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
-              {data.connection.isReady
-                ? "Calendar data can now sync into AllMe before it powers Today, weekly planning, and event-linked notes."
-                : "Calendar data will sync into AllMe after Google read-only access is available through the auth boundary."}
-            </p>
-            <form action={syncGoogleCalendarNow} className="mt-4">
-              <SyncGoogleCalendarButton disabled={!canSync} />
-            </form>
-          </div>
+          <form action={syncGoogleCalendarNow} className="flex justify-end">
+            <SyncGoogleCalendarButton disabled={!canSync} />
+          </form>
         }
         subtitle="A schedule layer for daily context, weekly planning, and event-linked notes backed by local cached provider data."
         title="Schedule context"
       />
 
       <PageGrid>
-        <PageGridItem span="primary">
-          <AllMeCard variant="activity">
-            <PageSection
-              description="This is the local agenda surface Today will consume. Provider reads stay behind the sync boundary."
-              eyebrow="Agenda"
-              icon={<Clock3 aria-hidden="true" className="h-6 w-6" />}
-              title="Today"
-            >
-              <div className="grid gap-3 md:grid-cols-3">
-                <MetricTile
-                  detail={`${data.selectedCalendars} shown in Today`}
-                  label="Calendars"
-                  value={String(data.calendars)}
-                />
-                <MetricTile
-                  detail="Cached event rows"
-                  label="Events"
-                  value={String(data.events)}
-                />
-                <MetricTile
-                  detail={
-                    data.latestSyncRun
-                      ? dateFormatter.format(data.latestSyncRun.createdAt)
-                      : "No sync runs yet"
-                  }
-                  label="Latest sync"
-                  value={data.latestSyncRun?.status ?? "None"}
-                />
-              </div>
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
-
-        <PageGridItem span="support">
-          <AllMeCard variant="status">
-            <PageSection
-              description="Connection health is based on non-secret OAuth metadata and local sync state. Tokens stay inside the auth boundary."
-              eyebrow="Connection"
-              icon={<PlugZap aria-hidden="true" className="h-6 w-6" />}
-              title="Google Calendar"
-            >
-              <MetricGrid className="md:grid-cols-1">
-                <KeyValueRow label="Status" value={data.connection.status} />
-                <KeyValueRow label="Account" value={data.connection.accountEmail} />
-                <KeyValueRow
-                  label="Read token"
-                  value={tokenReadiness.ready ? "Available" : "Reauthorize"}
-                />
-                <KeyValueRow
-                  label="Last sync"
-                  value={
-                    data.connection.lastSyncedAt
-                      ? dateFormatter.format(data.connection.lastSyncedAt)
-                      : "Never"
-                  }
-                />
-                <KeyValueRow label="Secret values" value="Hidden" />
-              </MetricGrid>
-              {!tokenReadiness.ready ? (
-                <p className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
-                  {tokenReadiness.reason}. Sign out and sign back in with Google
-                  Calendar access before running the first sync.
-                </p>
-              ) : null}
-            </PageSection>
-          </AllMeCard>
-        </PageGridItem>
-
         <PageGridItem span="full">
           <AllMeCard
             className="flex max-h-[32rem] min-h-0 flex-col overflow-hidden"
@@ -177,7 +92,7 @@ export default async function CalendarPage() {
           >
             <PageSection
               className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
-              description="Choose which synced calendars are visible in AllMe. This only changes local display preferences; Google Calendar is not modified."
+              description="Choose which synced calendars are visible in AllMe."
               eyebrow="Sources"
               icon={<Eye aria-hidden="true" className="h-6 w-6" />}
               title="Calendars in AllMe"
@@ -275,6 +190,74 @@ export default async function CalendarPage() {
                   </p>
                 </div>
               )}
+            </PageSection>
+          </AllMeCard>
+        </PageGridItem>
+
+        <PageGridItem span="primary">
+          <AllMeCard variant="activity">
+            <PageSection
+              description="This is the local agenda surface Today will consume. Provider reads stay behind the sync boundary."
+              eyebrow="Agenda"
+              icon={<Clock3 aria-hidden="true" className="h-6 w-6" />}
+              title="Today"
+            >
+              <div className="grid gap-3 md:grid-cols-3">
+                <MetricTile
+                  detail={`${data.selectedCalendars} shown in Today`}
+                  label="Calendars"
+                  value={String(data.calendars)}
+                />
+                <MetricTile
+                  detail="Cached event rows"
+                  label="Events"
+                  value={String(data.events)}
+                />
+                <MetricTile
+                  detail={
+                    data.latestSyncRun
+                      ? dateFormatter.format(data.latestSyncRun.createdAt)
+                      : "No sync runs yet"
+                  }
+                  label="Latest sync"
+                  value={data.latestSyncRun?.status ?? "None"}
+                />
+              </div>
+            </PageSection>
+          </AllMeCard>
+        </PageGridItem>
+
+        <PageGridItem span="support">
+          <AllMeCard variant="status">
+            <PageSection
+              description="Connection health is based on non-secret OAuth metadata and local sync state. Tokens stay inside the auth boundary."
+              eyebrow="Connection"
+              icon={<PlugZap aria-hidden="true" className="h-6 w-6" />}
+              title="Google Calendar"
+            >
+              <MetricGrid className="md:grid-cols-1">
+                <KeyValueRow label="Status" value={data.connection.status} />
+                <KeyValueRow label="Account" value={data.connection.accountEmail} />
+                <KeyValueRow
+                  label="Read token"
+                  value={tokenReadiness.ready ? "Available" : "Reauthorize"}
+                />
+                <KeyValueRow
+                  label="Last sync"
+                  value={
+                    data.connection.lastSyncedAt
+                      ? dateFormatter.format(data.connection.lastSyncedAt)
+                      : "Never"
+                  }
+                />
+                <KeyValueRow label="Secret values" value="Hidden" />
+              </MetricGrid>
+              {!tokenReadiness.ready ? (
+                <p className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
+                  {tokenReadiness.reason}. Sign out and sign back in with Google
+                  Calendar access before running the first sync.
+                </p>
+              ) : null}
             </PageSection>
           </AllMeCard>
         </PageGridItem>
