@@ -90,7 +90,7 @@ export default async function CalendarPage() {
       <PageGrid>
         <PageGridItem span="full">
           <AllMeCard
-            className="flex max-h-[30rem] min-h-0 flex-col"
+            className="flex max-h-[34rem] min-h-0 flex-col"
             variant="activity"
           >
             <PageSection

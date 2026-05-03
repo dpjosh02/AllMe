@@ -24,7 +24,7 @@ export function CalendarWeekPlanner({
   return (
     <>
       <div className="min-h-0 overflow-y-auto pr-1">
-        <div className="grid auto-rows-[minmax(13rem,13rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
+        <div className="grid auto-rows-[minmax(15rem,15rem)] gap-3 md:grid-cols-2 xl:grid-cols-7">
           {weekAgenda.map((day) => (
             <WeekAgendaDay
               day={day}
@@ -110,7 +110,6 @@ function WeekAgendaItem({
   item: WeekAgendaItemData;
   openEvent: () => void;
 }) {
-  const eventDetail = toEventDetail(item);
   const timeLabel = item.isAllDay
     ? "All day"
     : item.startsAt
@@ -129,12 +128,20 @@ function WeekAgendaItem({
           className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
           style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
         />
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold">{item.title}</p>
-          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-            {timeLabel}
-            {eventDetail.location ? ` · ${eventDetail.location}` : ""}
-          </p>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <p className="min-w-0 truncate text-xs font-semibold">
+              {item.title}
+            </p>
+            <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
+              {timeLabel}
+            </span>
+          </div>
+          {item.location ? (
+            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+              {item.location}
+            </p>
+          ) : null}
         </div>
       </div>
     </button>
