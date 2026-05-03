@@ -4,6 +4,7 @@ import {
   Eye,
   PlugZap,
   ShieldCheck,
+  StretchHorizontal,
 } from "lucide-react";
 
 import {
@@ -35,7 +36,7 @@ export const dynamic = "force-dynamic";
 const nextSteps = [
   "Keep manual sync using stored Google incremental tokens",
   "Use selected calendars consistently across Today and future planning views",
-  "Add a weekly planning surface backed by cached events",
+  "Promote weekly planning from read-only preview to guided planning workflow",
   "Defer editing and bidirectional writes until read-only sync is durable",
 ];
 
@@ -142,6 +143,29 @@ export default async function CalendarPage() {
                   Calendar access before running the first sync.
                 </p>
               ) : null}
+            </PageSection>
+          </AllMeCard>
+        </PageGridItem>
+
+        <PageGridItem span="full">
+          <AllMeCard
+            className="flex max-h-[32rem] min-h-0 flex-col overflow-hidden"
+            variant="activity"
+          >
+            <PageSection
+              className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+              description={`Read-only selected-calendar plan for the next seven local days in ${data.timezone}.`}
+              eyebrow="Planning"
+              icon={<StretchHorizontal aria-hidden="true" className="h-6 w-6" />}
+              title="Next 7 days"
+            >
+              <div className="min-h-0 overflow-y-auto pr-1">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+                  {data.weekAgenda.map((day) => (
+                    <WeekAgendaDay day={day} key={day.dateKey} />
+                  ))}
+                </div>
+              </div>
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -403,3 +427,87 @@ function CalendarSourceRow({
     </div>
   );
 }
+
+function WeekAgendaDay({
+  day,
+}: {
+  day: CalendarPageData["weekAgenda"][number];
+}) {
+  const isQuiet = day.items.length === 0;
+
+  return (
+    <div className="min-h-[12rem] rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold">
+            {weekdayFormatter.format(toLocalDate(day.dateKey))}
+          </p>
+          <p className="text-xs text-[var(--muted)]">
+            {shortDateFormatter.format(toLocalDate(day.dateKey))}
+          </p>
+        </div>
+        <span className="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
+          {day.items.length}
+        </span>
+      </div>
+
+      {isQuiet ? (
+        <p className="mt-6 rounded-lg border border-dashed border-[var(--line)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+          No cached events
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          {day.items.slice(0, 4).map((item) => (
+            <WeekAgendaItem item={item} key={item.id} />
+          ))}
+          {day.items.length > 4 ? (
+            <p className="text-xs font-semibold text-[var(--muted)]">
+              +{day.items.length - 4} more
+            </p>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WeekAgendaItem({
+  item,
+}: {
+  item: CalendarPageData["weekAgenda"][number]["items"][number];
+}) {
+  const timeLabel = item.isAllDay
+    ? "All day"
+    : item.startsAt
+      ? eventTimeFormatter.format(item.startsAt)
+      : "Time TBD";
+
+  return (
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5">
+      <div className="flex items-start gap-2">
+        <span
+          aria-hidden="true"
+          className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
+          style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
+        />
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold">{item.title}</p>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">{timeLabel}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function toLocalDate(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00`);
+}
+
+const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+});
+
+const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+});

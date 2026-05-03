@@ -5,6 +5,7 @@ import {
   getTodayAgendaItems,
   type TodayAgendaItem,
 } from "@/features/calendar/agenda-read-model";
+import { addDaysToDateKey } from "@/features/today/date";
 import { db } from "@/server/db";
 import { calendarCalendars, calendarEvents } from "@/server/db/schema";
 
@@ -12,6 +13,11 @@ export type GetTodayAgendaInput = {
   dateKey: string;
   timezone: string;
   userId: string;
+};
+
+export type CalendarWeekAgendaDay = {
+  dateKey: string;
+  items: TodayAgendaItem[];
 };
 
 export async function getTodayAgenda({
@@ -59,6 +65,28 @@ export async function getTodayAgenda({
     .limit(100);
 
   return getTodayAgendaItems({ dateKey, rows, timezone });
+}
+
+export async function getCalendarWeekAgenda({
+  startDateKey,
+  timezone,
+  userId,
+}: {
+  startDateKey: string;
+  timezone: string;
+  userId: string;
+}): Promise<CalendarWeekAgendaDay[]> {
+  const dateKeys = Array.from({ length: 7 }, (_, index) =>
+    addDaysToDateKey(startDateKey, index),
+  );
+  const days = await Promise.all(
+    dateKeys.map(async (dateKey) => ({
+      dateKey,
+      items: await getTodayAgenda({ dateKey, timezone, userId }),
+    })),
+  );
+
+  return days;
 }
 
 function getAllDayAgendaPredicate(dateKey: string) {

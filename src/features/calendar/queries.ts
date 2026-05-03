@@ -1,27 +1,44 @@
 import { and, asc, desc, eq, gte, ne, sql } from "drizzle-orm";
 
+import { getCalendarWeekAgenda } from "@/features/calendar/agenda-query";
 import {
   getGoogleCalendarConnectionStatus,
   googleCalendarReadonlyScope,
 } from "@/features/calendar/sync/connection";
+import { getLocalDateKey } from "@/features/today/date";
 import { db } from "@/server/db";
 import {
   calendarCalendars,
   calendarEvents,
   calendarSyncRuns,
+  userSettings,
 } from "@/server/db/schema";
 
 export type CalendarPageData = Awaited<ReturnType<typeof getCalendarPageData>>;
 type CalendarStatusTone = "attention" | "neutral" | "ready";
+const defaultTimezone = "America/Chicago";
 
 export async function getCalendarPageData(userId: string) {
-  const [connection, latestSyncRun, calendarCounts, calendarSources, upcomingEvents] =
-    await Promise.all([
+  const timezone = await getCalendarTimezone(userId);
+  const weekStartDateKey = getLocalDateKey({ timezone });
+  const [
+    connection,
+    latestSyncRun,
+    calendarCounts,
+    calendarSources,
+    upcomingEvents,
+    weekAgenda,
+  ] = await Promise.all([
       getGoogleCalendarConnectionStatus({ db, userId }),
       getLatestCalendarSyncRun(userId),
       getCalendarCounts(userId),
       getCalendarSources(userId),
       getUpcomingCalendarEvents(userId),
+      getCalendarWeekAgenda({
+        startDateKey: weekStartDateKey,
+        timezone,
+        userId,
+      }),
     ]);
   const hasReadonlyScope = Boolean(
     connection?.scopes.includes(googleCalendarReadonlyScope),
@@ -52,8 +69,21 @@ export async function getCalendarPageData(userId: string) {
     events: calendarCounts.events,
     selectedCalendars: calendarCounts.selectedCalendars,
     latestSyncRun,
+    timezone,
     upcomingEvents,
+    weekAgenda,
+    weekStartDateKey,
   };
+}
+
+async function getCalendarTimezone(userId: string) {
+  const [settings] = await db
+    .select({ timezone: userSettings.timezone })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId))
+    .limit(1);
+
+  return settings?.timezone ?? defaultTimezone;
 }
 
 async function getCalendarSources(userId: string) {
