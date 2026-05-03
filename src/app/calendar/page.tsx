@@ -17,10 +17,7 @@ import {
 } from "@/features/calendar/actions";
 import { CalendarDashboardInteractive } from "@/features/calendar/components/calendar-dashboard";
 import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
-import {
-  getCalendarPageData,
-  type CalendarPageData,
-} from "@/features/calendar/queries";
+import { getCalendarPageData } from "@/features/calendar/queries";
 import { getGoogleCalendarAccessTokenReadiness } from "@/server/auth/google-calendar-token";
 import { requirePageUser } from "@/server/auth/guards";
 
@@ -39,9 +36,6 @@ export default async function CalendarPage() {
     getGoogleCalendarAccessTokenReadiness(),
   ]);
   const canSync = data.connection.isReady && tokenReadiness.ready;
-  const todayAgenda = data.weekAgenda[0];
-  const todayAgendaItems = todayAgenda?.items ?? [];
-  const nextUpcomingEvent = data.upcomingEvents[0] ?? null;
 
   return (
     <AppPageShell>
@@ -52,28 +46,6 @@ export default async function CalendarPage() {
             <form action={syncGoogleCalendarNow} className="flex justify-end">
               <SyncGoogleCalendarButton disabled={!canSync} />
             </form>
-            <div className="grid w-full min-w-[18rem] gap-2 sm:grid-cols-3">
-              <HeroContextChip
-                label="Today"
-                value={formatEventCount(todayAgendaItems.length)}
-              />
-              <HeroContextChip
-                label="Next"
-                value={
-                  nextUpcomingEvent
-                    ? getCompactEventTime(nextUpcomingEvent)
-                    : "None"
-                }
-              />
-              <HeroContextChip
-                label="Sync"
-                value={
-                  data.latestSyncRun
-                    ? shortSyncFormatter.format(data.latestSyncRun.createdAt)
-                    : "Never"
-                }
-              />
-            </div>
           </div>
         }
         subtitle="A schedule layer for daily context, weekly planning, and event-linked notes backed by local cached provider data."
@@ -167,37 +139,4 @@ export default async function CalendarPage() {
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
-});
-
-function HeroContextChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-2">
-      <p className="allme-kicker text-[0.58rem]">{label}</p>
-      <p className="mt-1 whitespace-nowrap text-xs font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function getCompactEventTime(
-  event: CalendarPageData["upcomingEvents"][number],
-) {
-  if (event.isAllDay) {
-    return "All day";
-  }
-
-  return event.startAt ? compactEventTimeFormatter.format(event.startAt) : "TBD";
-}
-
-function formatEventCount(count: number) {
-  return `${count} ${count === 1 ? "event" : "events"}`;
-}
-
-const shortSyncFormatter = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-});
-
-const compactEventTimeFormatter = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
 });

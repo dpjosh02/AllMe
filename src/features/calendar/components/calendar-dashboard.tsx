@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, CheckCircle2, Flag, Focus, MinusCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Flag } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -186,7 +186,6 @@ function CalendarReviewFocusControls({
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)]">
-        <Focus aria-hidden="true" className="h-3.5 w-3.5" />
         Focus
       </span>
       {reviewFocusOptions.map((option) => (
