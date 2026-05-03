@@ -50,6 +50,13 @@
       "when": 1777670841960,
       "tag": "0006_chemical_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777771602005,
+      "tag": "0007_aspiring_molly_hayes",
+      "breakpoints": true
     }
   ]
 }

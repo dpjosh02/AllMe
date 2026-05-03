@@ -26,6 +26,25 @@ export const transactionStatus = pgEnum("transaction_status", [
   "voided",
 ]);
 
+export const calendarConnectionStatus = pgEnum("calendar_connection_status", [
+  "active",
+  "reauthorization_required",
+  "disabled",
+  "revoked",
+]);
+
+export const calendarEventStatus = pgEnum("calendar_event_status", [
+  "confirmed",
+  "tentative",
+  "cancelled",
+]);
+
+export const calendarSyncKind = pgEnum("calendar_sync_kind", [
+  "full",
+  "incremental",
+  "recovery_full",
+]);
+
 export const financeCategoryAssignmentSource = pgEnum(
   "finance_category_assignment_source",
   ["manual", "rule", "system", "uncategorized"],
@@ -66,6 +85,190 @@ export const notes = pgTable(
   },
   (table) => ({
     userDateIdx: index("notes_user_date_idx").on(table.userId, table.noteDate),
+  }),
+);
+
+export const calendarConnections = pgTable(
+  "calendar_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id"),
+    accountEmail: text("account_email"),
+    displayName: text("display_name").notNull(),
+    status: calendarConnectionStatus("status").notNull().default("active"),
+    scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+    syncToken: text("sync_token"),
+    settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userProviderUnique: uniqueIndex("calendar_connections_user_provider_unique").on(
+      table.userId,
+      table.provider,
+    ),
+    userStatusIdx: index("calendar_connections_user_status_idx").on(
+      table.userId,
+      table.status,
+    ),
+  }),
+);
+
+export const calendarCalendars = pgTable(
+  "calendar_calendars",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => calendarConnections.id, { onDelete: "cascade" }),
+    sourceCalendarId: text("source_calendar_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    timezone: text("timezone"),
+    color: text("color"),
+    accessRole: text("access_role"),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    isSelected: boolean("is_selected").notNull().default(true),
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    syncToken: text("sync_token"),
+    rawPayload: jsonb("raw_payload")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceCalendarUnique: uniqueIndex("calendar_calendars_source_calendar_unique").on(
+      table.userId,
+      table.connectionId,
+      table.sourceCalendarId,
+    ),
+    userVisibilityIdx: index("calendar_calendars_user_visibility_idx").on(
+      table.userId,
+      table.isSelected,
+      table.isDeleted,
+    ),
+  }),
+);
+
+export const calendarEvents = pgTable(
+  "calendar_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => calendarConnections.id, { onDelete: "cascade" }),
+    calendarId: uuid("calendar_id")
+      .notNull()
+      .references(() => calendarCalendars.id, { onDelete: "cascade" }),
+    sourceEventId: text("source_event_id").notNull(),
+    sourceIcalUid: text("source_ical_uid"),
+    recurringEventId: text("recurring_event_id"),
+    originalStartAt: timestamp("original_start_at", { withTimezone: true }),
+    title: text("title").notNull(),
+    description: text("description"),
+    location: text("location"),
+    status: calendarEventStatus("status").notNull().default("confirmed"),
+    visibility: text("visibility"),
+    transparency: text("transparency"),
+    startAt: timestamp("start_at", { withTimezone: true }),
+    endAt: timestamp("end_at", { withTimezone: true }),
+    startDate: date("start_date"),
+    endDate: date("end_date"),
+    isAllDay: boolean("is_all_day").notNull().default(false),
+    timezone: text("timezone"),
+    htmlLink: text("html_link"),
+    etag: text("etag"),
+    providerUpdatedAt: timestamp("provider_updated_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    rawPayload: jsonb("raw_payload")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceEventUnique: uniqueIndex("calendar_events_source_event_unique").on(
+      table.userId,
+      table.calendarId,
+      table.sourceEventId,
+    ),
+    userStartAtIdx: index("calendar_events_user_start_at_idx").on(
+      table.userId,
+      table.startAt,
+    ),
+    userStartDateIdx: index("calendar_events_user_start_date_idx").on(
+      table.userId,
+      table.startDate,
+    ),
+    userStatusIdx: index("calendar_events_user_status_idx").on(
+      table.userId,
+      table.status,
+    ),
+    userIcalUidIdx: index("calendar_events_user_ical_uid_idx").on(
+      table.userId,
+      table.sourceIcalUid,
+    ),
+  }),
+);
+
+export const calendarSyncRuns = pgTable(
+  "calendar_sync_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id").references(() => calendarConnections.id, {
+      onDelete: "set null",
+    }),
+    calendarId: uuid("calendar_id").references(() => calendarCalendars.id, {
+      onDelete: "set null",
+    }),
+    sourceType: text("source_type").notNull().default("google_calendar"),
+    status: importStatus("status").notNull().default("pending"),
+    syncKind: calendarSyncKind("sync_kind").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    windowStart: timestamp("window_start", { withTimezone: true }),
+    windowEnd: timestamp("window_end", { withTimezone: true }),
+    eventsScanned: integer("events_scanned").notNull().default(0),
+    eventsInserted: integer("events_inserted").notNull().default(0),
+    eventsUpdated: integer("events_updated").notNull().default(0),
+    eventsCancelled: integer("events_cancelled").notNull().default(0),
+    eventsSkipped: integer("events_skipped").notNull().default(0),
+    nextSyncTokenWritten: boolean("next_sync_token_written").notNull().default(false),
+    errorSummary: text("error_summary"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userStatusIdx: index("calendar_sync_runs_user_status_idx").on(
+      table.userId,
+      table.status,
+    ),
+    userConnectionCreatedIdx: index("calendar_sync_runs_user_connection_created_idx").on(
+      table.userId,
+      table.connectionId,
+      table.createdAt,
+    ),
+    userCalendarCreatedIdx: index("calendar_sync_runs_user_calendar_created_idx").on(
+      table.userId,
+      table.calendarId,
+      table.createdAt,
+    ),
   }),
 );
 
