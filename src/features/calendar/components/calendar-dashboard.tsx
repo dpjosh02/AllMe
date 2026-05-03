@@ -185,9 +185,6 @@ function CalendarReviewFocusControls({
 }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)]">
-        Focus
-      </span>
       {reviewFocusOptions.map((option) => (
         <button
           aria-pressed={reviewFocus === option.value}
