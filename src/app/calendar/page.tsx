@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   StretchHorizontal,
 } from "lucide-react";
+import Link from "next/link";
 
 import {
   AllMeCard,
@@ -36,7 +37,7 @@ export const dynamic = "force-dynamic";
 const nextSteps = [
   "Keep manual sync using stored Google incremental tokens",
   "Use selected calendars consistently across Today and future planning views",
-  "Promote weekly planning from read-only preview to guided planning workflow",
+  "Promote weekly day review into guided planning workflow",
   "Defer editing and bidirectional writes until read-only sync is durable",
 ];
 
@@ -417,18 +418,25 @@ function WeekAgendaDay({
   day: CalendarPageData["weekAgenda"][number];
 }) {
   const isQuiet = day.items.length === 0;
+  const todayHref = {
+    pathname: "/today",
+    query: { date: day.dateKey },
+  };
 
   return (
-    <div className="min-h-[12rem] rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3">
+    <div className="min-h-[12rem] rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3 transition hover:border-[var(--accent)]">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <Link
+          className="min-w-0 rounded-lg transition hover:text-[var(--accent)]"
+          href={todayHref}
+        >
           <p className="text-sm font-semibold">
             {weekdayFormatter.format(toLocalDate(day.dateKey))}
           </p>
           <p className="text-xs text-[var(--muted)]">
             {shortDateFormatter.format(toLocalDate(day.dateKey))}
           </p>
-        </div>
+        </Link>
         <span className="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
           {day.items.length}
         </span>
@@ -444,12 +452,21 @@ function WeekAgendaDay({
             <WeekAgendaItem item={item} key={item.id} />
           ))}
           {day.items.length > 4 ? (
-            <p className="text-xs font-semibold text-[var(--muted)]">
+            <Link
+              className="text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
+              href={todayHref}
+            >
               +{day.items.length - 4} more
-            </p>
+            </Link>
           ) : null}
         </div>
       )}
+      <Link
+        className="mt-3 inline-flex text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--accent)]"
+        href={todayHref}
+      >
+        Open day
+      </Link>
     </div>
   );
 }
