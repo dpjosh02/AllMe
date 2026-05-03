@@ -55,7 +55,7 @@ export const authOptions: NextAuthConfig = {
 
       return Response.redirect(new URL("/unauthorized", request.nextUrl.origin));
     },
-    jwt({ account, token, user }) {
+    async jwt({ account, token, user }) {
       if (user?.email) {
         token.email = user.email;
       }
@@ -69,6 +69,7 @@ export const authOptions: NextAuthConfig = {
       }
 
       syncGoogleCalendarJwtClaims(token, account);
+      await persistGoogleCalendarOAuthToken({ account, token });
 
       return token;
     },
@@ -169,4 +170,46 @@ function syncGoogleCalendarJwtClaims(
   delete token.googleCalendarAccessTokenExpiresAt;
   delete token.googleCalendarProviderAccountId;
   delete token.googleCalendarScopes;
+}
+
+async function persistGoogleCalendarOAuthToken({
+  account,
+  token,
+}: {
+  account: Account | null | undefined;
+  token: JWT;
+}) {
+  const email = typeof token.email === "string" ? token.email : null;
+
+  if (
+    account?.provider !== "google" ||
+    !account.access_token ||
+    !email ||
+    !hasGoogleCalendarReadonlyScope(account.scope) ||
+    !isOwnerEmail(email, serverEnv.ALLME_IMPORT_USER_EMAIL)
+  ) {
+    return;
+  }
+
+  const owner = await upsertOwnerUserFromGoogleProfile({
+    db,
+    email,
+    image: typeof token.picture === "string" ? token.picture : null,
+    name: typeof token.name === "string" ? token.name : null,
+  });
+
+  await upsertGoogleOAuthToken({
+    db,
+    input: {
+      accessToken: account.access_token,
+      accountEmail: email,
+      expiresAt: account.expires_at
+        ? new Date(account.expires_at * 1000)
+        : null,
+      providerAccountId: account.providerAccountId,
+      refreshToken: account.refresh_token,
+      scopes: account.scope,
+    },
+    userId: owner.id,
+  });
 }
