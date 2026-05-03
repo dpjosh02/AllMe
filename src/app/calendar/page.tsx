@@ -1,12 +1,9 @@
 import {
   CalendarDays,
   Clock3,
-  Link2,
-  NotebookPen,
   PlugZap,
   ShieldCheck,
 } from "lucide-react";
-import type { ReactNode } from "react";
 
 import {
   AllMeCard,
@@ -19,15 +16,19 @@ import {
   PageSection,
   StatusPill,
 } from "@/components/layout/page-scaffold";
+import { syncGoogleCalendarNow } from "@/features/calendar/actions";
+import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
+import { getCalendarPageData } from "@/features/calendar/queries";
+import { getGoogleCalendarAccessTokenReadiness } from "@/server/auth/google-calendar-token";
 import { requirePageUser } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
-const foundationSteps = [
-  "Create calendar connection and event cache tables",
-  "Add Google OAuth calendar scope behind the existing auth boundary",
-  "Sync events idempotently into Postgres",
-  "Feed Today from AllMe-owned agenda data",
+const nextSteps = [
+  "Run a manual full sync from Google Calendar",
+  "Verify synced events in the local Postgres cache",
+  "Wire the Today agenda to cached calendar events",
+  "Add incremental sync once the first full sync is stable",
 ];
 
 const weekPlaceholders = [
@@ -37,7 +38,12 @@ const weekPlaceholders = [
 ];
 
 export default async function CalendarPage() {
-  await requirePageUser("/calendar");
+  const currentUser = await requirePageUser("/calendar");
+  const [data, tokenReadiness] = await Promise.all([
+    getCalendarPageData(currentUser.id),
+    getGoogleCalendarAccessTokenReadiness(),
+  ]);
+  const canSync = data.connection.isReady && tokenReadiness.ready;
 
   return (
     <AppPageShell>
@@ -50,15 +56,22 @@ export default async function CalendarPage() {
                 <p className="allme-kicker">Integration</p>
                 <p className="mt-2 text-lg font-semibold">Google Calendar</p>
               </div>
-              <StatusPill label="Not connected" tone="attention" />
+              <StatusPill
+                label={data.connection.badgeLabel}
+                tone={data.connection.tone}
+              />
             </div>
             <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
-              Calendar data will sync into AllMe before it powers Today,
-              weekly planning, and event-linked notes.
+              {data.connection.isReady
+                ? "Calendar data can now sync into AllMe before it powers Today, weekly planning, and event-linked notes."
+                : "Calendar data will sync into AllMe after Google read-only access is available through the auth boundary."}
             </p>
+            <form action={syncGoogleCalendarNow} className="mt-4">
+              <SyncGoogleCalendarButton disabled={!canSync} />
+            </form>
           </div>
         }
-        subtitle="A schedule layer for daily context, weekly planning, and event-linked notes once Google Calendar sync is connected."
+        subtitle="A schedule layer for daily context, weekly planning, and event-linked notes backed by local cached provider data."
         title="Schedule context"
       />
 
@@ -66,18 +79,31 @@ export default async function CalendarPage() {
         <PageGridItem span="primary">
           <AllMeCard variant="activity">
             <PageSection
-              description="This is the surface Today will eventually consume. It stays empty until the calendar sync writes trusted event rows."
+              description="This is the local agenda surface Today will consume. Provider reads stay behind the sync boundary."
               eyebrow="Agenda"
               icon={<Clock3 aria-hidden="true" className="h-6 w-6" />}
               title="Today"
             >
-              <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
-                <p className="text-lg font-semibold">No synced events yet</p>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                  The first real calendar milestone is not a UI calendar. It is
-                  a trustworthy event cache with sync history, owner scoping,
-                  and predictable failure visibility.
-                </p>
+              <div className="grid gap-3 md:grid-cols-3">
+                <MetricTile
+                  detail="Cached provider calendars"
+                  label="Calendars"
+                  value={String(data.calendars)}
+                />
+                <MetricTile
+                  detail="Cached event rows"
+                  label="Events"
+                  value={String(data.events)}
+                />
+                <MetricTile
+                  detail={
+                    data.latestSyncRun
+                      ? dateFormatter.format(data.latestSyncRun.createdAt)
+                      : "No sync runs yet"
+                  }
+                  label="Latest sync"
+                  value={data.latestSyncRun?.status ?? "None"}
+                />
               </div>
             </PageSection>
           </AllMeCard>
@@ -86,17 +112,34 @@ export default async function CalendarPage() {
         <PageGridItem span="support">
           <AllMeCard variant="status">
             <PageSection
-              description="The connection is intentionally inactive until we define OAuth scopes, sync tables, and ownership rules."
+              description="Connection health is based on non-secret OAuth metadata and local sync state. Tokens stay inside the auth boundary."
               eyebrow="Connection"
               icon={<PlugZap aria-hidden="true" className="h-6 w-6" />}
               title="Google Calendar"
             >
               <MetricGrid className="md:grid-cols-1">
-                <KeyValueRow label="Status" value="Not configured" />
-                <KeyValueRow label="Sync source" value="Google Calendar" />
-                <KeyValueRow label="Event store" value="Planned" />
+                <KeyValueRow label="Status" value={data.connection.status} />
+                <KeyValueRow label="Account" value={data.connection.accountEmail} />
+                <KeyValueRow
+                  label="Read token"
+                  value={tokenReadiness.ready ? "Available" : "Reauthorize"}
+                />
+                <KeyValueRow
+                  label="Last sync"
+                  value={
+                    data.connection.lastSyncedAt
+                      ? dateFormatter.format(data.connection.lastSyncedAt)
+                      : "Never"
+                  }
+                />
                 <KeyValueRow label="Secret values" value="Hidden" />
               </MetricGrid>
+              {!tokenReadiness.ready ? (
+                <p className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
+                  {tokenReadiness.reason}. Sign out and sign back in with Google
+                  Calendar access before running the first sync.
+                </p>
+              ) : null}
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -129,25 +172,44 @@ export default async function CalendarPage() {
         <PageGridItem span="half">
           <AllMeCard variant="status">
             <PageSection
-              description="Calendar should connect to notes only after event identity is stable in the database."
-              eyebrow="Notes"
-              icon={<NotebookPen aria-hidden="true" className="h-6 w-6" />}
-              title="Event-linked notes"
+              description="The manual sync writes a local lifecycle row before provider reads, then imports only after Google returns data."
+              eyebrow="Sync"
+              icon={<ShieldCheck aria-hidden="true" className="h-6 w-6" />}
+              title="Latest run"
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <ReadinessTile
-                  detail="Events need durable ids before notes can attach."
-                  icon={<Link2 aria-hidden="true" className="h-5 w-5" />}
-                  label="Link model"
-                  status="Planned"
-                />
-                <ReadinessTile
-                  detail="Notes remain owner-scoped through existing guards."
-                  icon={<ShieldCheck aria-hidden="true" className="h-5 w-5" />}
-                  label="Access model"
-                  status="Ready"
-                />
-              </div>
+              {data.latestSyncRun ? (
+                <MetricGrid>
+                  <KeyValueRow label="Status" value={data.latestSyncRun.status} />
+                  <KeyValueRow
+                    label="Scanned"
+                    value={String(data.latestSyncRun.eventsScanned)}
+                  />
+                  <KeyValueRow
+                    label="Inserted"
+                    value={String(data.latestSyncRun.eventsInserted)}
+                  />
+                  <KeyValueRow
+                    label="Cancelled"
+                    value={String(data.latestSyncRun.eventsCancelled)}
+                  />
+                  <KeyValueRow
+                    label="Skipped"
+                    value={String(data.latestSyncRun.eventsSkipped)}
+                  />
+                  <KeyValueRow
+                    label="Failure detail"
+                    value={data.latestSyncRun.hasErrorSummary ? "Hidden" : "None"}
+                  />
+                </MetricGrid>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--empty)] p-5">
+                  <p className="text-lg font-semibold">No sync runs yet</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    Use the manual sync control after reauthorizing Google
+                    Calendar access.
+                  </p>
+                </div>
+              )}
             </PageSection>
           </AllMeCard>
         </PageGridItem>
@@ -155,12 +217,12 @@ export default async function CalendarPage() {
         <PageGridItem span="full">
           <AllMeCard variant="status">
             <PageSection
-              description="The next implementation slice should create the data model and sync contract before adding interactive calendar views."
+              description="Calendar remains foundation-first: local cache, visible sync health, then Today agenda consumption."
               eyebrow="Build order"
-              title="Calendar foundation"
+              title="Next slices"
             >
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {foundationSteps.map((step, index) => (
+                {nextSteps.map((step, index) => (
                   <div
                     className="rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4"
                     key={step}
@@ -182,26 +244,24 @@ export default async function CalendarPage() {
   );
 }
 
-function ReadinessTile({
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function MetricTile({
   detail,
-  icon,
   label,
-  status,
+  value,
 }: {
   detail: string;
-  icon: ReactNode;
   label: string;
-  status: string;
+  value: string;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--empty)] p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-semibold">{label}</p>
-        <span className="text-[var(--accent)]">{icon}</span>
-      </div>
-      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-        {status}
-      </p>
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
+      <p className="allme-kicker">{label}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{value}</p>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</p>
     </div>
   );

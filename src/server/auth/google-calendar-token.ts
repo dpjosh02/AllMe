@@ -39,6 +39,22 @@ export async function resolveGoogleCalendarAccessToken() {
   return toGoogleCalendarAccessToken(token);
 }
 
+export async function getGoogleCalendarAccessTokenReadiness() {
+  try {
+    await resolveGoogleCalendarAccessToken();
+
+    return { ready: true, reason: "Token available" };
+  } catch (error) {
+    return {
+      ready: false,
+      reason:
+        error instanceof GoogleCalendarAccessTokenUnavailableError
+          ? error.message
+          : "Google Calendar token status is unavailable",
+    };
+  }
+}
+
 export function toGoogleCalendarAccessToken(
   token: JWT | null,
 ): GoogleCalendarAccessToken {
