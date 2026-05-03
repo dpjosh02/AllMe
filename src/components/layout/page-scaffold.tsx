@@ -129,12 +129,11 @@ export function PageGridItem({
 export function PageSection({
   children,
   className,
-  description,
   eyebrow,
   icon,
   title,
 }: PageSectionProps) {
-  const hasHeader = eyebrow || title || description || icon;
+  const hasHeader = eyebrow || title || icon;
 
   return (
     <section className={cn("grid gap-4", className)}>
@@ -146,11 +145,6 @@ export function PageSection({
               <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
                 {title}
               </h2>
-            ) : null}
-            {description ? (
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                {description}
-              </p>
             ) : null}
           </div>
           {icon ? (

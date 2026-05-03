@@ -102,6 +102,7 @@ Cards:
 - Use `.allme-card` for elevated sections.
 - Use `.allme-card-subtle` for nested panels and empty states.
 - Avoid nested heavy shadows.
+- Component headers should rely on eyebrow, title, icon, and layout context. Avoid rendering descriptive subtext inside card headers unless a specific workflow needs clarification.
 
 Metric tiles:
 

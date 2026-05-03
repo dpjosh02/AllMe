@@ -183,6 +183,7 @@ Current scaffold rules:
 - `PageGrid` uses a 12-column desktop grid and stretches same-row grid items to equal height by default.
 - `PageGridItem` exposes reusable spans for full-width, 7/5, 6/6, 4/8, and 5/7 page compositions.
 - `AllMeCard`, `PageSection`, `StatusPill`, `KeyValueRow`, and `MetricGrid` standardize card rhythm, section headers, status badges, and system key-value rows.
+- `PageSection` keeps component headers compact by rendering eyebrow/title/icon only; descriptive header subtext is intentionally suppressed unless a future workflow requires a dedicated exception.
 - Same-row cards that occupy comparable grid space should share height unless a page intentionally opts out.
 - Finance dashboard metrics intentionally cap at three columns on desktop, forcing two rows: Transactions/Credits/Debits first, Income/Spending/Categorized second. This prevents wide-screen metric value clipping and keeps the dashboard window scannable.
 
