@@ -599,9 +599,92 @@ Shared entry-point tests:
 
 ### Slice 2.9: This-event-only Recurrence Edit
 
-- support editing one recurring instance
-- audit `recurringEventId` and `originalStartTime`
-- keep recurring master untouched
+Goal: allow a user to edit exactly one visible Google recurring-event
+occurrence without mutating the recurring master or future occurrences.
+
+Allowed provider operation:
+
+- `update_event` against the occurrence `source_event_id` only
+- PATCH-first payload using the existing allowlist:
+  - `summary`
+  - `description`
+  - `location`
+  - `start`
+  - `end`
+- no recurrence fields, RRULEs, EXDATEs, attendees, reminders, conference data,
+  or recurring-master fields
+
+Required context before enabling the action:
+
+- local row has `recurring_event_id`
+- local row has occurrence `source_event_id`
+- local row has `original_start_at` when Google provides it
+- calendar is selected, not deleted, and writable
+- connection is active and write-scope-ready
+- cached local ETag exists
+- user explicitly chooses "Only this event" in UI copy
+
+Fetch-before-write rules:
+
+- fetch the current provider occurrence by the occurrence `source_event_id`
+- compare provider occurrence ETag with the cached occurrence ETag
+- abort as `conflict` on mismatch
+- abort if the provider response appears to be the recurring master rather than
+  an occurrence
+- never fetch or patch the recurring master as part of this slice
+
+Audit requirements:
+
+- use `operation = update_event`
+- create audit before token resolution/provider fetch
+- record `source_event_id` as the occurrence id
+- include `request_patch` with sanitized allowed fields only
+- include recurrence context in a future-safe audit extension before
+  implementation:
+  - `recurring_event_id`
+  - `original_start_at`
+  - edit scope value `this_event_only`
+- status transitions remain `pending -> running -> succeeded|failed|conflict`
+
+Local reconciliation:
+
+- update the local occurrence row from the provider response after success
+- preserve local AllMe note, linked note identity, and review state
+- do not update sibling occurrences from the same series
+- do not update the recurring master row
+- if the provider response is insufficient, prompt/run sync rather than guessing
+
+UI requirements:
+
+- recurring event drawer shows provider edit action as available only after the
+  user chooses an explicit recurrence scope
+- the only enabled scope in this slice is `Only this event`
+- `This and following` and `Entire series` must be visible only as disabled or
+  deferred copy, not selectable provider-write actions
+- button copy should make the blast radius explicit, for example
+  `Edit only this event`
+- confirmation copy should state that Google Calendar will create/update an
+  exception occurrence and the series pattern remains unchanged
+
+Tests needed:
+
+- recurring occurrence with occurrence `source_event_id` allows this-event-only
+  update
+- missing `source_event_id` blocks before provider fetch
+- missing or mismatched ETag records `conflict` and does not PATCH
+- provider master response blocks as `conflict` or `failed`
+- PATCH body excludes all recurrence fields
+- local reconciliation updates only the occurrence row
+- local note/review state is preserved
+- disabled UI scopes do not call provider actions
+
+Recommended implementation split:
+
+- 2.9A: pure policy/helper tests for recurrence edit scope and provider response
+  classification
+- 2.9B: provider-write action support for `this_event_only` occurrence updates
+- 2.9C: drawer UI scope selector and confirmation copy
+- 2.9D: browser smoke and edge-case tests with real synced recurring events
 
 ### Slice 2.10: This-and-following Recurrence Edit
 
