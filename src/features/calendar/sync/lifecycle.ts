@@ -1,9 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 
 import type { db as appDb } from "@/server/db";
 import { calendarSyncRuns } from "@/server/db/schema";
 
 type Database = typeof appDb;
+
+export const calendarSyncLockWindowMs = 10 * 60 * 1000;
+export const calendarSyncStaleThresholdMs = 6 * 60 * 60 * 1000;
 
 export type CalendarSyncCounts = {
   eventsCancelled: number;
@@ -12,6 +15,13 @@ export type CalendarSyncCounts = {
   eventsSkipped: number;
   eventsUpdated: number;
 };
+
+export class CalendarSyncAlreadyRunningError extends Error {
+  constructor(syncRunId: string) {
+    super(`Calendar sync is already running (${syncRunId})`);
+    this.name = "CalendarSyncAlreadyRunningError";
+  }
+}
 
 export async function createCalendarSyncRun({
   calendarId,
@@ -32,6 +42,16 @@ export async function createCalendarSyncRun({
   windowEnd?: Date;
   windowStart?: Date;
 }) {
+  const runningSyncRun = await findRecentRunningCalendarSyncRun({
+    db,
+    now: startedAt,
+    userId,
+  });
+
+  if (runningSyncRun) {
+    throw new CalendarSyncAlreadyRunningError(runningSyncRun.id);
+  }
+
   const [syncRun] = await db
     .insert(calendarSyncRuns)
     .values({
@@ -48,6 +68,36 @@ export async function createCalendarSyncRun({
     .returning({ id: calendarSyncRuns.id });
 
   return requireStoredRow(syncRun, "Failed to create Calendar sync run");
+}
+
+export async function findRecentRunningCalendarSyncRun({
+  db,
+  lockWindowMs = calendarSyncLockWindowMs,
+  now = new Date(),
+  userId,
+}: {
+  db: Database;
+  lockWindowMs?: number;
+  now?: Date;
+  userId: string;
+}) {
+  const [syncRun] = await db
+    .select({
+      id: calendarSyncRuns.id,
+      startedAt: calendarSyncRuns.startedAt,
+    })
+    .from(calendarSyncRuns)
+    .where(
+      and(
+        eq(calendarSyncRuns.userId, userId),
+        eq(calendarSyncRuns.status, "running"),
+        gte(calendarSyncRuns.startedAt, getCalendarSyncLockCutoff(now, lockWindowMs)),
+      ),
+    )
+    .orderBy(desc(calendarSyncRuns.startedAt))
+    .limit(1);
+
+  return syncRun ?? null;
 }
 
 export async function markCalendarSyncTokenWritten({
@@ -132,6 +182,38 @@ export async function markCalendarSyncRunFailed({
 
 export function getCalendarSyncErrorSummary(error: unknown) {
   return error instanceof Error ? error.message : "Unknown calendar sync error";
+}
+
+export function isCalendarSyncStale({
+  lastSyncedAt,
+  now = new Date(),
+  staleThresholdMs = calendarSyncStaleThresholdMs,
+}: {
+  lastSyncedAt: Date | null;
+  now?: Date;
+  staleThresholdMs?: number;
+}) {
+  if (!lastSyncedAt) {
+    return true;
+  }
+
+  return now.getTime() - lastSyncedAt.getTime() > staleThresholdMs;
+}
+
+export function isCalendarSyncRunWithinLockWindow({
+  lockWindowMs = calendarSyncLockWindowMs,
+  now = new Date(),
+  startedAt,
+}: {
+  lockWindowMs?: number;
+  now?: Date;
+  startedAt: Date;
+}) {
+  return startedAt.getTime() >= getCalendarSyncLockCutoff(now, lockWindowMs).getTime();
+}
+
+function getCalendarSyncLockCutoff(now: Date, lockWindowMs: number) {
+  return new Date(now.getTime() - lockWindowMs);
 }
 
 function requireStoredRow<T>(row: T | undefined, message: string) {

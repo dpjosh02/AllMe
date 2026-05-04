@@ -9,6 +9,10 @@ import {
   getGoogleCalendarConnectionStatus,
   googleCalendarReadonlyScope,
 } from "@/features/calendar/sync/connection";
+import {
+  isCalendarSyncRunWithinLockWindow,
+  isCalendarSyncStale,
+} from "@/features/calendar/sync/lifecycle";
 import { getLocalDateKey } from "@/features/today/date";
 import { db } from "@/server/db";
 import {
@@ -21,6 +25,7 @@ import {
 
 export type CalendarPageData = Awaited<ReturnType<typeof getCalendarPageData>>;
 type CalendarStatusTone = "attention" | "neutral" | "ready";
+type CalendarSyncStatusTone = "attention" | "neutral" | "ready";
 const defaultTimezone = "America/Chicago";
 
 export async function getCalendarPageData(userId: string) {
@@ -54,6 +59,12 @@ export async function getCalendarPageData(userId: string) {
     : connection
       ? "attention"
       : "neutral";
+  const syncStatus = getCalendarSyncStatus({
+    connectionReady,
+    lastSyncedAt: connection?.lastSyncedAt ?? null,
+    latestSyncRun,
+    now: new Date(),
+  });
 
   return {
     calendars: calendarCounts.calendars,
@@ -74,10 +85,79 @@ export async function getCalendarPageData(userId: string) {
     events: calendarCounts.events,
     selectedCalendars: calendarCounts.selectedCalendars,
     latestSyncRun,
+    syncStatus,
     timezone,
     upcomingEvents,
     weekAgenda,
     weekStartDateKey,
+  };
+}
+
+function getCalendarSyncStatus({
+  connectionReady,
+  lastSyncedAt,
+  latestSyncRun,
+  now,
+}: {
+  connectionReady: boolean;
+  lastSyncedAt: Date | null;
+  latestSyncRun: Awaited<ReturnType<typeof getLatestCalendarSyncRun>>;
+  now: Date;
+}) {
+  if (!connectionReady) {
+    return {
+      detail: "Connect Google Calendar before syncing local data.",
+      label: "Not connected",
+      status: "not_connected" as const,
+      tone: "neutral" as CalendarSyncStatusTone,
+    };
+  }
+
+  if (
+    latestSyncRun?.status === "running" &&
+    latestSyncRun.startedAt &&
+    isCalendarSyncRunWithinLockWindow({ now, startedAt: latestSyncRun.startedAt })
+  ) {
+    return {
+      detail: "A sync is currently running. New manual syncs are temporarily blocked.",
+      label: "Syncing",
+      status: "running" as const,
+      tone: "neutral" as CalendarSyncStatusTone,
+    };
+  }
+
+  if (latestSyncRun?.status === "failed") {
+    return {
+      detail: "The latest sync failed. Local Calendar data may be stale.",
+      label: "Sync failed",
+      status: "failed" as const,
+      tone: "attention" as CalendarSyncStatusTone,
+    };
+  }
+
+  if (!lastSyncedAt) {
+    return {
+      detail: "No successful Calendar sync has completed yet.",
+      label: "Never synced",
+      status: "never" as const,
+      tone: "neutral" as CalendarSyncStatusTone,
+    };
+  }
+
+  if (isCalendarSyncStale({ lastSyncedAt, now })) {
+    return {
+      detail: "Local Calendar data is older than the freshness window.",
+      label: "Stale",
+      status: "stale" as const,
+      tone: "attention" as CalendarSyncStatusTone,
+    };
+  }
+
+  return {
+    detail: "Local Calendar data is inside the freshness window.",
+    label: "Fresh",
+    status: "fresh" as const,
+    tone: "ready" as CalendarSyncStatusTone,
   };
 }
 

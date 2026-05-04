@@ -30,7 +30,10 @@ export default async function CalendarPage() {
     getCalendarPageData(currentUser.id),
     getGoogleCalendarAccessTokenReadiness(),
   ]);
-  const canSync = data.connection.isReady && tokenReadiness.ready;
+  const canSync =
+    data.connection.isReady &&
+    tokenReadiness.ready &&
+    data.syncStatus.status !== "running";
 
   return (
     <AppPageShell>
@@ -41,7 +44,14 @@ export default async function CalendarPage() {
             <form action={syncGoogleCalendarNow} className="flex justify-end">
               <SyncGoogleCalendarButton disabled={!canSync} />
             </form>
-            <p className="rounded-full border border-[var(--line)] bg-[var(--empty)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
+            <p
+              className={[
+                "rounded-full border px-3 py-1 text-xs font-semibold",
+                getSyncStatusClassName(data.syncStatus.tone),
+              ].join(" ")}
+              title={data.syncStatus.detail}
+            >
+              {data.syncStatus.label} ·{" "}
               {formatCalendarFreshness(data.connection.lastSyncedAt)}
             </p>
           </div>
@@ -78,6 +88,9 @@ export default async function CalendarPage() {
                       ? shortStatusFormatter.format(data.connection.lastSyncedAt)
                       : "never"}
                   </p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {data.syncStatus.label}: {data.syncStatus.detail}
+                  </p>
                 </div>
               </div>
               <Link
@@ -107,10 +120,21 @@ const shortStatusFormatter = new Intl.DateTimeFormat("en-US", {
 
 function formatCalendarFreshness(lastSyncedAt: Date | null) {
   if (!lastSyncedAt) {
-    return "Last sync: never";
+    return "Never";
   }
 
-  return `Last sync: ${syncFreshnessFormatter.format(lastSyncedAt)}`;
+  return syncFreshnessFormatter.format(lastSyncedAt);
+}
+
+function getSyncStatusClassName(tone: "attention" | "neutral" | "ready") {
+  switch (tone) {
+    case "attention":
+      return "border-[var(--danger)]/35 bg-[var(--empty)] text-[var(--danger)]";
+    case "ready":
+      return "border-[var(--success)]/35 bg-[var(--empty)] text-[var(--success)]";
+    case "neutral":
+      return "border-[var(--line)] bg-[var(--empty)] text-[var(--muted)]";
+  }
 }
 
 const syncFreshnessFormatter = new Intl.DateTimeFormat("en-US", {
