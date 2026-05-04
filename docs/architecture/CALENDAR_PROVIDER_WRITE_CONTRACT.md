@@ -684,7 +684,29 @@ Recommended implementation split:
   classification
 - 2.9B: provider-write action support for `this_event_only` occurrence updates
 - 2.9C: drawer UI scope selector and confirmation copy
-- 2.9D: browser smoke and edge-case tests with real synced recurring events
+- 2.9D: browser smoke and edge-case tests with real synced recurring events.
+  Current local smoke confirms the Calendar page still renders after 2.9C, but
+  the only cached recurring rows are birthday occurrences outside the visible
+  planning window and missing `original_start_at`; they are intentionally not
+  used for real provider-write smoke.
+
+Before moving past this-event-only recurrence work, use a real upcoming synced
+recurring Google occurrence that has:
+
+- occurrence `source_event_id`
+- recurring-series id
+- `original_start_at`
+- cached ETag
+- writable selected calendar
+
+Smoke expectations:
+
+- drawer shows `Only this event` as the only enabled recurrence write scope
+- disabled scopes do not submit provider actions
+- choosing `Only this event` enables the Google edit form
+- submitting an edit PATCHes only the occurrence, not the recurring master
+- conflict copy appears if Google returns a master/mismatched occurrence or a
+  changed ETag
 
 ### Slice 2.10: This-and-following Recurrence Edit
 
