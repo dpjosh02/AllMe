@@ -106,8 +106,12 @@ Current read-only scope:
 
 Future write-capable scope candidates:
 
-- `https://www.googleapis.com/auth/calendar.events`
-- `https://www.googleapis.com/auth/calendar`
+- preferred for Phase 2: `https://www.googleapis.com/auth/calendar.events`
+- broader future option: `https://www.googleapis.com/auth/calendar`
+
+`calendar.events` is preferred for Phase 2 because AllMe writes are event-level
+only. Phase 2 does not require calendar ACL, sharing, or calendar settings
+access.
 
 Policy:
 
@@ -332,13 +336,16 @@ The user-facing label is `Delete event`.
 
 Provider behavior:
 
-- use Google-supported event delete/cancel behavior
+- for non-recurring provider events, use Google Calendar's supported delete
+  endpoint/behavior where appropriate
 - do not locally mark a provider-backed event deleted before provider success
 - do not remove or tombstone local cache rows before provider success
 - after provider success, update local cache from provider confirmation or wait
   for sync confirmation
 - if provider delete/cancel fails, leave the local cached event unchanged and
   record the audit row as `failed`
+- recurring event deletion remains deferred unless a later recurrence-specific
+  slice explicitly supports it
 
 Local cache behavior:
 
@@ -358,11 +365,14 @@ Current stale threshold for writes:
 
 Policy:
 
-- if the last successful sync is older than the threshold, future writes must
-  warn, block, or fetch provider freshness before mutation
+- if the last successful sync is older than the threshold and no provider
+  freshness check is performed, block the write
+- if local cache is stale but the action fetches the current provider event and
+  passes ETag/freshness validation before mutation, the write may proceed
 - no auto-sync is allowed in this slice
-- the preferred v1 server behavior is to block unsafe writes unless the action
-  fetches the current provider event and passes ETag validation
+- stale-cache policy must not force auto-sync in the provider-write contract
+  slice
+- no writes should occur during page render
 - stale-cache checks should be pure and testable
 
 Suggested user-safe copy:
@@ -387,6 +397,35 @@ Suggested warning copy:
 
 `This will update Google Calendar. AllMe will record the attempt and keep local notes/review state separate.`
 
+### Delete Confirmation Preference
+
+The user-facing destructive action label is `Delete event`.
+
+Policy:
+
+- deleting a provider event requires confirmation by default
+- the confirmation appears every time unless the user disables it
+- the "do not show again" preference may be browser-local through
+  `localStorage` in v1
+- this preference is UX-only
+- it must not bypass server-side authorization, audit logging, access-role
+  checks, write-scope checks, stale-cache checks, ETag conflict checks, or
+  provider mutation safety
+- server actions must remain safe if the browser confirmation is bypassed
+
+## Shared Calendar/Today Write Path
+
+Today may expose provider-write actions later, but Calendar owns provider-write
+policy and server actions.
+
+Policy:
+
+- Today must reuse Calendar-owned provider-write actions and policy helpers
+- Today must not create a separate Google provider-write path
+- Today can invoke shared actions once Calendar write flows are stable
+- shared actions must enforce the same authorization, write-scope, access-role,
+  stale-cache, ETag, audit, and idempotency policies regardless of entry point
+
 ## Audit Table Proposal
 
 Proposed table: `calendar_provider_write_audit`
@@ -409,7 +448,7 @@ Suggested columns:
 | `source_calendar_id` | `text not null` | Provider calendar id. |
 | `source_event_id` | `text` | Provider event id if known. |
 | `operation` | `text not null` | `create_event`, `update_event`, `delete_event`, `publish_note_description`. Keep note publishing distinct from event-form description edits. |
-| `status` | `text not null` | `pending`, `succeeded`, `failed`, `conflict`, `skipped`. |
+| `status` | `text not null` | `pending`, `running`, `succeeded`, `failed`, `conflict`, `skipped`. |
 | `idempotency_key` | `text not null` | Prevent duplicate form/action retries. |
 | `request_patch` | `jsonb not null default {}` | Sanitized intended provider fields only. |
 | `previous_etag` | `text` | Cached provider ETag before write. |
@@ -420,6 +459,23 @@ Suggested columns:
 | `started_at` | `timestamp with time zone not null` | Attempt start. |
 | `finished_at` | `timestamp with time zone` | Attempt end. |
 | `created_at` | `timestamp with time zone not null default now()` | Audit row creation. |
+| `updated_at` | `timestamp with time zone not null default now()` | Audit row state-transition tracking. |
+
+Audit statuses:
+
+- `pending`: row created before the provider attempt is started
+- `running`: provider mutation or provider freshness check is actively in
+  progress
+- `succeeded`: provider mutation succeeded and local reconciliation completed or
+  was safely queued
+- `failed`: provider mutation failed without conflict semantics
+- `conflict`: ETag/provider freshness mismatch or stale provider state blocked
+  the write
+- `skipped`: server intentionally skipped the write, usually due to policy or
+  idempotency behavior
+
+`updated_at` helps trace audit row state transitions such as
+`pending`/`running` to `succeeded`, `failed`, or `conflict`.
 
 Indexes:
 
@@ -431,6 +487,21 @@ Indexes:
 Raw provider responses should not be stored in this table by default. If needed
 later, store a sanitized response subset, never OAuth tokens, authorization
 headers, or full provider error bodies.
+
+### Idempotency Key Behavior
+
+Provider-write actions must use idempotency keys.
+
+Policy:
+
+- generate one idempotency key per explicit user action/form submission
+- retrying the exact same submission may reuse the same key
+- changing form content should produce a new idempotency key
+- the unique `(user_id, idempotency_key)` constraint prevents duplicate writes
+  from double submissions or action retries
+- idempotency behavior must not hide failed or conflict states from the user
+- duplicate submissions should return the existing audit/result state when safe
+  rather than issuing a second provider write
 
 ## Tests Needed
 
@@ -449,6 +520,8 @@ Provider-write contract tests:
 - PATCH helper rejects unknown provider fields
 - `publish_note_description` and `update_event` remain separate operations
 - stale local cache blocks or requires provider freshness check before write
+- stale local cache may proceed only when fetch-before-write freshness/ETag
+  validation passes
 
 Conflict tests:
 
@@ -462,10 +535,12 @@ Conflict tests:
 Audit tests:
 
 - audit row is created before provider call
+- audit row can transition from `pending` to `running`
 - audit row is marked `succeeded` only after provider success
 - audit row is marked `failed` on provider failure
 - audit row is marked `conflict` on ETag mismatch
 - idempotency key prevents duplicate writes
+- idempotency does not hide failed/conflict states
 - no token or authorization value appears in audit payloads
 
 Recurrence tests:
@@ -486,8 +561,12 @@ Shared entry-point tests:
 
 - add audit table and migration
 - add pure write-policy helpers
+- add write OAuth readiness helpers
+- add stale-cache guard helpers
+- add PATCH allowlist validation
+- add idempotency policy helpers/tests
 - add tests for access-role gating, write OAuth scope readiness, stale-cache
-  guard, PATCH allowlist validation, and blocked fields
+  guard, PATCH allowlist validation, idempotency behavior, and blocked fields
 - no provider calls yet
 
 ### Slice 2.6: Publish Event Note To Google Description
@@ -495,12 +574,12 @@ Shared entry-point tests:
 - add explicit action: `Publish note to Google Calendar`
 - require writable calendar and non-recurring event
 - require write-capable Google Calendar OAuth scope
-- require fresh-enough local cache or fetch-before-write freshness check
+- require fresh-enough cache or fetch-before-write ETag validation
 - fetch current provider event
 - compare ETag
 - PATCH `description` only
-- update audit row
-- reconcile local cache from provider response
+- audit `pending`, `running`, `succeeded`, `failed`, and `conflict` states
+- reconcile local cache from provider response or prompt sync
 - add optional first-write warning UI if still useful at this slice
 
 ### Slice 2.7: Non-recurring Event Create/Edit/Cancel
