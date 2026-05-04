@@ -11,6 +11,7 @@ import {
 import {
   createLinkedNoteFromCalendarEvent,
   deleteLinkedCalendarNote,
+  publishLinkedCalendarNoteToGoogle,
   reconnectGoogleCalendarWithWriteAccess,
   syncGoogleCalendarNow,
   updateLinkedCalendarNote,
@@ -69,6 +70,7 @@ export default async function CalendarPage() {
           reconnectGoogleCalendarWithWriteAccess={
             reconnectGoogleCalendarWithWriteAccess
           }
+          publishLinkedNoteToGoogle={publishLinkedCalendarNoteToGoogle}
           updateLinkedNote={updateLinkedCalendarNote}
           updateCalendarSelection={updateCalendarSelection}
           updateEventReviewStatus={updateCalendarEventReviewStatus}

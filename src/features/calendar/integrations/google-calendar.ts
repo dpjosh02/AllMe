@@ -63,6 +63,20 @@ export type GoogleCalendarSnapshotConfig = {
   timeMin?: Date;
 };
 
+export type GoogleCalendarProviderEvent = ProviderCalendarEventSnapshot;
+
+export type GoogleCalendarEventWriteConfig = {
+  accessToken: string;
+  calendarId: string;
+  eventId: string;
+  fetcher?: typeof fetch;
+};
+
+export type GoogleCalendarPatchDescriptionConfig =
+  GoogleCalendarEventWriteConfig & {
+    description: string;
+  };
+
 export async function readGoogleCalendarSnapshot({
   accessToken,
   calendarIds,
@@ -98,6 +112,54 @@ export async function readGoogleCalendarSnapshot({
     calendars,
     events: eventsByCalendar.flat(),
   };
+}
+
+export async function fetchGoogleCalendarEvent({
+  accessToken,
+  calendarId,
+  eventId,
+  fetcher = fetch,
+}: GoogleCalendarEventWriteConfig): Promise<GoogleCalendarProviderEvent> {
+  const url = new URL(
+    `${googleCalendarApiBaseUrl}/calendars/${encodeURIComponent(
+      calendarId,
+    )}/events/${encodeURIComponent(eventId)}`,
+  );
+  const event = await fetchGoogleJson<GoogleCalendarEvent>({
+    accessToken,
+    fetcher,
+    url,
+  });
+
+  return toCalendarEventSnapshot({ calendarId, event });
+}
+
+export async function patchGoogleCalendarEventDescription({
+  accessToken,
+  calendarId,
+  description,
+  eventId,
+  fetcher = fetch,
+}: GoogleCalendarPatchDescriptionConfig): Promise<GoogleCalendarProviderEvent> {
+  const url = new URL(
+    `${googleCalendarApiBaseUrl}/calendars/${encodeURIComponent(
+      calendarId,
+    )}/events/${encodeURIComponent(eventId)}`,
+  );
+  const event = await fetchGoogleJson<GoogleCalendarEvent>({
+    accessToken,
+    fetcher,
+    init: {
+      body: JSON.stringify({ description }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "PATCH",
+    },
+    url,
+  });
+
+  return toCalendarEventSnapshot({ calendarId, event });
 }
 
 async function fetchGoogleCalendarList({
@@ -195,14 +257,18 @@ async function fetchGoogleCalendarEvents({
 async function fetchGoogleJson<T>({
   accessToken,
   fetcher,
+  init,
   url,
 }: {
   accessToken: string;
   fetcher: typeof fetch;
+  init?: RequestInit;
   url: URL;
 }) {
   const response = await fetcher(url, {
+    ...init,
     headers: {
+      ...init?.headers,
       Authorization: `Bearer ${accessToken}`,
     },
   });

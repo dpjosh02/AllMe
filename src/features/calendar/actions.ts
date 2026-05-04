@@ -3,11 +3,22 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+import {
+  fetchGoogleCalendarEvent,
+  patchGoogleCalendarEventDescription,
+  type GoogleCalendarProviderEvent,
+} from "@/features/calendar/integrations/google-calendar";
+import {
+  CalendarProviderWriteUserError,
+  publishNoteDescriptionToGoogle,
+  type ProviderWriteAuditDraft,
+} from "@/features/calendar/provider-write/publish-note-description";
 import { syncGoogleCalendarIncremental } from "@/features/calendar/sync/initial-full-sync";
 import {
   googleCalendarOfflineConsentParams,
   googleCalendarWriteAuthScope,
 } from "@/server/auth/google-calendar-scopes";
+import { resolveGoogleCalendarAccessToken } from "@/server/auth/google-calendar-token";
 import { requireOwnerUser } from "@/server/auth/guards";
 import { signIn } from "@/server/auth";
 import { db } from "@/server/db";
@@ -16,6 +27,8 @@ import {
   calendarEventAnnotations,
   calendarEventNoteLinks,
   calendarEvents,
+  calendarConnections,
+  calendarProviderWriteAudit,
   notes,
 } from "@/server/db/schema";
 
@@ -254,6 +267,100 @@ export async function updateLinkedCalendarNote(formData: FormData) {
   return toCalendarLinkedNoteMutationResult({ note: updatedNote });
 }
 
+export type CalendarProviderWriteMutationResult =
+  | {
+      message: string;
+      status: "error";
+    }
+  | {
+      message: string;
+      status: "succeeded";
+    };
+
+export async function publishLinkedCalendarNoteToGoogle(
+  formData: FormData,
+): Promise<CalendarProviderWriteMutationResult> {
+  const user = await requireOwnerUser();
+  const eventId = getCalendarEventId(formData);
+  const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+  const context = await getCalendarEventForProviderWrite({
+    eventId,
+    userId: user.id,
+  });
+
+  if (!context) {
+    return {
+      message: "Calendar event or linked note was not found.",
+      status: "error",
+    };
+  }
+
+  try {
+    const result = await publishNoteDescriptionToGoogle({
+      deps: {
+        createAudit: (draft) => createProviderWriteAudit({ draft, userId: user.id }),
+        fetchProviderEvent: ({ accessToken, sourceCalendarId, sourceEventId }) =>
+          fetchGoogleCalendarEvent({
+            accessToken,
+            calendarId: sourceCalendarId,
+            eventId: sourceEventId,
+          }),
+        markAudit: markProviderWriteAudit,
+        patchProviderDescription: ({
+          accessToken,
+          description,
+          sourceCalendarId,
+          sourceEventId,
+        }) =>
+          patchGoogleCalendarEventDescription({
+            accessToken,
+            calendarId: sourceCalendarId,
+            description,
+            eventId: sourceEventId,
+          }),
+        reconcileLocalEvent: (event) =>
+          updateLocalEventFromProviderWrite({
+            event,
+            eventId: context.eventId,
+            userId: user.id,
+          }),
+        resolveAccessToken: async () => {
+          const token = await resolveGoogleCalendarAccessToken({ userId: user.id });
+
+          return {
+            accessToken: token.accessToken,
+            scopes: token.scopes,
+          };
+        },
+      },
+      input: {
+        context,
+        idempotencyKey,
+      },
+    });
+
+    revalidatePath("/calendar");
+    revalidatePath("/today");
+
+    return {
+      message: "Published note to Google Calendar.",
+      status: result.status,
+    };
+  } catch (error) {
+    if (error instanceof CalendarProviderWriteUserError) {
+      return {
+        message: error.message,
+        status: "error",
+      };
+    }
+
+    return {
+      message: "Google Calendar publish failed. Try again after syncing.",
+      status: "error",
+    };
+  }
+}
+
 const calendarEventReviewStatuses = [
   "none",
   "needs_prep",
@@ -310,6 +417,167 @@ async function getCalendarEventForLink({
     .limit(1);
 
   return event ?? null;
+}
+
+async function getCalendarEventForProviderWrite({
+  eventId,
+  userId,
+}: {
+  eventId: string;
+  userId: string;
+}) {
+  const [event] = await db
+    .select({
+      accessRole: calendarCalendars.accessRole,
+      calendarId: calendarEvents.calendarId,
+      connectionId: calendarEvents.connectionId,
+      connectionStatus: calendarConnections.status,
+      description: calendarEvents.description,
+      etag: calendarEvents.etag,
+      eventId: calendarEvents.id,
+      isCalendarDeleted: calendarCalendars.isDeleted,
+      isCalendarSelected: calendarCalendars.isSelected,
+      linkedNoteBody: notes.body,
+      linkedNoteId: notes.id,
+      recurringEventId: calendarEvents.recurringEventId,
+      scopes: calendarConnections.scopes,
+      sourceCalendarId: calendarCalendars.sourceCalendarId,
+      sourceEventId: calendarEvents.sourceEventId,
+    })
+    .from(calendarEvents)
+    .innerJoin(
+      calendarCalendars,
+      eq(calendarCalendars.id, calendarEvents.calendarId),
+    )
+    .innerJoin(
+      calendarConnections,
+      eq(calendarConnections.id, calendarEvents.connectionId),
+    )
+    .innerJoin(
+      calendarEventNoteLinks,
+      eq(calendarEventNoteLinks.eventId, calendarEvents.id),
+    )
+    .innerJoin(notes, eq(notes.id, calendarEventNoteLinks.noteId))
+    .where(
+      and(
+        eq(calendarEvents.id, eventId),
+        eq(calendarEvents.userId, userId),
+        eq(calendarCalendars.userId, userId),
+        eq(calendarConnections.userId, userId),
+        eq(calendarEventNoteLinks.userId, userId),
+        eq(notes.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return event ?? null;
+}
+
+async function createProviderWriteAudit({
+  draft,
+  userId,
+}: {
+  draft: ProviderWriteAuditDraft;
+  userId: string;
+}) {
+  const [existingAudit] = await db
+    .select({
+      errorSummary: calendarProviderWriteAudit.errorSummary,
+      id: calendarProviderWriteAudit.id,
+      status: calendarProviderWriteAudit.status,
+    })
+    .from(calendarProviderWriteAudit)
+    .where(
+      and(
+        eq(calendarProviderWriteAudit.userId, userId),
+        eq(calendarProviderWriteAudit.idempotencyKey, draft.idempotencyKey),
+      ),
+    )
+    .limit(1);
+
+  if (existingAudit) {
+    throw new CalendarProviderWriteUserError(
+      existingAudit.errorSummary ??
+        `A previous publish attempt already finished with status ${existingAudit.status}.`,
+      existingAudit.status === "conflict" ? "conflict" : "provider_write_failed",
+    );
+  }
+
+  const [audit] = await db
+    .insert(calendarProviderWriteAudit)
+    .values({
+      calendarId: draft.calendarId,
+      connectionId: draft.connectionId,
+      entryPoint: draft.entryPoint,
+      eventId: draft.eventId,
+      idempotencyKey: draft.idempotencyKey,
+      operation: draft.operation,
+      previousEtag: draft.previousEtag,
+      requestPatch: draft.requestPatch,
+      scopeSnapshot: draft.scopeSnapshot,
+      sourceCalendarId: draft.sourceCalendarId,
+      sourceEventId: draft.sourceEventId,
+      startedAt: new Date(),
+      status: "pending",
+      userId,
+    })
+    .returning({ id: calendarProviderWriteAudit.id });
+
+  if (!audit) {
+    throw new Error("Unable to create provider write audit row.");
+  }
+
+  return audit;
+}
+
+async function markProviderWriteAudit({
+  auditId,
+  errorCode = null,
+  errorSummary = null,
+  providerEtag = null,
+  providerUpdatedAt = null,
+  status,
+}: {
+  auditId: string;
+  errorCode?: string | null;
+  errorSummary?: string | null;
+  providerEtag?: string | null;
+  providerUpdatedAt?: Date | null;
+  status: "conflict" | "failed" | "pending" | "running" | "skipped" | "succeeded";
+}) {
+  await db
+    .update(calendarProviderWriteAudit)
+    .set({
+      errorCode,
+      errorSummary,
+      finishedAt: status === "running" ? null : new Date(),
+      providerEtag,
+      providerUpdatedAt,
+      status,
+      updatedAt: new Date(),
+    })
+    .where(eq(calendarProviderWriteAudit.id, auditId));
+}
+
+async function updateLocalEventFromProviderWrite({
+  event,
+  eventId,
+  userId,
+}: {
+  event: GoogleCalendarProviderEvent;
+  eventId: string;
+  userId: string;
+}) {
+  await db
+    .update(calendarEvents)
+    .set({
+      description: event.description,
+      etag: event.etag,
+      providerUpdatedAt: event.providerUpdatedAt,
+      rawPayload: event.rawPayload,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)));
 }
 
 async function getExistingCalendarEventNote({

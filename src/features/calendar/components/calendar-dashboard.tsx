@@ -42,12 +42,17 @@ export function CalendarDashboardInteractive({
   updateCalendarSelection,
   updateEventReviewStatus,
   reconnectGoogleCalendarWithWriteAccess,
+  publishLinkedNoteToGoogle,
 }: {
   createLinkedNoteFromEvent: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
   data: CalendarPageData;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
+  publishLinkedNoteToGoogle: (formData: FormData) => Promise<{
+    message: string;
+    status: "error" | "succeeded";
+  }>;
   reconnectGoogleCalendarWithWriteAccess: (formData: FormData) => Promise<void>;
   updateLinkedNote: (
     formData: FormData,
@@ -239,6 +244,7 @@ export function CalendarDashboardInteractive({
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
         onReviewStatusChange={updateLocalReviewStatus}
+        publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
         updateLinkedNote={updateLinkedNote}
         updateEventReviewStatus={updateEventReviewStatus}
       />

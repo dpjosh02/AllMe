@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { readGoogleCalendarSnapshot } from "@/features/calendar/integrations/google-calendar";
+import {
+  fetchGoogleCalendarEvent,
+  patchGoogleCalendarEventDescription,
+  readGoogleCalendarSnapshot,
+} from "@/features/calendar/integrations/google-calendar";
 
 describe("Google Calendar reader", () => {
   it("reads selected calendars and normalizes timed/all-day events", async () => {
@@ -194,6 +198,77 @@ describe("Google Calendar reader", () => {
         Authorization: "Bearer access-token",
       },
     });
+  });
+
+  it("fetches one provider event before write validation", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        description: "Existing",
+        etag: "etag-1",
+        id: "event-1",
+        updated: "2026-05-04T16:00:00.000Z",
+      }),
+    );
+
+    const event = await fetchGoogleCalendarEvent({
+      accessToken: "access-token",
+      calendarId: "primary",
+      eventId: "event-1",
+      fetcher,
+    });
+
+    expect(event).toMatchObject({
+      description: "Existing",
+      etag: "etag-1",
+      sourceCalendarId: "primary",
+      sourceEventId: "event-1",
+    });
+    expect(fetcher.mock.calls[0]?.[0].toString()).toContain(
+      "/calendars/primary/events/event-1",
+    );
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      headers: {
+        Authorization: "Bearer access-token",
+      },
+    });
+  });
+
+  it("patches only the provider description", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        description: "Published note",
+        etag: "etag-2",
+        id: "event-1",
+        summary: "Provider title",
+        updated: "2026-05-04T16:05:00.000Z",
+      }),
+    );
+
+    const event = await patchGoogleCalendarEventDescription({
+      accessToken: "access-token",
+      calendarId: "primary",
+      description: "Published note",
+      eventId: "event-1",
+      fetcher,
+    });
+
+    expect(event).toMatchObject({
+      description: "Published note",
+      etag: "etag-2",
+      title: "Provider title",
+    });
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({ description: "Published note" }),
+      headers: {
+        Authorization: "Bearer access-token",
+        "Content-Type": "application/json",
+      },
+      method: "PATCH",
+    });
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("summary");
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("location");
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("attendees");
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("recurrence");
   });
 });
 

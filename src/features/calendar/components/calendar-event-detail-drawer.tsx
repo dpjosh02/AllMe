@@ -7,7 +7,10 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import type { CalendarLinkedNoteMutationResult } from "@/features/calendar/actions";
+import type {
+  CalendarLinkedNoteMutationResult,
+  CalendarProviderWriteMutationResult,
+} from "@/features/calendar/actions";
 
 export type CalendarEventReviewStatus =
   | "done"
@@ -46,6 +49,7 @@ export function CalendarEventDetailDrawer({
   event,
   onClose,
   onReviewStatusChange,
+  publishLinkedNoteToGoogle,
   updateLinkedNote,
   updateEventReviewStatus,
 }: {
@@ -59,6 +63,9 @@ export function CalendarEventDetailDrawer({
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
+  publishLinkedNoteToGoogle: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
   updateLinkedNote: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
@@ -76,6 +83,7 @@ export function CalendarEventDetailDrawer({
       key={event.id}
       onClose={onClose}
       onReviewStatusChange={onReviewStatusChange}
+      publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
       updateLinkedNote={updateLinkedNote}
       updateEventReviewStatus={updateEventReviewStatus}
     />
@@ -88,6 +96,7 @@ function CalendarEventDetailDrawerContent({
   event,
   onClose,
   onReviewStatusChange,
+  publishLinkedNoteToGoogle,
   updateLinkedNote,
   updateEventReviewStatus,
 }: {
@@ -101,6 +110,9 @@ function CalendarEventDetailDrawerContent({
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
+  publishLinkedNoteToGoogle: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
   updateLinkedNote: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
@@ -206,6 +218,7 @@ function CalendarEventDetailDrawerContent({
             deleteLinkedNote={deleteLinkedNote}
             event={event}
             linkedNote={linkedNote}
+            publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
             setLinkedNote={setLinkedNote}
             updateLinkedNote={updateLinkedNote}
           />
@@ -272,6 +285,7 @@ function LinkedNotePanel({
   deleteLinkedNote,
   event,
   linkedNote,
+  publishLinkedNoteToGoogle,
   setLinkedNote,
   updateLinkedNote,
 }: {
@@ -281,11 +295,17 @@ function LinkedNotePanel({
   deleteLinkedNote: (formData: FormData) => Promise<void>;
   event: CalendarEventDetail;
   linkedNote: CalendarLinkedNoteState | null;
+  publishLinkedNoteToGoogle: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
   setLinkedNote: (linkedNote: CalendarLinkedNoteState | null) => void;
   updateLinkedNote: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
 }) {
+  const [publishResult, setPublishResult] =
+    useState<CalendarProviderWriteMutationResult | null>(null);
+
   async function createLinkedNote(formData: FormData) {
     const note = await createLinkedNoteFromEvent(formData);
 
@@ -301,6 +321,13 @@ function LinkedNotePanel({
   async function deleteEventNote(formData: FormData) {
     await deleteLinkedNote(formData);
     setLinkedNote(null);
+  }
+
+  async function publishEventNote(formData: FormData) {
+    formData.set("idempotencyKey", createIdempotencyKey());
+    const result = await publishLinkedNoteToGoogle(formData);
+
+    setPublishResult(result);
   }
 
   return (
@@ -350,6 +377,28 @@ function LinkedNotePanel({
             One note is attached to this event. Saving here updates the same
             note shown in Notes.
           </p>
+          <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3">
+            <p className="text-xs leading-5 text-[var(--muted)]">
+              Publishing updates the real Google Calendar event description
+              with this AllMe note body. Other event fields are not changed.
+            </p>
+            <form action={publishEventNote} className="mt-3">
+              <input name="eventId" type="hidden" value={event.id} />
+              <ProviderPublishButton />
+            </form>
+            {publishResult ? (
+              <p
+                className={[
+                  "mt-2 text-xs font-semibold",
+                  publishResult.status === "succeeded"
+                    ? "text-[var(--success)]"
+                    : "text-[var(--danger)]",
+                ].join(" ")}
+              >
+                {publishResult.message}
+              </p>
+            ) : null}
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {linkedNote.href ? (
               <Link
@@ -386,6 +435,10 @@ function LinkedNotePanel({
       )}
     </div>
   );
+}
+
+function createIdempotencyKey() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
 type CalendarLinkedNoteState = {
@@ -458,6 +511,20 @@ function LinkedNoteActionButton({
       type="submit"
     >
       {pending ? "Saving..." : label}
+    </button>
+  );
+}
+
+function ProviderPublishButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className="inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60"
+      disabled={pending}
+      type="submit"
+    >
+      {pending ? "Publishing..." : "Publish note to Google Calendar"}
     </button>
   );
 }
