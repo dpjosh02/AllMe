@@ -1,7 +1,5 @@
 "use client";
 
-import { StickyNote } from "lucide-react";
-
 import type { CalendarPageData } from "@/features/calendar/queries";
 
 type WeekAgendaDayData = CalendarPageData["weekAgenda"][number];
@@ -122,31 +120,13 @@ function WeekAgendaItem({
         />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <p className="min-w-0 truncate text-xs font-semibold">
-                {item.title}
-              </p>
-              {item.recurringEventId ? (
-                <span className="shrink-0 rounded-full border border-[var(--line)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-                  Repeats
-                </span>
-              ) : null}
-              {item.linkedNoteId ? (
-                <StickyNote
-                  aria-label="Linked note"
-                  className="h-3 w-3 shrink-0 text-[var(--accent)]"
-                />
-              ) : null}
-            </div>
+            <p className="min-w-0 truncate text-xs font-semibold">
+              {item.title}
+            </p>
             <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
               {timeLabel}
             </span>
           </div>
-          {item.location ? (
-            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-              {item.location}
-            </p>
-          ) : null}
         </div>
       </div>
     </button>
