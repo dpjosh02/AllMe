@@ -3,7 +3,7 @@
 import { StickyNote, X } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -204,71 +204,35 @@ function CalendarEventDetailDrawerContent({
         </div>
 
         <div className="min-h-0 overflow-y-auto p-5">
-          <div className="grid gap-3">
-            <EventDetailRow label="When" value={timeLabel} />
-            <EventDetailRow
-              label="Calendar"
-              value={
-                <span className="inline-flex min-w-0 items-center gap-2">
-                  <span
-                    aria-hidden="true"
-                    className="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--line)]"
-                    style={{
-                      backgroundColor: event.calendarColor ?? "var(--accent)",
-                    }}
-                  />
-                  <span className="truncate">{event.calendarName}</span>
-                </span>
-              }
-            />
-            {event.location ? (
-              <EventDetailRow label="Location" value={event.location} />
-            ) : null}
-            <EventDetailRow label="Status" value={formatStatus(event.status)} />
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
+            <div className="grid gap-2 text-sm font-semibold text-[var(--foreground)]">
+              <p>{timeLabel}</p>
+              <p className="inline-flex min-w-0 items-center gap-2 text-[var(--muted)]">
+                <span
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--line)]"
+                  style={{
+                    backgroundColor: event.calendarColor ?? "var(--accent)",
+                  }}
+                />
+                <span className="truncate">{event.calendarName}</span>
+                <span aria-hidden="true">·</span>
+                <span>{formatStatus(event.status)}</span>
+              </p>
+              {event.location ? (
+                <p className="text-[var(--muted)]">{event.location}</p>
+              ) : null}
+            </div>
           </div>
 
-          {event.description ? (
-            <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
-              <p className="allme-kicker">Description</p>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--foreground)]">
-                {event.description}
-              </p>
-            </div>
-          ) : null}
-
-          <ProviderEventEditPanel
-            event={event}
-            updateGoogleCalendarEvent={updateGoogleCalendarEvent}
-          />
-
-          <ProviderEventDeletePanel
-            deleteGoogleCalendarEvent={deleteGoogleCalendarEvent}
-            event={event}
-          />
-
-          <LinkedNotePanel
-            createLinkedNoteFromEvent={createLinkedNoteFromEvent}
-            deleteLinkedNote={deleteLinkedNote}
-            event={event}
-            linkedNote={linkedNote}
-            publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
-            setLinkedNote={setLinkedNote}
-            updateLinkedNote={updateLinkedNote}
-          />
-
-          <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
+          <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="allme-kicker">AllMe state</p>
-                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                  Local planning context only. Google Calendar is not changed.
-                </p>
-              </div>
+              <p className="allme-kicker">State</p>
               <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
                 {getReviewStatusLabel(currentReviewStatus)}
               </span>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {eventReviewStatusOptions.map((option) => (
                 <form action={saveEventReviewStatus} key={option.value}>
                   <input name="eventId" type="hidden" value={event.id} />
@@ -286,7 +250,7 @@ function CalendarEventDetailDrawerContent({
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             {todayHref ? (
               <Link
                 className="inline-flex rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -307,6 +271,36 @@ function CalendarEventDetailDrawerContent({
               </a>
             ) : null}
           </div>
+
+          <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
+            <p className="allme-kicker">Overview</p>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              Description
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--foreground)]">
+              {event.description?.trim() || "No Google Calendar description."}
+            </p>
+          </div>
+
+          <LinkedNotePanel
+            createLinkedNoteFromEvent={createLinkedNoteFromEvent}
+            deleteLinkedNote={deleteLinkedNote}
+            event={event}
+            linkedNote={linkedNote}
+            publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
+            setLinkedNote={setLinkedNote}
+            updateLinkedNote={updateLinkedNote}
+          />
+
+          <ProviderEventEditPanel
+            event={event}
+            updateGoogleCalendarEvent={updateGoogleCalendarEvent}
+          />
+
+          <ProviderEventDeletePanel
+            deleteGoogleCalendarEvent={deleteGoogleCalendarEvent}
+            event={event}
+          />
         </div>
       </section>
     </div>
@@ -336,10 +330,13 @@ function LinkedNotePanel({
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
 }) {
+  const [isEditingNote, setIsEditingNote] = useState(false);
+
   async function createLinkedNote(formData: FormData) {
     const note = await createLinkedNoteFromEvent(formData);
 
     setLinkedNote(toLinkedNoteState({ note, scope: "event_instance" }));
+    setIsEditingNote(true);
   }
 
   async function saveLinkedNote(formData: FormData) {
@@ -363,11 +360,16 @@ function LinkedNotePanel({
     <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="allme-kicker">Linked note</p>
-          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-            This is the event description and work plan in AllMe. Saving here is
-            local-only until you explicitly publish to Google Calendar.
-          </p>
+          <p className="allme-kicker">AllMe note</p>
+          {linkedNote ? (
+            <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+              {linkedNote.title}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              Create a local note for prep, context, and follow-up.
+            </p>
+          )}
         </div>
         {linkedNote ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
@@ -378,14 +380,38 @@ function LinkedNotePanel({
       </div>
 
       {linkedNote ? (
-        <LinkedNoteEditor
-          deleteEventNote={deleteEventNote}
-          event={event}
-          key={linkedNote.id}
-          linkedNote={linkedNote}
-          publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
-          saveLinkedNote={saveLinkedNote}
-        />
+        <>
+          <p className="mt-3 max-h-20 overflow-hidden whitespace-pre-wrap text-sm leading-6 text-[var(--muted)]">
+            {linkedNote.body.trim() || "No AllMe note body yet."}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              className="inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10"
+              onClick={() => setIsEditingNote((current) => !current)}
+              type="button"
+            >
+              {isEditingNote ? "Hide note editor" : "Edit AllMe note"}
+            </button>
+            {linkedNote.href ? (
+              <Link
+                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                href={linkedNote.href as Route}
+              >
+                Open note
+              </Link>
+            ) : null}
+          </div>
+          {isEditingNote ? (
+            <LinkedNoteEditor
+              deleteEventNote={deleteEventNote}
+              event={event}
+              key={linkedNote.id}
+              linkedNote={linkedNote}
+              publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
+              saveLinkedNote={saveLinkedNote}
+            />
+          ) : null}
+        </>
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
           <form action={createLinkedNote}>
@@ -407,6 +433,7 @@ function ProviderEventEditPanel({
     formData: FormData,
   ) => Promise<CalendarProviderWriteMutationResult>;
 }) {
+  const [isEditingProviderEvent, setIsEditingProviderEvent] = useState(false);
   const [isAllDay, setIsAllDay] = useState(event.isAllDay);
   const [result, setResult] = useState<CalendarProviderWriteMutationResult | null>(
     null,
@@ -422,16 +449,18 @@ function ProviderEventEditPanel({
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-[var(--accent)]/35 bg-[var(--empty)] p-4">
+    <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="allme-kicker text-[var(--accent)]">
-            Google Calendar event
+          <p className="allme-kicker">Google Calendar event</p>
+          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+            Title: {event.title}
           </p>
-          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-            Editing updates the real Google Calendar event after AllMe checks
-            provider freshness. Local review state and notes stay separate.
-          </p>
+          <div className="mt-2 grid gap-1 text-xs font-semibold text-[var(--muted)]">
+            <p>Type: {event.isAllDay ? "All-day" : "Timed"}</p>
+            <p>Date: {getProviderEventSummaryDate(event)}</p>
+            {event.location ? <p>Location: {event.location}</p> : null}
+          </div>
         </div>
         {event.recurringEventId ? (
           <span className="rounded-full border border-[var(--warn)]/35 px-3 py-1 text-xs font-semibold text-[var(--warn)]">
@@ -440,14 +469,27 @@ function ProviderEventEditPanel({
         ) : null}
       </div>
 
+      <button
+        className="mt-4 inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={Boolean(event.recurringEventId)}
+        onClick={() => setIsEditingProviderEvent((current) => !current)}
+        type="button"
+      >
+        {isEditingProviderEvent ? "Hide Google editor" : "Edit Google event"}
+      </button>
+
       {event.recurringEventId ? (
         <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
           Recurring event edits are not supported in this slice. Open Google
           Calendar for recurrence changes.
         </p>
-      ) : (
+      ) : isEditingProviderEvent ? (
         <form action={updateProviderEvent} className="mt-4 grid gap-3">
           <input name="eventId" type="hidden" value={event.id} />
+          <p className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+            This updates the real Google Calendar event after AllMe checks
+            provider freshness. Local review state and notes stay separate.
+          </p>
           <label className="grid gap-1.5">
             <span className="allme-kicker">Title</span>
             <input
@@ -562,7 +604,7 @@ function ProviderEventEditPanel({
             </p>
           ) : null}
         </form>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -597,6 +639,7 @@ function ProviderEventDeletePanel({
   const [dontShowConfirmationAgain, setDontShowConfirmationAgain] =
     useState(false);
   const [isDeleted, setIsDeleted] = useState(event.status === "cancelled");
+  const [isShowingDeleteOptions, setIsShowingDeleteOptions] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   async function deleteProviderEvent(formData: FormData) {
@@ -635,28 +678,31 @@ function ProviderEventDeletePanel({
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-[var(--danger)]/35 bg-[var(--empty)] p-4">
+    <div className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[var(--empty)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="allme-kicker text-[var(--danger)]">Delete event</p>
+          <p className="allme-kicker text-[var(--danger)]">Danger zone</p>
           <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-            Deletes the real non-recurring Google Calendar event. AllMe marks
-            the cached event cancelled only after Google confirms deletion.
+            Destructive provider actions are hidden by default.
           </p>
         </div>
-        {event.recurringEventId ? (
-          <span className="rounded-full border border-[var(--warn)]/35 px-3 py-1 text-xs font-semibold text-[var(--warn)]">
-            Recurring blocked
-          </span>
-        ) : null}
+        <button
+          className="inline-flex min-h-9 items-center rounded-xl border border-[var(--danger)]/45 px-3 text-xs font-semibold text-[var(--danger)] transition hover:bg-[var(--danger)]/10"
+          onClick={() => setIsShowingDeleteOptions((current) => !current)}
+          type="button"
+        >
+          {isShowingDeleteOptions ? "Hide delete options" : "Show delete options"}
+        </button>
       </div>
 
-      {event.recurringEventId ? (
+      {isShowingDeleteOptions && event.recurringEventId ? (
         <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
           Recurring event deletion is not supported in this slice. Open Google
           Calendar for recurrence changes.
         </p>
-      ) : (
+      ) : null}
+
+      {isShowingDeleteOptions && !event.recurringEventId ? (
         <form
           action={deleteProviderEvent}
           className="mt-4 grid gap-2"
@@ -678,7 +724,7 @@ function ProviderEventDeletePanel({
             </p>
           ) : null}
         </form>
-      )}
+      ) : null}
 
       {showDeleteConfirmation ? (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4 backdrop-blur-sm">
@@ -906,14 +952,6 @@ function LinkedNoteEditor({
           Google Calendar is not changed.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {linkedNote.href ? (
-            <Link
-              className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              href={linkedNote.href as Route}
-            >
-              Open linked note
-            </Link>
-          ) : null}
           <form
             action={deleteEventNote}
             onSubmit={(submitEvent) => {
@@ -1135,23 +1173,6 @@ function EventReviewStatusButton({
   );
 }
 
-function EventDetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: ReactNode;
-}) {
-  return (
-    <div className="grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
-      <p className="allme-kicker">{label}</p>
-      <div className="min-w-0 text-sm font-semibold text-[var(--foreground)]">
-        {value}
-      </div>
-    </div>
-  );
-}
-
 export function getEventTimeLabel(event: CalendarEventDetail) {
   if (event.isAllDay) {
     return event.startDate
@@ -1220,6 +1241,22 @@ function getProviderEditStartTime(event: CalendarEventDetail) {
 
 function getProviderEditEndTime(event: CalendarEventDetail) {
   return event.endsAt ? toTimeInputValue(event.endsAt) : "10:00";
+}
+
+function getProviderEventSummaryDate(event: CalendarEventDetail) {
+  if (event.isAllDay) {
+    if (!event.startDate) {
+      return "Date TBD";
+    }
+
+    return formatDateKey(event.startDate);
+  }
+
+  if (!event.startsAt) {
+    return "Time TBD";
+  }
+
+  return getEventTimeLabel(event);
 }
 
 function toDateInputValue(date: Date) {
