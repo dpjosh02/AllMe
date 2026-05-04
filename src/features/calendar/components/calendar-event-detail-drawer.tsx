@@ -343,7 +343,7 @@ function LinkedNotePanel({
               />
             </label>
             <div className="flex flex-wrap gap-2">
-              <LinkedNoteActionButton label="Save linked note" />
+              <LinkedNoteActionButton label="Save linked note" tone="primary" />
             </div>
           </form>
           <p className="mt-1 text-xs text-[var(--muted)]">
@@ -436,17 +436,23 @@ function LinkedNoteActionButton({
   tone = "neutral",
 }: {
   label: string;
-  tone?: "danger" | "neutral";
+  tone?: "danger" | "neutral" | "primary";
 }) {
   const { pending } = useFormStatus();
+  const toneClassName = {
+    danger:
+      "border-[var(--danger)]/40 text-[var(--danger)] hover:border-[var(--danger)]",
+    neutral:
+      "border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]",
+    primary:
+      "border-[var(--accent)] bg-[var(--accent)] text-[var(--background)] hover:bg-[var(--accent-strong)]",
+  }[tone];
 
   return (
     <button
       className={[
         "inline-flex min-h-9 items-center rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-60",
-        tone === "danger"
-          ? "border-[var(--danger)]/40 text-[var(--danger)] hover:border-[var(--danger)]"
-          : "border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]",
+        toneClassName,
       ].join(" ")}
       disabled={pending}
       type="submit"
