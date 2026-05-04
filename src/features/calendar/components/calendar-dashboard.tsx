@@ -17,18 +17,21 @@ import {
   type CalendarEventDetail,
 } from "@/features/calendar/components/calendar-event-detail-drawer";
 import { CalendarPlanningFilter } from "@/features/calendar/components/calendar-planning-filter";
+import {
+  filterCalendarEventsByReviewFocus,
+  type CalendarReviewFocus,
+} from "@/features/calendar/components/calendar-review-filtering";
 import { CalendarUpcomingEvents } from "@/features/calendar/components/calendar-upcoming-events";
 import { CalendarWeekPlanner } from "@/features/calendar/components/calendar-week-planner";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
-type CalendarReviewFocus = CalendarEventReviewStatus | "all";
 type CalendarDashboardEvent =
   | CalendarPageData["upcomingEvents"][number]
   | CalendarPageData["weekAgenda"][number]["items"][number];
+type CalendarDayDetail = CalendarPageData["weekAgenda"][number];
 type CalendarEventCollectionItem = {
   localReviewStatus: CalendarEventReviewStatus | null;
 };
-type CalendarDayDetail = CalendarPageData["weekAgenda"][number];
 
 export function CalendarDashboardInteractive({
   data,
@@ -93,6 +96,7 @@ export function CalendarDashboardInteractive({
     <>
       <PageGridItem span="full">
         <AllMeCard className="p-3 sm:p-4" variant="metrics">
+          <CalendarReadinessNotice data={data} />
           <div className="grid gap-3 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
             <div className="grid gap-2 sm:grid-cols-2">
               <TodayAgendaLinkStat
@@ -220,6 +224,61 @@ export function CalendarDashboardInteractive({
       />
     </>
   );
+}
+
+function CalendarReadinessNotice({ data }: { data: CalendarPageData }) {
+  const notice = getCalendarReadinessNotice(data);
+
+  if (!notice) {
+    return null;
+  }
+
+  return (
+    <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3">
+      <p className="text-sm font-semibold text-[var(--foreground)]">
+        {notice.title}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+        {notice.detail}
+      </p>
+    </div>
+  );
+}
+
+function getCalendarReadinessNotice(data: CalendarPageData) {
+  if (!data.connection.isReady) {
+    return {
+      detail:
+        "Authorize Google Calendar read-only access, then run sync to populate the local Calendar cache.",
+      title: "Google Calendar is not connected.",
+    };
+  }
+
+  if (data.calendars === 0) {
+    return {
+      detail:
+        "Run Sync Google Calendar to import calendars before the planning surface can show agenda data.",
+      title: "No calendars are cached yet.",
+    };
+  }
+
+  if (data.selectedCalendars === 0) {
+    return {
+      detail:
+        "Open the Planning filter and show at least one calendar to restore agenda visibility.",
+      title: "All calendars are hidden.",
+    };
+  }
+
+  if (data.events === 0) {
+    return {
+      detail:
+        "The connection exists, but no events are cached for the current sync window. Run sync or check Google Calendar source data.",
+      title: "No cached events yet.",
+    };
+  }
+
+  return null;
 }
 
 function TodayActionStrip({
@@ -506,15 +565,7 @@ function filterEvents<T extends CalendarEventCollectionItem>(
   events: T[],
   reviewFocus: CalendarReviewFocus,
 ) {
-  if (reviewFocus === "all") {
-    return events.filter(
-      (event) => (event.localReviewStatus ?? "none") !== "ignored",
-    );
-  }
-
-  return events.filter(
-    (event) => (event.localReviewStatus ?? "none") === reviewFocus,
-  );
+  return filterCalendarEventsByReviewFocus(events, reviewFocus);
 }
 
 function getReviewStatusCount(

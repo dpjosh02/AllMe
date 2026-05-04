@@ -358,6 +358,23 @@ Today should display:
 - Add calendar selection toggles.
 - Add event detail read-only page/modal.
 
+Current v1 behavior:
+
+- `/calendar` is a read-only planning surface over local Postgres calendar rows.
+- Sync is user-triggered with `Sync Google Calendar`; the page does not read live
+  provider data during normal rendering.
+- The page shows connection/sync readiness, selected calendar counts, last sync
+  freshness, next-seven-day planning, next events, day agenda drawer, and
+  read-only event detail drawer.
+- Calendar source filters control local visibility only; Google Calendar is not
+  modified.
+- Event review states are local AllMe annotations: `Needs prep`, `Done`,
+  `Ignored`, and `Unreviewed`.
+- Default `All` focus hides ignored events; `Ignored` remains explicitly
+  selectable.
+- Empty states cover not connected, no cached calendars, no selected calendars,
+  no cached events, and no matching focus-filter results.
+
 ### 6. Event-linked notes
 
 - Add a note-link table or polymorphic note relationship after event identity is
@@ -374,4 +391,6 @@ Today should display:
 - Push/webhook-based Google Calendar notifications.
 - Provider-agnostic calendar abstraction beyond Google Calendar.
 - Calendar conflict detection and scheduling recommendations.
-- Manual event ignore/blocklist behavior.
+- Event-linked note creation and note backlinks.
+- Background sync jobs and stale-cache notifications beyond the current last-sync
+  status surface.

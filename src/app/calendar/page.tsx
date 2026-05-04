@@ -38,6 +38,9 @@ export default async function CalendarPage() {
             <form action={syncGoogleCalendarNow} className="flex justify-end">
               <SyncGoogleCalendarButton disabled={!canSync} />
             </form>
+            <p className="rounded-full border border-[var(--line)] bg-[var(--empty)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
+              {formatCalendarFreshness(data.connection.lastSyncedAt)}
+            </p>
           </div>
         }
         subtitle="A schedule layer for daily context, weekly planning, and event-linked notes backed by local cached provider data."
@@ -80,8 +83,8 @@ export default async function CalendarPage() {
             </div>
             {!tokenReadiness.ready ? (
               <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
-                {tokenReadiness.reason}. Reauthorize Google Calendar from
-                sign-in before running sync.
+                Reauthorization needed: {tokenReadiness.reason}. Sign in with
+                Google Calendar access again before running sync.
               </p>
             ) : null}
           </AllMeCard>
@@ -94,4 +97,19 @@ export default async function CalendarPage() {
 const shortStatusFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
+});
+
+function formatCalendarFreshness(lastSyncedAt: Date | null) {
+  if (!lastSyncedAt) {
+    return "Last sync: never";
+  }
+
+  return `Last sync: ${syncFreshnessFormatter.format(lastSyncedAt)}`;
+}
+
+const syncFreshnessFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  hour: "numeric",
+  minute: "2-digit",
+  month: "2-digit",
 });

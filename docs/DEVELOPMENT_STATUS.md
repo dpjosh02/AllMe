@@ -36,7 +36,7 @@ Implemented:
 - First app shell slice with persistent navigation and intentional placeholder routes for Today, Notes, Calendar, Progress, and Settings.
 - First Settings foundation slice with owner preferences, timezone/currency persistence, read-only Fintable/Auth integration status, and Fintable sync health visibility.
 - First auth-boundary decision slice documented in `docs/architecture/AUTH_BOUNDARY.md` and surfaced in Settings.
-- First Calendar foundation screen at `/calendar` using the shared desktop page scaffold. It documents the intended Google Calendar sync boundary, agenda surface, weekly planning shape, and event-linked note prerequisites without adding OAuth or event tables yet.
+- Calendar v1 is now a read-only local-cache planning surface backed by Google Calendar OAuth/sync. `/calendar` includes sync action/status, source visibility filters, a next-seven-days planner, next-events list, day agenda drawer, event detail drawer, and local AllMe review states (`Needs prep`, `Done`, `Ignored`, `Unreviewed`). Today consumes cached calendar rows only; Google Calendar writes remain deferred.
 
 ## Verified Local Import
 
