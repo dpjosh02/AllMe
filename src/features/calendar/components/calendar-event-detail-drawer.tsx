@@ -3,14 +3,17 @@
 import { StickyNote, X } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import type {
   CalendarLinkedNoteMutationResult,
   CalendarProviderWriteMutationResult,
 } from "@/features/calendar/actions";
+
+const publishWarningPreferenceKey =
+  "allme.calendar.publish_note_description_warning_dismissed";
 
 export type CalendarEventReviewStatus =
   | "done"
@@ -303,9 +306,6 @@ function LinkedNotePanel({
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
 }) {
-  const [publishResult, setPublishResult] =
-    useState<CalendarProviderWriteMutationResult | null>(null);
-
   async function createLinkedNote(formData: FormData) {
     const note = await createLinkedNoteFromEvent(formData);
 
@@ -314,20 +314,19 @@ function LinkedNotePanel({
 
   async function saveLinkedNote(formData: FormData) {
     const note = await updateLinkedNote(formData);
+    const nextLinkedNote = toLinkedNoteState({
+      note,
+      scope: linkedNote?.scope ?? null,
+    });
 
-    setLinkedNote(toLinkedNoteState({ note, scope: linkedNote?.scope ?? null }));
+    setLinkedNote(nextLinkedNote);
+
+    return nextLinkedNote;
   }
 
   async function deleteEventNote(formData: FormData) {
     await deleteLinkedNote(formData);
     setLinkedNote(null);
-  }
-
-  async function publishEventNote(formData: FormData) {
-    formData.set("idempotencyKey", createIdempotencyKey());
-    const result = await publishLinkedNoteToGoogle(formData);
-
-    setPublishResult(result);
   }
 
   return (
@@ -336,7 +335,8 @@ function LinkedNotePanel({
         <div>
           <p className="allme-kicker">Linked note</p>
           <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-            This is the event description and work plan. Google Calendar is not changed yet.
+            This is the event description and work plan in AllMe. Saving here is
+            local-only until you explicitly publish to Google Calendar.
           </p>
         </div>
         {linkedNote ? (
@@ -348,83 +348,14 @@ function LinkedNotePanel({
       </div>
 
       {linkedNote ? (
-        <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-          <form action={saveLinkedNote} className="grid gap-3">
-            <input name="noteId" type="hidden" value={linkedNote.id} />
-            <label className="grid gap-1.5">
-              <span className="allme-kicker">Title</span>
-              <input
-                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
-                defaultValue={linkedNote.title}
-                name="title"
-                required
-              />
-            </label>
-            <label className="grid gap-1.5">
-              <span className="allme-kicker">Note</span>
-              <textarea
-                className="min-h-36 resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
-                defaultValue={linkedNote.body}
-                name="body"
-                placeholder="Add prep notes, context, follow-ups, or decisions..."
-              />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <LinkedNoteActionButton label="Save linked note" tone="primary" />
-            </div>
-          </form>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            One note is attached to this event. Saving here updates the same
-            note shown in Notes.
-          </p>
-          <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3">
-            <p className="text-xs leading-5 text-[var(--muted)]">
-              Publishing updates the real Google Calendar event description
-              with this AllMe note body. Other event fields are not changed.
-            </p>
-            <form action={publishEventNote} className="mt-3">
-              <input name="eventId" type="hidden" value={event.id} />
-              <ProviderPublishButton />
-            </form>
-            {publishResult ? (
-              <p
-                className={[
-                  "mt-2 text-xs font-semibold",
-                  publishResult.status === "succeeded"
-                    ? "text-[var(--success)]"
-                    : "text-[var(--danger)]",
-                ].join(" ")}
-              >
-                {publishResult.message}
-              </p>
-            ) : null}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {linkedNote.href ? (
-              <Link
-                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                href={linkedNote.href as Route}
-              >
-                Open linked note
-              </Link>
-            ) : null}
-            <form
-              action={deleteEventNote}
-              onSubmit={(submitEvent) => {
-                if (
-                  !window.confirm(
-                    "Delete this event note? This removes the note from Notes and Calendar.",
-                  )
-                ) {
-                  submitEvent.preventDefault();
-                }
-              }}
-            >
-              <input name="noteId" type="hidden" value={linkedNote.id} />
-              <LinkedNoteActionButton label="Delete note" tone="danger" />
-            </form>
-          </div>
-        </div>
+        <LinkedNoteEditor
+          deleteEventNote={deleteEventNote}
+          event={event}
+          key={linkedNote.id}
+          linkedNote={linkedNote}
+          publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
+          saveLinkedNote={saveLinkedNote}
+        />
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
           <form action={createLinkedNote}>
@@ -435,6 +366,283 @@ function LinkedNotePanel({
       )}
     </div>
   );
+}
+
+function LinkedNoteEditor({
+  deleteEventNote,
+  event,
+  linkedNote,
+  publishLinkedNoteToGoogle,
+  saveLinkedNote,
+}: {
+  deleteEventNote: (formData: FormData) => Promise<void>;
+  event: CalendarEventDetail;
+  linkedNote: CalendarLinkedNoteState;
+  publishLinkedNoteToGoogle: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
+  saveLinkedNote: (formData: FormData) => Promise<CalendarLinkedNoteState>;
+}) {
+  const publishFormRef = useRef<HTMLFormElement>(null);
+  const warningAcceptedRef = useRef(false);
+  const [draftBody, setDraftBody] = useState(linkedNote.body);
+  const [draftTitle, setDraftTitle] = useState(linkedNote.title);
+  const [dontShowWarningAgain, setDontShowWarningAgain] = useState(false);
+  const [lastPublishedBody, setLastPublishedBody] = useState<string | null>(null);
+  const [localSaveMessage, setLocalSaveMessage] = useState<string | null>(null);
+  const [publishResult, setPublishResult] =
+    useState<CalendarProviderWriteMutationResult | null>(null);
+  const [showFirstWriteWarning, setShowFirstWriteWarning] = useState(false);
+  const hasUnsavedChanges =
+    draftBody !== linkedNote.body || draftTitle !== linkedNote.title;
+
+  async function saveAllMeNote(formData: FormData) {
+    const note = await saveLinkedNote(formData);
+
+    setDraftBody(note.body);
+    setDraftTitle(note.title);
+    setLocalSaveMessage("Saved locally in AllMe. Google Calendar was not changed.");
+    setPublishResult(null);
+  }
+
+  async function publishEventNote(formData: FormData) {
+    formData.set("idempotencyKey", createIdempotencyKey());
+    const result = await publishLinkedNoteToGoogle(formData);
+
+    setPublishResult(result);
+    setLocalSaveMessage(null);
+
+    if (result.status === "succeeded") {
+      setLastPublishedBody(linkedNote.body);
+    }
+  }
+
+  function handlePublishSubmit(submitEvent: FormEvent<HTMLFormElement>) {
+    if (warningAcceptedRef.current) {
+      warningAcceptedRef.current = false;
+      return;
+    }
+
+    if (localStorage.getItem(publishWarningPreferenceKey) === "true") {
+      return;
+    }
+
+    submitEvent.preventDefault();
+    setShowFirstWriteWarning(true);
+  }
+
+  function confirmFirstWriteWarning() {
+    if (dontShowWarningAgain) {
+      localStorage.setItem(publishWarningPreferenceKey, "true");
+    }
+
+    warningAcceptedRef.current = true;
+    setShowFirstWriteWarning(false);
+    publishFormRef.current?.requestSubmit();
+  }
+
+  const providerStatus = getProviderPublishStatus({
+    hasUnsavedChanges,
+    lastPublishedBody,
+    linkedNoteBody: linkedNote.body,
+    publishResult,
+  });
+
+  return (
+    <div className="mt-4 grid gap-3">
+      <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
+        <div>
+          <p className="allme-kicker">AllMe note</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            Local workspace. Saving updates the same note shown in Notes and
+            does not change Google Calendar.
+          </p>
+        </div>
+        <form action={saveAllMeNote} className="mt-3 grid gap-3">
+          <input name="noteId" type="hidden" value={linkedNote.id} />
+          <label className="grid gap-1.5">
+            <span className="allme-kicker">Title</span>
+            <input
+              className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+              name="title"
+              onChange={(event) => setDraftTitle(event.target.value)}
+              required
+              value={draftTitle}
+            />
+          </label>
+          <label className="grid gap-1.5">
+            <span className="allme-kicker">Note</span>
+            <textarea
+              className="min-h-36 resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+              name="body"
+              onChange={(event) => setDraftBody(event.target.value)}
+              placeholder="Add prep notes, context, follow-ups, or decisions..."
+              value={draftBody}
+            />
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <LinkedNoteActionButton label="Save AllMe note" tone="primary" />
+            {hasUnsavedChanges ? (
+              <span className="text-xs font-semibold text-[var(--warn)]">
+                Unsaved local changes
+              </span>
+            ) : null}
+          </div>
+        </form>
+        {localSaveMessage ? (
+          <p className="mt-2 text-xs font-semibold text-[var(--success)]">
+            {localSaveMessage}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="rounded-xl border border-[var(--accent)]/35 bg-[var(--empty)] p-3">
+        <p className="allme-kicker text-[var(--accent)]">
+          Google Calendar description
+        </p>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+          Publishing copies the saved AllMe note body into the real Google
+          Calendar event description. Other event fields are not changed.
+        </p>
+        <form
+          action={publishEventNote}
+          className="mt-3"
+          onSubmit={handlePublishSubmit}
+          ref={publishFormRef}
+        >
+          <input name="eventId" type="hidden" value={event.id} />
+          <ProviderPublishButton disabled={hasUnsavedChanges} />
+        </form>
+        <p
+          className={[
+            "mt-2 text-xs font-semibold",
+            providerStatus.tone === "danger"
+              ? "text-[var(--danger)]"
+              : providerStatus.tone === "success"
+                ? "text-[var(--success)]"
+                : "text-[var(--muted)]",
+          ].join(" ")}
+        >
+          {providerStatus.message}
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
+        <p className="allme-kicker">Note actions</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+          Delete note removes the AllMe note from Calendar and Notes only.
+          Google Calendar is not changed.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {linkedNote.href ? (
+            <Link
+              className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              href={linkedNote.href as Route}
+            >
+              Open linked note
+            </Link>
+          ) : null}
+          <form
+            action={deleteEventNote}
+            onSubmit={(submitEvent) => {
+              if (
+                !window.confirm(
+                  "Delete this AllMe note? This removes the note from Notes and Calendar, but does not change Google Calendar.",
+                )
+              ) {
+                submitEvent.preventDefault();
+              }
+            }}
+          >
+            <input name="noteId" type="hidden" value={linkedNote.id} />
+            <LinkedNoteActionButton label="Delete AllMe note" tone="danger" />
+          </form>
+        </div>
+      </div>
+
+      {showFirstWriteWarning ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--line)] bg-[var(--panel-strong)] p-5 shadow-2xl">
+            <p className="allme-kicker text-[var(--accent)]">
+              Google Calendar write
+            </p>
+            <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em]">
+              Publish this note to Google Calendar?
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+              This will update the real Google Calendar event description. AllMe
+              will record the attempt and keep local review state separate.
+            </p>
+            <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
+              <input
+                checked={dontShowWarningAgain}
+                className="h-4 w-4 accent-[var(--accent)]"
+                onChange={(event) =>
+                  setDontShowWarningAgain(event.target.checked)
+                }
+                type="checkbox"
+              />
+              Don&apos;t show this again
+            </label>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                onClick={() => setShowFirstWriteWarning(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex min-h-9 items-center rounded-xl bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)]"
+                onClick={confirmFirstWriteWarning}
+                type="button"
+              >
+                Publish to Google
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function getProviderPublishStatus({
+  hasUnsavedChanges,
+  lastPublishedBody,
+  linkedNoteBody,
+  publishResult,
+}: {
+  hasUnsavedChanges: boolean;
+  lastPublishedBody: string | null;
+  linkedNoteBody: string;
+  publishResult: CalendarProviderWriteMutationResult | null;
+}) {
+  if (hasUnsavedChanges) {
+    return {
+      message: "Local changes are not published. Save the AllMe note first.",
+      tone: "danger" as const,
+    };
+  }
+
+  if (publishResult) {
+    return {
+      message: publishResult.message,
+      tone: publishResult.status === "succeeded" ? "success" : "danger",
+    };
+  }
+
+  if (lastPublishedBody === linkedNoteBody) {
+    return {
+      message: "Published successfully in this session.",
+      tone: "success" as const,
+    };
+  }
+
+  return {
+    message: "Local note only. Google Calendar has not been updated from this note.",
+    tone: "neutral" as const,
+  };
 }
 
 function createIdempotencyKey() {
@@ -515,13 +723,13 @@ function LinkedNoteActionButton({
   );
 }
 
-function ProviderPublishButton() {
+function ProviderPublishButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
 
   return (
     <button
       className="inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60"
-      disabled={pending}
+      disabled={pending || disabled}
       type="submit"
     >
       {pending ? "Publishing..." : "Publish note to Google Calendar"}
