@@ -197,7 +197,7 @@ function CalendarEventDetailDrawerContent({
           <div className="mt-5 flex flex-wrap gap-3">
             {todayHref ? (
               <Link
-                className="inline-flex rounded-full border border-[var(--accent)] bg-[var(--accent)]/10 px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                className="inline-flex rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                 href={todayHref}
                 onClick={onClose}
               >

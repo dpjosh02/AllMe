@@ -138,7 +138,7 @@ export function CalendarDashboardInteractive({
                 value={String(todayDoneCount)}
               />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 xl:border-l xl:border-[var(--line)] xl:pl-4">
               <TodayActionStrip
                 events={todayActionItems}
                 openEvent={openEvent}
