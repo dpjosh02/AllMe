@@ -29,10 +29,17 @@ import { requirePageUser } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
-export default async function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ date?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
   const currentUser = await requirePageUser("/calendar");
   const [data, tokenReadiness] = await Promise.all([
-    getCalendarPageData(currentUser.id),
+    getCalendarPageData(currentUser.id, {
+      dateKey: resolvedSearchParams?.date,
+    }),
     getGoogleCalendarAccessTokenReadiness(),
   ]);
   const canSync =

@@ -14,7 +14,7 @@ import {
   isCalendarSyncRunWithinLockWindow,
   isCalendarSyncStale,
 } from "@/features/calendar/sync/lifecycle";
-import { getLocalDateKey } from "@/features/today/date";
+import { getLocalDateKey, isDateKey } from "@/features/today/date";
 import { db } from "@/server/db";
 import {
   calendarCalendars,
@@ -29,9 +29,16 @@ type CalendarStatusTone = "attention" | "neutral" | "ready";
 type CalendarSyncStatusTone = "attention" | "neutral" | "ready";
 const defaultTimezone = "America/Chicago";
 
-export async function getCalendarPageData(userId: string) {
+export async function getCalendarPageData(
+  userId: string,
+  options: { dateKey?: string } = {},
+) {
   const timezone = await getCalendarTimezone(userId);
-  const weekStartDateKey = getLocalDateKey({ timezone });
+  const todayDateKey = getLocalDateKey({ timezone });
+  const weekStartDateKey =
+    options.dateKey && isDateKey(options.dateKey)
+      ? options.dateKey
+      : todayDateKey;
   const [
     connection,
     latestSyncRun,
@@ -89,6 +96,7 @@ export async function getCalendarPageData(userId: string) {
     selectedCalendars: calendarCounts.selectedCalendars,
     latestSyncRun,
     syncStatus,
+    todayDateKey,
     timezone,
     upcomingEvents,
     weekAgenda,

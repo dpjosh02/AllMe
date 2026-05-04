@@ -1,6 +1,15 @@
 "use client";
 
-import { CalendarDays, CheckCircle2, ChevronDown, Flag, Plus, X } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+  Plus,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -29,6 +38,7 @@ import type {
   CalendarProviderWriteMutationResult,
 } from "@/features/calendar/actions";
 import type { CalendarPageData } from "@/features/calendar/queries";
+import { addDaysToDateKey } from "@/features/today/date";
 
 type CalendarDashboardEvent =
   | CalendarPageData["upcomingEvents"][number]
@@ -108,6 +118,8 @@ export function CalendarDashboardInteractive({
     reviewFocus,
   );
   const weekRangeLabel = getWeekRangeLabel(effectiveWeekAgenda);
+  const previousWeekDateKey = addDaysToDateKey(data.weekStartDateKey, -7);
+  const nextWeekDateKey = addDaysToDateKey(data.weekStartDateKey, 7);
   const writableCalendarSources = data.calendarSources.filter(
     (calendar) =>
       calendar.isSelected &&
@@ -238,12 +250,36 @@ export function CalendarDashboardInteractive({
             }
             title={weekRangeLabel ? `Next 7 days · ${weekRangeLabel}` : "Next 7 days"}
           >
-            <p className="-mt-2 mb-3 text-xs font-semibold text-[var(--muted)]">
-              {data.selectedCalendars}/{data.calendars} calendars shown
-              {reviewFocus !== "all"
-                ? ` · ${getReviewFocusLabel(reviewFocus)} focus`
-                : ""}
-            </p>
+            <div className="-mt-2 mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[var(--muted)]">
+                {data.selectedCalendars}/{data.calendars} calendars shown
+                {reviewFocus !== "all"
+                  ? ` · ${getReviewFocusLabel(reviewFocus)} focus`
+                  : ""}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <CalendarWeekLink
+                  ariaLabel="Previous week"
+                  currentDateKey={data.todayDateKey}
+                  dateKey={previousWeekDateKey}
+                >
+                  <ChevronLeft aria-hidden="true" className="h-3.5 w-3.5" />
+                </CalendarWeekLink>
+                <CalendarWeekLink
+                  currentDateKey={data.todayDateKey}
+                  dateKey={data.todayDateKey}
+                >
+                  Today
+                </CalendarWeekLink>
+                <CalendarWeekLink
+                  ariaLabel="Next week"
+                  currentDateKey={data.todayDateKey}
+                  dateKey={nextWeekDateKey}
+                >
+                  <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+                </CalendarWeekLink>
+              </div>
+            </div>
             <CalendarWeekPlanner
               openDay={openDay}
               openEvent={openEvent}
@@ -303,6 +339,28 @@ export function CalendarDashboardInteractive({
         timezone={data.timezone}
       />
     </>
+  );
+}
+
+function CalendarWeekLink({
+  ariaLabel,
+  children,
+  currentDateKey,
+  dateKey,
+}: {
+  ariaLabel?: string;
+  children: ReactNode;
+  currentDateKey: string;
+  dateKey: string;
+}) {
+  return (
+    <Link
+      aria-label={ariaLabel}
+      className="inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--panel)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      href={dateKey === currentDateKey ? "/calendar" : `/calendar?date=${dateKey}`}
+    >
+      {children}
+    </Link>
   );
 }
 
