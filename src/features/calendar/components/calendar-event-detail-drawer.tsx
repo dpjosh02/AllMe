@@ -873,7 +873,7 @@ function LinkedNoteEditor({
           value={draftBody}
         />
       </label>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-[1fr_1.25fr_1fr]">
         <form action={saveAllMeNote}>
           <input name="noteId" type="hidden" value={linkedNote.id} />
           <input name="title" type="hidden" value={draftTitle} />
@@ -1085,7 +1085,7 @@ function LinkedNoteActionButton({
   return (
     <button
       className={[
-        "inline-flex min-h-9 w-full items-center justify-center rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-60",
+        "inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-xl border px-2.5 text-[0.72rem] font-semibold transition disabled:cursor-wait disabled:opacity-60",
         toneClassName,
       ].join(" ")}
       disabled={pending}
@@ -1101,7 +1101,7 @@ function ProviderPublishButton({ disabled }: { disabled: boolean }) {
 
   return (
     <button
-      className="inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
+      className="inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-2.5 text-[0.72rem] font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
       disabled={pending || disabled}
       type="submit"
     >
