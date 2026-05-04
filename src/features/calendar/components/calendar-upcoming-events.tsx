@@ -67,22 +67,22 @@ function UpcomingEventRow({
   return (
     <button
       className={[
-        "relative w-full rounded-lg border border-[var(--line)] bg-[var(--empty)] py-2 pl-6 pr-3 text-left transition hover:border-[var(--accent)]",
-        reviewStatus === "ignored"
-          ? "border-dashed bg-transparent opacity-55"
-          : "",
+        "w-full rounded-lg border border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-left transition hover:border-[var(--accent)]",
+        reviewStatus === "ignored" ? "opacity-55" : "",
       ].join(" ")}
       onClick={openEvent}
       type="button"
     >
-      <span
-        aria-hidden="true"
-        className="absolute left-3 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-[var(--line)]"
-        style={{ backgroundColor: event.calendarColor ?? "var(--accent)" }}
-      />
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{event.title}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 shrink-0 rounded-full border border-[var(--line)]"
+              style={{ backgroundColor: event.calendarColor ?? "var(--accent)" }}
+            />
+            <p className="truncate text-sm font-semibold">{event.title}</p>
+          </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
             <CalendarEventReviewBadge status={reviewStatus} />
             <p className="truncate text-xs text-[var(--muted)]">

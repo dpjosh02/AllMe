@@ -113,33 +113,35 @@ function WeekAgendaItem({
   return (
     <button
       className={[
-        "relative w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] py-1.5 pl-5 pr-2 text-left transition hover:border-[var(--accent)]",
-        reviewStatus === "ignored"
-          ? "border-dashed bg-transparent opacity-55"
-          : "",
+        "w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 text-left transition hover:border-[var(--accent)]",
+        reviewStatus === "ignored" ? "opacity-55" : "",
       ].join(" ")}
       onClick={openEvent}
       type="button"
     >
-      <span
-        aria-hidden="true"
-        className="absolute left-2.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-[var(--line)]"
-        style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
-      />
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center justify-between gap-2">
-          <p className="min-w-0 flex-1 truncate text-xs font-semibold">
-            {item.title}
-          </p>
-          <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
-            {timeLabel}
-          </span>
+      <div className="grid grid-cols-[0.75rem_minmax(0,1fr)] items-center gap-2">
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 justify-self-center rounded-full border border-[var(--line)]"
+          style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="min-w-0 truncate text-xs font-semibold">
+                {item.title}
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
+              {timeLabel}
+            </span>
+          </div>
+          {item.location ? (
+            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+              {item.location}
+            </p>
+          ) : null}
         </div>
-        {item.location ? (
-          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-            {item.location}
-          </p>
-        ) : null}
       </div>
     </button>
   );
