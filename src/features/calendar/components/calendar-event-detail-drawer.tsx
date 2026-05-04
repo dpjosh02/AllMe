@@ -489,10 +489,6 @@ function ProviderEventEditPanel({
       ) : isEditingProviderEvent ? (
         <form action={updateProviderEvent} className="mt-4 grid gap-3">
           <input name="eventId" type="hidden" value={event.id} />
-          <p className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
-            This updates the real Google Calendar event after AllMe checks
-            provider freshness. Local review state and notes stay separate.
-          </p>
           <label className="grid gap-1.5">
             <span className="allme-kicker">Title</span>
             <input
