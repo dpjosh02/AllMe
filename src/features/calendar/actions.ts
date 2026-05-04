@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   createGoogleCalendarEvent,
+  deleteGoogleCalendarEvent,
   fetchGoogleCalendarEvent,
   patchGoogleCalendarEvent,
   patchGoogleCalendarEventDescription,
@@ -14,6 +15,7 @@ import {
   createCalendarEventInGoogle,
   type CalendarEventCreateForm,
 } from "@/features/calendar/provider-write/create-event";
+import { deleteCalendarEventInGoogle } from "@/features/calendar/provider-write/delete-event";
 import { updateCalendarEventInGoogle } from "@/features/calendar/provider-write/update-event";
 import {
   CalendarProviderWriteUserError,
@@ -519,6 +521,86 @@ export async function updateGoogleCalendarEventFromCalendar(
   }
 }
 
+export async function deleteGoogleCalendarEventFromCalendar(
+  formData: FormData,
+): Promise<CalendarProviderWriteMutationResult> {
+  const user = await requireOwnerUser();
+  const eventId = getCalendarEventId(formData);
+  const context = await getCalendarEventForProviderEventUpdate({
+    eventId,
+    userId: user.id,
+  });
+
+  if (!context) {
+    return {
+      message: "Calendar event was not found.",
+      status: "error",
+    };
+  }
+
+  try {
+    await deleteCalendarEventInGoogle({
+      deps: {
+        createAudit: (draft) => createProviderWriteAudit({ draft, userId: user.id }),
+        deleteProviderEvent: ({
+          accessToken,
+          sourceCalendarId,
+          sourceEventId,
+        }) =>
+          deleteGoogleCalendarEvent({
+            accessToken,
+            calendarId: sourceCalendarId,
+            eventId: sourceEventId,
+          }),
+        fetchProviderEvent: ({ accessToken, sourceCalendarId, sourceEventId }) =>
+          fetchGoogleCalendarEvent({
+            accessToken,
+            calendarId: sourceCalendarId,
+            eventId: sourceEventId,
+          }),
+        markAudit: markProviderWriteAudit,
+        reconcileLocalEventDeletion: () =>
+          markLocalEventDeletedAfterProviderWrite({
+            eventId: context.eventId,
+            userId: user.id,
+          }),
+        resolveAccessToken: async () => {
+          const token = await resolveGoogleCalendarAccessToken({ userId: user.id });
+
+          return {
+            accessToken: token.accessToken,
+            scopes: token.scopes,
+          };
+        },
+      },
+      input: {
+        context,
+        idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
+      },
+    });
+
+    revalidatePath("/calendar");
+    revalidatePath("/today");
+
+    return {
+      message: "Deleted event in Google Calendar.",
+      status: "succeeded",
+    };
+  } catch (error) {
+    if (error instanceof CalendarProviderWriteUserError) {
+      return {
+        message: error.message,
+        status: "error",
+      };
+    }
+
+    return {
+      message: "Google Calendar event deletion failed. Try again after syncing.",
+      status: "error",
+    };
+  }
+}
+
 const calendarEventReviewStatuses = [
   "none",
   "needs_prep",
@@ -838,6 +920,23 @@ async function updateLocalEventFromProviderWrite({
       etag: event.etag,
       providerUpdatedAt: event.providerUpdatedAt,
       rawPayload: event.rawPayload,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)));
+}
+
+async function markLocalEventDeletedAfterProviderWrite({
+  eventId,
+  userId,
+}: {
+  eventId: string;
+  userId: string;
+}) {
+  await db
+    .update(calendarEvents)
+    .set({
+      cancelledAt: new Date(),
+      status: "cancelled",
       updatedAt: new Date(),
     })
     .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)));

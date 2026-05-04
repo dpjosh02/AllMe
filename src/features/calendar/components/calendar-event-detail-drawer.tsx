@@ -14,6 +14,8 @@ import type {
 
 const publishWarningPreferenceKey =
   "allme.calendar.publish_note_description_warning_dismissed";
+const deleteEventConfirmationPreferenceKey =
+  "allme.calendar.delete_event_confirmation_dismissed";
 
 export type CalendarEventReviewStatus =
   | "done"
@@ -48,6 +50,7 @@ export type CalendarEventDetail = {
 
 export function CalendarEventDetailDrawer({
   createLinkedNoteFromEvent,
+  deleteGoogleCalendarEvent,
   deleteLinkedNote,
   event,
   onClose,
@@ -66,6 +69,9 @@ export function CalendarEventDetailDrawer({
     eventId: string,
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
+  deleteGoogleCalendarEvent: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
   publishLinkedNoteToGoogle: (
     formData: FormData,
@@ -85,6 +91,7 @@ export function CalendarEventDetailDrawer({
   return (
     <CalendarEventDetailDrawerContent
       createLinkedNoteFromEvent={createLinkedNoteFromEvent}
+      deleteGoogleCalendarEvent={deleteGoogleCalendarEvent}
       deleteLinkedNote={deleteLinkedNote}
       event={event}
       key={event.id}
@@ -100,6 +107,7 @@ export function CalendarEventDetailDrawer({
 
 function CalendarEventDetailDrawerContent({
   createLinkedNoteFromEvent,
+  deleteGoogleCalendarEvent,
   deleteLinkedNote,
   event,
   onClose,
@@ -118,6 +126,9 @@ function CalendarEventDetailDrawerContent({
     eventId: string,
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
+  deleteGoogleCalendarEvent: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
   publishLinkedNoteToGoogle: (
     formData: FormData,
@@ -228,6 +239,11 @@ function CalendarEventDetailDrawerContent({
           <ProviderEventEditPanel
             event={event}
             updateGoogleCalendarEvent={updateGoogleCalendarEvent}
+          />
+
+          <ProviderEventDeletePanel
+            deleteGoogleCalendarEvent={deleteGoogleCalendarEvent}
+            event={event}
           />
 
           <LinkedNotePanel
@@ -561,6 +577,165 @@ function ProviderEventEditButton() {
       type="submit"
     >
       {pending ? "Updating..." : "Update Google Calendar event"}
+    </button>
+  );
+}
+
+function ProviderEventDeletePanel({
+  deleteGoogleCalendarEvent,
+  event,
+}: {
+  deleteGoogleCalendarEvent: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
+  event: CalendarEventDetail;
+}) {
+  const deleteFormRef = useRef<HTMLFormElement>(null);
+  const confirmationAcceptedRef = useRef(false);
+  const [deleteResult, setDeleteResult] =
+    useState<CalendarProviderWriteMutationResult | null>(null);
+  const [dontShowConfirmationAgain, setDontShowConfirmationAgain] =
+    useState(false);
+  const [isDeleted, setIsDeleted] = useState(event.status === "cancelled");
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+
+  async function deleteProviderEvent(formData: FormData) {
+    formData.set("idempotencyKey", createIdempotencyKey());
+    const result = await deleteGoogleCalendarEvent(formData);
+
+    setDeleteResult(result);
+
+    if (result.status === "succeeded") {
+      setIsDeleted(true);
+    }
+  }
+
+  function handleDeleteSubmit(submitEvent: FormEvent<HTMLFormElement>) {
+    if (confirmationAcceptedRef.current) {
+      confirmationAcceptedRef.current = false;
+      return;
+    }
+
+    if (localStorage.getItem(deleteEventConfirmationPreferenceKey) === "true") {
+      return;
+    }
+
+    submitEvent.preventDefault();
+    setShowDeleteConfirmation(true);
+  }
+
+  function confirmDeleteEvent() {
+    if (dontShowConfirmationAgain) {
+      localStorage.setItem(deleteEventConfirmationPreferenceKey, "true");
+    }
+
+    confirmationAcceptedRef.current = true;
+    setShowDeleteConfirmation(false);
+    deleteFormRef.current?.requestSubmit();
+  }
+
+  return (
+    <div className="mt-5 rounded-2xl border border-[var(--danger)]/35 bg-[var(--empty)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="allme-kicker text-[var(--danger)]">Delete event</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            Deletes the real non-recurring Google Calendar event. AllMe marks
+            the cached event cancelled only after Google confirms deletion.
+          </p>
+        </div>
+        {event.recurringEventId ? (
+          <span className="rounded-full border border-[var(--warn)]/35 px-3 py-1 text-xs font-semibold text-[var(--warn)]">
+            Recurring blocked
+          </span>
+        ) : null}
+      </div>
+
+      {event.recurringEventId ? (
+        <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+          Recurring event deletion is not supported in this slice. Open Google
+          Calendar for recurrence changes.
+        </p>
+      ) : (
+        <form
+          action={deleteProviderEvent}
+          className="mt-4 grid gap-2"
+          onSubmit={handleDeleteSubmit}
+          ref={deleteFormRef}
+        >
+          <input name="eventId" type="hidden" value={event.id} />
+          <ProviderEventDeleteButton disabled={isDeleted} />
+          {deleteResult ? (
+            <p
+              className={[
+                "text-xs font-semibold",
+                deleteResult.status === "succeeded"
+                  ? "text-[var(--success)]"
+                  : "text-[var(--danger)]",
+              ].join(" ")}
+            >
+              {deleteResult.message}
+            </p>
+          ) : null}
+        </form>
+      )}
+
+      {showDeleteConfirmation ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--line)] bg-[var(--panel-strong)] p-5 shadow-2xl">
+            <p className="allme-kicker text-[var(--danger)]">Delete event</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em]">
+              Delete this Google Calendar event?
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+              This will delete the real Google Calendar event. AllMe will check
+              provider freshness first and will not mark the local cache deleted
+              unless Google confirms the deletion.
+            </p>
+            <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
+              <input
+                checked={dontShowConfirmationAgain}
+                className="h-4 w-4 accent-[var(--danger)]"
+                onChange={(event) =>
+                  setDontShowConfirmationAgain(event.target.checked)
+                }
+                type="checkbox"
+              />
+              Don&apos;t show this again
+            </label>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                onClick={() => setShowDeleteConfirmation(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex min-h-9 items-center rounded-xl bg-[var(--danger)] px-3 text-xs font-semibold text-white transition hover:opacity-90"
+                onClick={confirmDeleteEvent}
+                type="button"
+              >
+                Delete event
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProviderEventDeleteButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className="inline-flex min-h-9 w-fit items-center rounded-xl border border-[var(--danger)]/45 px-3 text-xs font-semibold text-[var(--danger)] transition hover:bg-[var(--danger)]/10 disabled:cursor-wait disabled:opacity-60"
+      disabled={pending || disabled}
+      type="submit"
+    >
+      {pending ? "Deleting..." : disabled ? "Event deleted" : "Delete event"}
     </button>
   );
 }

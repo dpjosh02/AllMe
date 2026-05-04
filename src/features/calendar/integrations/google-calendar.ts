@@ -222,6 +222,26 @@ export async function patchGoogleCalendarEvent({
   return toCalendarEventSnapshot({ calendarId, event });
 }
 
+export async function deleteGoogleCalendarEvent({
+  accessToken,
+  calendarId,
+  eventId,
+  fetcher = fetch,
+}: GoogleCalendarEventWriteConfig): Promise<void> {
+  const url = new URL(
+    `${googleCalendarApiBaseUrl}/calendars/${encodeURIComponent(
+      calendarId,
+    )}/events/${encodeURIComponent(eventId)}`,
+  );
+
+  await fetchGoogleVoid({
+    accessToken,
+    fetcher,
+    init: { method: "DELETE" },
+    url,
+  });
+}
+
 async function fetchGoogleCalendarList({
   accessToken,
   fetcher,
@@ -341,6 +361,33 @@ async function fetchGoogleJson<T>({
   }
 
   return (await response.json()) as T;
+}
+
+async function fetchGoogleVoid({
+  accessToken,
+  fetcher,
+  init,
+  url,
+}: {
+  accessToken: string;
+  fetcher: typeof fetch;
+  init?: RequestInit;
+  url: URL;
+}) {
+  const response = await fetcher(url, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Google Calendar request failed with status ${response.status}: ${errorText}`,
+    );
+  }
 }
 
 function toCalendarSnapshot(calendar: GoogleCalendarListEntry): ProviderCalendarSnapshot {

@@ -11,6 +11,7 @@ import {
 import {
   createGoogleCalendarEventFromCalendar,
   createLinkedNoteFromCalendarEvent,
+  deleteGoogleCalendarEventFromCalendar,
   deleteLinkedCalendarNote,
   publishLinkedCalendarNoteToGoogle,
   reconnectGoogleCalendarWithWriteAccess,
@@ -69,6 +70,7 @@ export default async function CalendarPage() {
           createCalendarEvent={createGoogleCalendarEventFromCalendar}
           createLinkedNoteFromEvent={createLinkedNoteFromCalendarEvent}
           data={data}
+          deleteGoogleCalendarEvent={deleteGoogleCalendarEventFromCalendar}
           deleteLinkedNote={deleteLinkedCalendarNote}
           reconnectGoogleCalendarWithWriteAccess={
             reconnectGoogleCalendarWithWriteAccess

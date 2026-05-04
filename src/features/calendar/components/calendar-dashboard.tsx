@@ -42,6 +42,7 @@ export function CalendarDashboardInteractive({
   createCalendarEvent,
   createLinkedNoteFromEvent,
   data,
+  deleteGoogleCalendarEvent,
   deleteLinkedNote,
   updateLinkedNote,
   updateCalendarSelection,
@@ -57,6 +58,9 @@ export function CalendarDashboardInteractive({
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
   data: CalendarPageData;
+  deleteGoogleCalendarEvent: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
   publishLinkedNoteToGoogle: (formData: FormData) => Promise<{
     message: string;
@@ -280,6 +284,7 @@ export function CalendarDashboardInteractive({
       />
       <CalendarEventDetailDrawer
         createLinkedNoteFromEvent={createLinkedNoteFromEvent}
+        deleteGoogleCalendarEvent={deleteGoogleCalendarEvent}
         deleteLinkedNote={deleteLinkedNote}
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createGoogleCalendarEvent,
+  deleteGoogleCalendarEvent,
   fetchGoogleCalendarEvent,
   patchGoogleCalendarEvent,
   patchGoogleCalendarEventDescription,
@@ -387,6 +388,30 @@ describe("Google Calendar reader", () => {
     });
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("attendees");
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("recurrence");
+  });
+
+  it("deletes one provider event without sending a request body", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await deleteGoogleCalendarEvent({
+      accessToken: "access-token",
+      calendarId: "primary",
+      eventId: "event-1",
+      fetcher,
+    });
+
+    expect(fetcher.mock.calls[0]?.[0].toString()).toContain(
+      "/calendars/primary/events/event-1",
+    );
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      headers: {
+        Authorization: "Bearer access-token",
+      },
+      method: "DELETE",
+    });
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
   });
 });
 
