@@ -71,6 +71,13 @@
       "when": 1777832949824,
       "tag": "0009_furry_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777865449977,
+      "tag": "0010_first_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

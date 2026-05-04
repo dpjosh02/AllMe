@@ -5,7 +5,9 @@ import {
   Inbox,
   NotebookPen,
   SquareCheckBig,
+  StickyNote,
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 
 import {
@@ -294,11 +296,25 @@ function AgendaItemRow({
               style={{ backgroundColor: item.calendarColor ?? "var(--accent)" }}
             />
             <p className="truncate text-sm font-semibold">{item.title}</p>
+            {item.linkedNoteId ? (
+              <StickyNote
+                aria-label="Linked note"
+                className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]"
+              />
+            ) : null}
           </div>
           {item.location ? (
             <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
               {item.location}
             </p>
+          ) : null}
+          {item.linkedNoteHref ? (
+            <Link
+              className="mt-1 inline-flex text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
+              href={item.linkedNoteHref as Route}
+            >
+              Open linked note
+            </Link>
           ) : null}
         </div>
         <span

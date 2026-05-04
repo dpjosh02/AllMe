@@ -1,6 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
+import { StickyNote, X } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -21,8 +22,15 @@ export type CalendarEventDetail = {
   htmlLink: string | null;
   id: string;
   isAllDay: boolean;
+  linkedNoteDate: string | null;
+  linkedNoteHref: string | null;
+  linkedNoteId: string | null;
+  linkedNoteScope: "event_instance" | "recurring_series" | null;
+  linkedNoteTitle: string | null;
   location: string | null;
   localReviewStatus: CalendarEventReviewStatus;
+  recurringEventId: string | null;
+  sourceIcalUid: string | null;
   startDate: string | null;
   startsAt: Date | null;
   status: string;
@@ -30,17 +38,21 @@ export type CalendarEventDetail = {
 };
 
 export function CalendarEventDetailDrawer({
+  createLinkedNoteFromEvent,
   event,
   onClose,
   onReviewStatusChange,
+  unlinkNoteFromEvent,
   updateEventReviewStatus,
 }: {
+  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
   event: CalendarEventDetail | null;
   onClose: () => void;
   onReviewStatusChange?: (
     eventId: string,
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
+  unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   if (!event) {
@@ -49,27 +61,33 @@ export function CalendarEventDetailDrawer({
 
   return (
     <CalendarEventDetailDrawerContent
+      createLinkedNoteFromEvent={createLinkedNoteFromEvent}
       event={event}
       key={event.id}
       onClose={onClose}
       onReviewStatusChange={onReviewStatusChange}
+      unlinkNoteFromEvent={unlinkNoteFromEvent}
       updateEventReviewStatus={updateEventReviewStatus}
     />
   );
 }
 
 function CalendarEventDetailDrawerContent({
+  createLinkedNoteFromEvent,
   event,
   onClose,
   onReviewStatusChange,
+  unlinkNoteFromEvent,
   updateEventReviewStatus,
 }: {
+  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
   event: CalendarEventDetail;
   onClose: () => void;
   onReviewStatusChange?: (
     eventId: string,
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
+  unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   const [currentReviewStatus, setCurrentReviewStatus] =
@@ -164,6 +182,12 @@ function CalendarEventDetailDrawerContent({
             </div>
           ) : null}
 
+          <LinkedNotePanel
+            createLinkedNoteFromEvent={createLinkedNoteFromEvent}
+            event={event}
+            unlinkNoteFromEvent={unlinkNoteFromEvent}
+          />
+
           <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -218,6 +242,99 @@ function CalendarEventDetailDrawerContent({
         </div>
       </section>
     </div>
+  );
+}
+
+function LinkedNotePanel({
+  createLinkedNoteFromEvent,
+  event,
+  unlinkNoteFromEvent,
+}: {
+  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
+  event: CalendarEventDetail;
+  unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
+}) {
+  const canLinkSeries = Boolean(event.sourceIcalUid || event.recurringEventId);
+
+  return (
+    <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="allme-kicker">Linked note</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            Local AllMe context only. Google Calendar is not changed.
+          </p>
+        </div>
+        {event.linkedNoteId ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+            <StickyNote aria-hidden="true" className="h-3.5 w-3.5" />
+            Linked
+          </span>
+        ) : null}
+      </div>
+
+      {event.linkedNoteId ? (
+        <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
+          <p className="truncate text-sm font-semibold text-[var(--foreground)]">
+            {event.linkedNoteTitle ?? "Untitled note"}
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {event.linkedNoteScope === "recurring_series"
+              ? "Shared across matching recurring occurrences"
+              : "Linked to this event"}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {event.linkedNoteHref ? (
+              <Link
+                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                href={event.linkedNoteHref as Route}
+              >
+                Open linked note
+              </Link>
+            ) : null}
+            <form action={unlinkNoteFromEvent}>
+              <input name="eventId" type="hidden" value={event.id} />
+              <input name="noteId" type="hidden" value={event.linkedNoteId} />
+              <input
+                name="linkScope"
+                type="hidden"
+                value={event.linkedNoteScope ?? "event_instance"}
+              />
+              <LinkedNoteActionButton label="Unlink note" />
+            </form>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <form action={createLinkedNoteFromEvent}>
+            <input name="eventId" type="hidden" value={event.id} />
+            <input name="linkScope" type="hidden" value="event_instance" />
+            <LinkedNoteActionButton label="Create note for event" />
+          </form>
+          {canLinkSeries ? (
+            <form action={createLinkedNoteFromEvent}>
+              <input name="eventId" type="hidden" value={event.id} />
+              <input name="linkScope" type="hidden" value="recurring_series" />
+              <LinkedNoteActionButton label="Create note for series" />
+            </form>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LinkedNoteActionButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
+      disabled={pending}
+      type="submit"
+    >
+      {pending ? "Saving..." : label}
+    </button>
   );
 }
 

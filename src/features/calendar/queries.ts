@@ -2,6 +2,10 @@ import { and, asc, desc, eq, gte, ne, sql } from "drizzle-orm";
 
 import { getCalendarWeekAgenda } from "@/features/calendar/agenda-query";
 import {
+  attachLinkedNotesToCalendarEvents,
+  getCalendarEventNoteLinksForEvents,
+} from "@/features/calendar/event-note-links";
+import {
   getGoogleCalendarConnectionStatus,
   googleCalendarReadonlyScope,
 } from "@/features/calendar/sync/connection";
@@ -123,6 +127,7 @@ async function getUpcomingCalendarEvents(userId: string) {
   const rows = await db
     .select({
       calendarColor: calendarCalendars.color,
+      calendarId: calendarEvents.calendarId,
       calendarName: calendarCalendars.name,
       description: calendarEvents.description,
       endAt: calendarEvents.endAt,
@@ -132,6 +137,8 @@ async function getUpcomingCalendarEvents(userId: string) {
       isAllDay: calendarEvents.isAllDay,
       location: calendarEvents.location,
       localReviewStatus: calendarEventAnnotations.reviewStatus,
+      recurringEventId: calendarEvents.recurringEventId,
+      sourceIcalUid: calendarEvents.sourceIcalUid,
       startAt: calendarEvents.startAt,
       startDate: calendarEvents.startDate,
       status: calendarEvents.status,
@@ -167,7 +174,9 @@ async function getUpcomingCalendarEvents(userId: string) {
     )
     .limit(8);
 
-  return rows;
+  const links = await getCalendarEventNoteLinksForEvents({ events: rows, userId });
+
+  return attachLinkedNotesToCalendarEvents({ events: rows, links });
 }
 
 async function getLatestCalendarSyncRun(userId: string) {

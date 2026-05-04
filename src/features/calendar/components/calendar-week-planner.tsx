@@ -1,6 +1,7 @@
 "use client";
 
-import type { CalendarEventReviewStatus } from "@/features/calendar/components/calendar-event-detail-drawer";
+import { StickyNote } from "lucide-react";
+
 import type { CalendarPageData } from "@/features/calendar/queries";
 
 type WeekAgendaDayData = CalendarPageData["weekAgenda"][number];
@@ -121,10 +122,16 @@ function WeekAgendaItem({
         />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-1.5">
               <p className="min-w-0 truncate text-xs font-semibold">
                 {item.title}
               </p>
+              {item.linkedNoteId ? (
+                <StickyNote
+                  aria-label="Linked note"
+                  className="h-3 w-3 shrink-0 text-[var(--accent)]"
+                />
+              ) : null}
             </div>
             <span className="shrink-0 text-xs font-semibold text-[var(--accent)]">
               {timeLabel}

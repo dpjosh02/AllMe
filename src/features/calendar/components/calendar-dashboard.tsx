@@ -34,11 +34,15 @@ type CalendarEventCollectionItem = {
 };
 
 export function CalendarDashboardInteractive({
+  createLinkedNoteFromEvent,
   data,
+  unlinkNoteFromEvent,
   updateCalendarSelection,
   updateEventReviewStatus,
 }: {
+  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
   data: CalendarPageData;
+  unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
   updateCalendarSelection: (formData: FormData) => Promise<void>;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
@@ -216,9 +220,11 @@ export function CalendarDashboardInteractive({
         }}
       />
       <CalendarEventDetailDrawer
+        createLinkedNoteFromEvent={createLinkedNoteFromEvent}
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
         onReviewStatusChange={updateLocalReviewStatus}
+        unlinkNoteFromEvent={unlinkNoteFromEvent}
         updateEventReviewStatus={updateEventReviewStatus}
       />
     </>
@@ -596,8 +602,15 @@ function toEventDetail(event: CalendarDashboardEvent): CalendarEventDetail {
     htmlLink: event.htmlLink,
     id: event.id,
     isAllDay: event.isAllDay,
+    linkedNoteDate: event.linkedNoteDate,
+    linkedNoteHref: event.linkedNoteHref,
+    linkedNoteId: event.linkedNoteId,
+    linkedNoteScope: event.linkedNoteScope,
+    linkedNoteTitle: event.linkedNoteTitle,
     location: event.location,
     localReviewStatus: event.localReviewStatus ?? "none",
+    recurringEventId: event.recurringEventId,
+    sourceIcalUid: event.sourceIcalUid,
     startDate: event.startDate,
     startsAt: "startAt" in event ? event.startAt : event.startsAt,
     status: event.status,

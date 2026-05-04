@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Inbox, NotebookPen, Search } from "lucide-react";
+import { Archive, Inbox, NotebookPen, Search, StickyNote } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
@@ -241,7 +241,17 @@ function DailyNotesList({
               href={noteHref}
               key={note.id}
             >
-              <p className="font-semibold">{note.displayDate}</p>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="font-semibold">{note.displayDate}</p>
+                {note.isLinkedToCalendarEvent ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
+                    <StickyNote aria-hidden="true" className="h-3 w-3" />
+                    {note.linkedCalendarScope === "recurring_series"
+                      ? "Calendar series"
+                      : "Calendar event"}
+                  </span>
+                ) : null}
+              </div>
               <p
                 className={`mt-2 text-sm leading-6 text-[var(--muted)] ${
                   density === "compact" ? "line-clamp-1" : "line-clamp-2"

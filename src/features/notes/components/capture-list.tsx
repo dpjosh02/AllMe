@@ -1,4 +1,4 @@
-import { CheckCircle2, RotateCcw } from "lucide-react";
+import { CheckCircle2, RotateCcw, StickyNote } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 
@@ -7,6 +7,8 @@ import { completeCapture, restoreCapture } from "@/features/notes/actions";
 type CaptureListItem = {
   body: string;
   id: string;
+  isLinkedToCalendarEvent?: boolean;
+  linkedCalendarScope?: "event_instance" | "recurring_series" | null;
   title: string;
 };
 
@@ -64,7 +66,17 @@ function CaptureRow({
       }`}
     >
       <div>
-        <p className="font-semibold">{capture.title}</p>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <p className="font-semibold">{capture.title}</p>
+          {capture.isLinkedToCalendarEvent ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
+              <StickyNote aria-hidden="true" className="h-3 w-3" />
+              {capture.linkedCalendarScope === "recurring_series"
+                ? "Calendar series"
+                : "Calendar event"}
+            </span>
+          ) : null}
+        </div>
         <p
           className={`mt-2 text-sm leading-6 text-[var(--muted)] ${
             isCompact ? "line-clamp-1" : "line-clamp-3"

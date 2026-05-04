@@ -1,5 +1,7 @@
 "use client";
 
+import { StickyNote } from "lucide-react";
+
 import type { CalendarEventReviewStatus } from "@/features/calendar/components/calendar-event-detail-drawer";
 import { CalendarEventReviewBadge } from "@/features/calendar/components/calendar-event-review-badge";
 import type { CalendarPageData } from "@/features/calendar/queries";
@@ -82,6 +84,12 @@ function UpcomingEventRow({
               style={{ backgroundColor: event.calendarColor ?? "var(--accent)" }}
             />
             <p className="truncate text-sm font-semibold">{event.title}</p>
+            {event.linkedNoteId ? (
+              <StickyNote
+                aria-label="Linked note"
+                className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]"
+              />
+            ) : null}
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
             <CalendarEventReviewBadge status={reviewStatus} />

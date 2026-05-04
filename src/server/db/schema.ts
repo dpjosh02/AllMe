@@ -297,6 +297,48 @@ export const calendarEventAnnotations = pgTable(
   }),
 );
 
+export const calendarEventNoteLinks = pgTable(
+  "calendar_event_note_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    noteId: uuid("note_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id").references(() => calendarEvents.id, {
+      onDelete: "cascade",
+    }),
+    calendarId: uuid("calendar_id").references(() => calendarCalendars.id, {
+      onDelete: "cascade",
+    }),
+    scope: text("scope")
+      .$type<"event_instance" | "recurring_series">()
+      .notNull()
+      .default("event_instance"),
+    sourceIcalUid: text("source_ical_uid"),
+    recurringEventId: text("recurring_event_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userEventIdx: index("calendar_event_note_links_user_event_idx").on(
+      table.userId,
+      table.eventId,
+    ),
+    userNoteIdx: index("calendar_event_note_links_user_note_idx").on(
+      table.userId,
+      table.noteId,
+    ),
+    userSeriesIdx: index("calendar_event_note_links_user_series_idx").on(
+      table.userId,
+      table.calendarId,
+      table.sourceIcalUid,
+    ),
+  }),
+);
+
 export const calendarSyncRuns = pgTable(
   "calendar_sync_runs",
   {

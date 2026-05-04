@@ -9,7 +9,9 @@ import {
   PageHero,
 } from "@/components/layout/page-scaffold";
 import {
+  createLinkedNoteFromCalendarEvent,
   syncGoogleCalendarNow,
+  unlinkNoteFromCalendarEvent,
   updateCalendarEventReviewStatus,
   updateCalendarSelection,
 } from "@/features/calendar/actions";
@@ -49,7 +51,9 @@ export default async function CalendarPage() {
 
       <PageGrid>
         <CalendarDashboardInteractive
+          createLinkedNoteFromEvent={createLinkedNoteFromCalendarEvent}
           data={data}
+          unlinkNoteFromEvent={unlinkNoteFromCalendarEvent}
           updateCalendarSelection={updateCalendarSelection}
           updateEventReviewStatus={updateCalendarEventReviewStatus}
         />

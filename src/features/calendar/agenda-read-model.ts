@@ -20,7 +20,14 @@ export type TodayAgendaSourceRow = {
   id: string;
   isAllDay: boolean;
   location: string | null;
+  linkedNoteDate: string | null;
+  linkedNoteHref: string | null;
+  linkedNoteId: string | null;
+  linkedNoteScope: "event_instance" | "recurring_series" | null;
+  linkedNoteTitle: string | null;
   localReviewStatus: CalendarEventLocalReviewStatus | null;
+  recurringEventId: string | null;
+  sourceIcalUid: string | null;
   startAt: Date | null;
   startDate: string | null;
   status: CalendarAgendaEventStatus;
@@ -38,8 +45,15 @@ export type TodayAgendaItem = {
   id: string;
   isAllDay: boolean;
   location: string | null;
+  linkedNoteDate: string | null;
+  linkedNoteHref: string | null;
+  linkedNoteId: string | null;
+  linkedNoteScope: "event_instance" | "recurring_series" | null;
+  linkedNoteTitle: string | null;
   localReviewStatus: CalendarEventLocalReviewStatus;
+  recurringEventId: string | null;
   source: "google_calendar";
+  sourceIcalUid: string | null;
   startDate: string | null;
   startsAt: Date | null;
   status: Exclude<CalendarAgendaEventStatus, "cancelled">;
@@ -159,8 +173,15 @@ function toTodayAgendaItem(row: TodayAgendaSourceRow): TodayAgendaItem {
     id: row.id,
     isAllDay: row.isAllDay,
     location: row.location,
+    linkedNoteDate: row.linkedNoteDate,
+    linkedNoteHref: row.linkedNoteHref,
+    linkedNoteId: row.linkedNoteId,
+    linkedNoteScope: row.linkedNoteScope,
+    linkedNoteTitle: row.linkedNoteTitle,
     localReviewStatus: row.localReviewStatus ?? "none",
+    recurringEventId: row.recurringEventId,
     source: "google_calendar",
+    sourceIcalUid: row.sourceIcalUid,
     startDate: row.startDate,
     startsAt: row.startAt,
     status: row.status,

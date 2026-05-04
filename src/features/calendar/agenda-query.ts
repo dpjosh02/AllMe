@@ -5,6 +5,10 @@ import {
   getTodayAgendaItems,
   type TodayAgendaItem,
 } from "@/features/calendar/agenda-read-model";
+import {
+  attachLinkedNotesToCalendarEvents,
+  getCalendarEventNoteLinksForEvents,
+} from "@/features/calendar/event-note-links";
 import { addDaysToDateKey } from "@/features/today/date";
 import { db } from "@/server/db";
 import {
@@ -45,6 +49,8 @@ export async function getTodayAgenda({
       isAllDay: calendarEvents.isAllDay,
       location: calendarEvents.location,
       localReviewStatus: calendarEventAnnotations.reviewStatus,
+      recurringEventId: calendarEvents.recurringEventId,
+      sourceIcalUid: calendarEvents.sourceIcalUid,
       startAt: calendarEvents.startAt,
       startDate: calendarEvents.startDate,
       status: calendarEvents.status,
@@ -77,7 +83,13 @@ export async function getTodayAgenda({
     )
     .limit(100);
 
-  return getTodayAgendaItems({ dateKey, rows, timezone });
+  const links = await getCalendarEventNoteLinksForEvents({ events: rows, userId });
+  const rowsWithLinkedNotes = attachLinkedNotesToCalendarEvents({
+    events: rows,
+    links,
+  });
+
+  return getTodayAgendaItems({ dateKey, rows: rowsWithLinkedNotes, timezone });
 }
 
 export async function getCalendarWeekAgenda({

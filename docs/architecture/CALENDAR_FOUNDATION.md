@@ -377,9 +377,23 @@ Current v1 behavior:
 
 ### 6. Event-linked notes
 
-- Add a note-link table or polymorphic note relationship after event identity is
-  stable.
-- Allow creating/opening notes from an event.
+Phase 2.1 foundation:
+
+- `calendar_event_note_links` stores local AllMe note relationships without
+  modifying Google Calendar provider fields.
+- Instance links use `scope = event_instance` and target one concrete
+  `calendar_events.id`.
+- Recurring-series links use `scope = recurring_series` and target
+  `calendar_id + source_ical_uid`, with `recurring_event_id` retained as
+  supporting provider context.
+- Calendar and Today read models prefer instance links, then fall back to
+  matching recurring-series links.
+- Created linked notes are normal `notes` rows, so they appear in Notes and can
+  be opened through the existing note/capture route.
+- Unlinking removes the AllMe local relationship only; it does not delete the
+  note or change Google Calendar.
+- Link-existing-note remains a server action foundation; a picker/search UI is
+  deferred until Notes has a stronger note selection surface.
 
 ## Deferred Enhancements
 
@@ -391,6 +405,6 @@ Current v1 behavior:
 - Push/webhook-based Google Calendar notifications.
 - Provider-agnostic calendar abstraction beyond Google Calendar.
 - Calendar conflict detection and scheduling recommendations.
-- Event-linked note creation and note backlinks.
+- Event-linked note picker/search UI and richer note backlinks.
 - Background sync jobs and stale-cache notifications beyond the current last-sync
   status surface.

@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { StickyNote, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 
@@ -106,9 +106,17 @@ function CalendarDayDetailDrawerContent({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {event.title}
-                      </p>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <p className="truncate text-sm font-semibold">
+                          {event.title}
+                        </p>
+                        {event.linkedNoteId ? (
+                          <StickyNote
+                            aria-label="Linked note"
+                            className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]"
+                          />
+                        ) : null}
+                      </div>
                       <p className="mt-1 truncate text-xs text-[var(--muted)]">
                         {event.calendarName}
                         {event.location ? ` · ${event.location}` : ""}

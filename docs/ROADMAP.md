@@ -93,13 +93,15 @@ Ship:
 - calendar sync run tracking
 - event cache tables
 - agenda and week views
-- event-linked notes
+- event-linked notes foundation
 
 Acceptance criteria:
 
 - events sync idempotently
 - sync failures are visible
 - Today shows agenda data from the app database, not directly from Google
+- Calendar event-linked notes are local AllMe relationships and do not mutate
+  Google Calendar
 
 ### Milestone 5: Finance Hardening
 
