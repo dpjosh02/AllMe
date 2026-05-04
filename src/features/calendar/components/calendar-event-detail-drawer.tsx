@@ -7,6 +7,11 @@ import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
+import {
+  Button,
+  allMeButtonClassName,
+  type AllMeButtonVariant,
+} from "@/components/ui/button";
 import type {
   CalendarLinkedNoteMutationResult,
   CalendarProviderWriteMutationResult,
@@ -199,14 +204,14 @@ function CalendarEventDetailDrawerContent({
               </span>
             ) : null}
           </div>
-          <button
+          <Button
             aria-label="Close event details"
-            className="allme-control inline-flex h-10 w-10 shrink-0 items-center justify-center p-0"
+            className="h-10 w-10 shrink-0 p-0"
             onClick={onClose}
-            type="button"
+            variant="ghost"
           >
             <X aria-hidden="true" className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="min-h-0 overflow-y-auto p-5">
@@ -290,7 +295,7 @@ function CalendarEventDetailDrawerContent({
             <div className="flex flex-wrap gap-2">
               {todayHref ? (
                 <Link
-                  className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  className={allMeButtonClassName({ variant: "secondary" })}
                   href={todayHref}
                   onClick={onClose}
                 >
@@ -299,7 +304,7 @@ function CalendarEventDetailDrawerContent({
               ) : null}
               {event.htmlLink ? (
                 <a
-                  className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  className={allMeButtonClassName({ variant: "secondary" })}
                   href={event.htmlLink}
                   rel="noreferrer"
                   target="_blank"
@@ -397,16 +402,15 @@ function LinkedNotePanel({
             {linkedNote.body.trim() || "No AllMe note body yet."}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              className="inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10"
+            <Button
               onClick={() => setIsEditingNote((current) => !current)}
-              type="button"
+              variant={isEditingNote ? "ghost" : "secondary"}
             >
               {isEditingNote ? "Hide note editor" : "Edit AllMe note"}
-            </button>
+            </Button>
             {linkedNote.href ? (
               <Link
-                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                className={allMeButtonClassName({ variant: "secondary" })}
                 href={linkedNote.href as Route}
               >
                 Open note
@@ -481,14 +485,14 @@ function ProviderEventEditPanel({
         ) : null}
       </div>
 
-      <button
-        className="mt-4 inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+      <Button
+        className="mt-4"
         disabled={Boolean(event.recurringEventId)}
         onClick={() => setIsEditingProviderEvent((current) => !current)}
-        type="button"
+        variant={isEditingProviderEvent ? "ghost" : "secondary"}
       >
         {isEditingProviderEvent ? "Hide Google editor" : "Edit Google event"}
-      </button>
+      </Button>
 
       {event.recurringEventId ? (
         <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
@@ -521,12 +525,11 @@ function ProviderEventEditPanel({
               <span className="allme-kicker">Type</span>
               <button
                 aria-pressed={isAllDay}
-                className={[
-                  "min-h-10 rounded-xl border px-3 text-left text-sm font-semibold transition",
-                  isAllDay
-                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                    : "border-[var(--line)] bg-[var(--input)] text-[var(--foreground)]",
-                ].join(" ")}
+                className={allMeButtonClassName({
+                  fullWidth: true,
+                  variant: isAllDay ? "outline" : "secondary",
+                  className: "min-h-10 justify-start text-left text-sm",
+                })}
                 onClick={() => setIsAllDay((current) => !current)}
                 type="button"
               >
@@ -621,13 +624,9 @@ function ProviderEventEditButton() {
   const { pending } = useFormStatus();
 
   return (
-    <button
-      className="inline-flex min-h-9 w-fit items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60"
-      disabled={pending}
-      type="submit"
-    >
+    <Button disabled={pending} type="submit" variant="primary">
       {pending ? "Updating..." : "Update Google Calendar event"}
-    </button>
+    </Button>
   );
 }
 
@@ -709,14 +708,13 @@ function ProviderEventDeleteAction({
           <ProviderEventDeleteButton disabled={isDeleted} />
         </form>
       ) : (
-        <button
-          className="inline-flex min-h-9 items-center rounded-xl border border-[var(--danger)]/45 px-3 text-xs font-semibold text-[var(--danger)] opacity-50"
+        <Button
           disabled
           title="Recurring event deletion is not supported yet."
-          type="button"
+          variant="destructive"
         >
           Delete event
-        </button>
+        </Button>
       )}
       {deleteResult ? (
         <p
@@ -755,20 +753,18 @@ function ProviderEventDeleteAction({
               Don&apos;t show this again
             </label>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button
-                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              <Button
                 onClick={() => setShowDeleteConfirmation(false)}
-                type="button"
+                variant="ghost"
               >
                 Cancel
-              </button>
-              <button
-                className="inline-flex min-h-9 items-center rounded-xl bg-[var(--danger)] px-3 text-xs font-semibold text-white transition hover:opacity-90"
+              </Button>
+              <Button
                 onClick={confirmDeleteEvent}
-                type="button"
+                variant="destructive"
               >
                 Delete event
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -781,13 +777,9 @@ function ProviderEventDeleteButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <button
-      className="inline-flex min-h-9 w-fit items-center rounded-xl border border-[var(--danger)]/45 px-3 text-xs font-semibold text-[var(--danger)] transition hover:bg-[var(--danger)]/10 disabled:cursor-wait disabled:opacity-60"
-      disabled={pending || disabled}
-      type="submit"
-    >
+    <Button disabled={pending || disabled} type="submit" variant="destructive">
       {pending ? "Deleting..." : disabled ? "Event deleted" : "Delete event"}
-    </button>
+    </Button>
   );
 }
 
@@ -900,7 +892,7 @@ function LinkedNoteEditor({
           <input name="noteId" type="hidden" value={linkedNote.id} />
           <input name="title" type="hidden" value={draftTitle} />
           <input name="body" type="hidden" value={draftBody} />
-          <LinkedNoteActionButton label="Save AllMe note" tone="primary" />
+          <LinkedNoteActionButton label="Save AllMe note" variant="primary" />
         </form>
         <form
           action={publishEventNote}
@@ -926,7 +918,7 @@ function LinkedNoteEditor({
           <LinkedNoteActionButton
             label="Delete note"
             pendingLabel="Deleting..."
-            tone="danger"
+            variant="destructive"
           />
         </form>
       </div>
@@ -978,20 +970,18 @@ function LinkedNoteEditor({
               Don&apos;t show this again
             </label>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button
-                className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              <Button
                 onClick={() => setShowFirstWriteWarning(false)}
-                type="button"
+                variant="ghost"
               >
                 Cancel
-              </button>
-              <button
-                className="inline-flex min-h-9 items-center rounded-xl bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)]"
+              </Button>
+              <Button
                 onClick={confirmFirstWriteWarning}
-                type="button"
+                variant="primary"
               >
                 Publish to Google
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1088,33 +1078,24 @@ function toLinkedNoteState({
 function LinkedNoteActionButton({
   label,
   pendingLabel = "Saving...",
-  tone = "neutral",
+  variant = "secondary",
 }: {
   label: string;
   pendingLabel?: string;
-  tone?: "danger" | "neutral" | "primary";
+  variant?: AllMeButtonVariant;
 }) {
   const { pending } = useFormStatus();
-  const toneClassName = {
-    danger:
-      "border-[var(--danger)]/40 text-[var(--danger)] hover:border-[var(--danger)]",
-    neutral:
-      "border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]",
-    primary:
-      "border-[var(--accent)] bg-[var(--accent)] text-[var(--background)] hover:bg-[var(--accent-strong)]",
-  }[tone];
 
   return (
-    <button
-      className={[
-        "inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-xl border px-2.5 text-[0.72rem] font-semibold transition disabled:cursor-wait disabled:opacity-60",
-        toneClassName,
-      ].join(" ")}
+    <Button
+      className="px-2.5 text-[0.72rem]"
       disabled={pending}
+      fullWidth
       type="submit"
+      variant={variant}
     >
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }
 
@@ -1122,13 +1103,15 @@ function ProviderPublishButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <button
-      className="inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-2.5 text-[0.72rem] font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
+    <Button
+      className="px-2.5 text-[0.72rem]"
       disabled={pending || disabled}
+      fullWidth
       type="submit"
+      variant="secondary"
     >
       {pending ? "Publishing..." : "Publish to Google Calendar"}
-    </button>
+    </Button>
   );
 }
 
@@ -1142,19 +1125,15 @@ function EventReviewStatusButton({
   const { pending } = useFormStatus();
 
   return (
-    <button
+    <Button
       aria-pressed={isActive}
-      className={[
-        "rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-60",
-        isActive
-          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-          : "border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]",
-      ].join(" ")}
+      className="min-h-8 rounded-full px-3 py-1.5"
       disabled={pending}
       type="submit"
+      variant={isActive ? "outline" : "secondary"}
     >
       {pending ? "Saving..." : label}
-    </button>
+    </Button>
   );
 }
 
