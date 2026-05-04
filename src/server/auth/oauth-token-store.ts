@@ -13,6 +13,8 @@ import { authOAuthTokens } from "@/server/db/schema";
 
 type Database = typeof appDb;
 
+const googleOAuthTokenEndpoint = "https://oauth2.googleapis.com/token";
+
 export type StoredGoogleOAuthTokenInput = {
   accessToken: string;
   accountEmail: string;
@@ -34,6 +36,13 @@ export class StoredOAuthTokenUnavailableError extends Error {
   constructor(message = "Stored OAuth token is unavailable") {
     super(message);
     this.name = "StoredOAuthTokenUnavailableError";
+  }
+}
+
+export class StoredOAuthTokenMissingError extends StoredOAuthTokenUnavailableError {
+  constructor(message = "Stored OAuth token is missing") {
+    super(message);
+    this.name = "StoredOAuthTokenMissingError";
   }
 }
 
@@ -79,16 +88,26 @@ export async function upsertGoogleOAuthToken({
 }
 
 export async function getStoredGoogleOAuthAccessToken({
+  clientId = serverEnv.AUTH_GOOGLE_ID,
+  clientSecret = serverEnv.AUTH_GOOGLE_SECRET,
   db,
+  fetcher = fetch,
+  now = new Date(),
+  tokenEndpoint = googleOAuthTokenEndpoint,
   userId,
 }: {
+  clientId?: string;
+  clientSecret?: string;
   db: Database;
+  fetcher?: typeof fetch;
+  now?: Date;
+  tokenEndpoint?: string;
   userId: string;
 }): Promise<StoredGoogleOAuthAccessToken> {
   const token = await getStoredGoogleTokenRow({ db, userId });
 
   if (!token) {
-    throw new StoredOAuthTokenUnavailableError(
+    throw new StoredOAuthTokenMissingError(
       "Google Calendar OAuth token is missing; reauthorization is required",
     );
   }
@@ -101,10 +120,17 @@ export async function getStoredGoogleOAuthAccessToken({
     );
   }
 
-  if (token.expiresAt && token.expiresAt.getTime() <= Date.now()) {
-    throw new StoredOAuthTokenUnavailableError(
-      "Google Calendar OAuth token is expired; reauthorization is required",
-    );
+  if (token.expiresAt && token.expiresAt.getTime() <= now.getTime()) {
+    return refreshStoredGoogleOAuthToken({
+      clientId,
+      clientSecret,
+      db,
+      fetcher,
+      now,
+      token,
+      tokenEndpoint,
+      userId,
+    });
   }
 
   return {
@@ -113,6 +139,126 @@ export async function getStoredGoogleOAuthAccessToken({
     expiresAt: token.expiresAt,
     providerAccountId: token.providerAccountId,
     scopes,
+  };
+}
+
+async function refreshStoredGoogleOAuthToken({
+  clientId,
+  clientSecret,
+  db,
+  fetcher,
+  now,
+  token,
+  tokenEndpoint,
+  userId,
+}: {
+  clientId?: string;
+  clientSecret?: string;
+  db: Database;
+  fetcher: typeof fetch;
+  now: Date;
+  token: StoredGoogleTokenRow;
+  tokenEndpoint: string;
+  userId: string;
+}): Promise<StoredGoogleOAuthAccessToken> {
+  if (!token.refreshTokenCiphertext) {
+    throw new StoredOAuthTokenUnavailableError(
+      "Google Calendar authorization expired. Reconnect Google Calendar.",
+    );
+  }
+
+  if (!clientId || !clientSecret) {
+    throw new StoredOAuthTokenUnavailableError(
+      "Google Calendar authorization cannot be refreshed. Reconnect Google Calendar.",
+    );
+  }
+
+  const refreshToken = decryptOAuthToken(token.refreshTokenCiphertext);
+  const response = await fetcher(tokenEndpoint, {
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new StoredOAuthTokenUnavailableError(
+      "Google Calendar authorization refresh failed. Reconnect Google Calendar.",
+    );
+  }
+
+  const refreshedToken = parseGoogleOAuthRefreshResponse(await response.json());
+  const expiresAt = new Date(now.getTime() + refreshedToken.expiresIn * 1000);
+  const refreshTokenCiphertext = refreshedToken.refreshToken
+    ? encryptOAuthToken(refreshedToken.refreshToken)
+    : token.refreshTokenCiphertext;
+
+  await db
+    .update(authOAuthTokens)
+    .set({
+      accessTokenCiphertext: encryptOAuthToken(refreshedToken.accessToken),
+      expiresAt,
+      refreshTokenCiphertext,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(authOAuthTokens.userId, userId),
+        eq(authOAuthTokens.provider, googleCalendarProvider),
+      ),
+    );
+
+  return {
+    accessToken: refreshedToken.accessToken,
+    accountEmail: token.accountEmail,
+    expiresAt,
+    providerAccountId: token.providerAccountId,
+    scopes: token.scopes.join(" "),
+  };
+}
+
+function parseGoogleOAuthRefreshResponse(body: unknown) {
+  if (!isRecord(body)) {
+    throw new StoredOAuthTokenUnavailableError(
+      "Google Calendar authorization refresh returned an invalid response.",
+    );
+  }
+
+  const accessToken = body.access_token;
+  const expiresIn = body.expires_in;
+  const refreshToken = body.refresh_token;
+
+  if (typeof accessToken !== "string" || !accessToken.trim()) {
+    throw new StoredOAuthTokenUnavailableError(
+      "Google Calendar authorization refresh returned no access token.",
+    );
+  }
+
+  if (typeof expiresIn !== "number" || !Number.isFinite(expiresIn)) {
+    throw new StoredOAuthTokenUnavailableError(
+      "Google Calendar authorization refresh returned no expiry.",
+    );
+  }
+
+  if (
+    refreshToken !== undefined &&
+    (typeof refreshToken !== "string" || !refreshToken.trim())
+  ) {
+    throw new StoredOAuthTokenUnavailableError(
+      "Google Calendar authorization refresh returned an invalid refresh token.",
+    );
+  }
+
+  return {
+    accessToken,
+    expiresIn,
+    refreshToken: typeof refreshToken === "string" ? refreshToken : null,
   };
 }
 
@@ -181,6 +327,14 @@ async function getStoredGoogleTokenRow({
     .limit(1);
 
   return tokens.length > 0 ? tokens[0] : null;
+}
+
+type StoredGoogleTokenRow = NonNullable<
+  Awaited<ReturnType<typeof getStoredGoogleTokenRow>>
+>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function getOAuthEncryptionKey() {

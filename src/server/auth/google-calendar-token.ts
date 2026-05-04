@@ -9,6 +9,7 @@ import { serverEnv } from "@/lib/env";
 import { db } from "@/server/db";
 import {
   getStoredGoogleOAuthAccessToken,
+  StoredOAuthTokenMissingError,
   StoredOAuthTokenUnavailableError,
 } from "@/server/auth/oauth-token-store";
 
@@ -35,7 +36,11 @@ export async function resolveGoogleCalendarAccessToken({
   try {
     return await getStoredGoogleOAuthAccessToken({ db, userId });
   } catch (error) {
-    if (!(error instanceof StoredOAuthTokenUnavailableError)) {
+    if (error instanceof StoredOAuthTokenMissingError) {
+      // Older dev sessions may only have token claims in the Auth.js JWT.
+    } else if (error instanceof StoredOAuthTokenUnavailableError) {
+      throw new GoogleCalendarAccessTokenUnavailableError(error.message);
+    } else {
       throw error;
     }
   }
