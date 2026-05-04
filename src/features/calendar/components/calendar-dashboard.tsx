@@ -142,11 +142,11 @@ export function CalendarDashboardInteractive({
 
       <PageGridItem span="full">
         <AllMeCard
-          className="flex max-h-[38rem] min-h-0 flex-col"
+          className="flex max-h-[42rem] min-h-0 flex-col"
           variant="activity"
         >
           <PageSection
-            className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+            className="flex min-h-0 flex-1 flex-col"
             description={`Selected-calendar plan for the next seven local days in ${data.timezone}.`}
             eyebrow="Planning"
             icon={
@@ -174,11 +174,11 @@ export function CalendarDashboardInteractive({
 
       <PageGridItem span="full">
         <AllMeCard
-          className="flex max-h-[28rem] min-h-0 flex-col overflow-hidden"
+          className="flex max-h-[30rem] min-h-0 flex-col overflow-hidden"
           variant="activity"
         >
           <PageSection
-            className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+            className="flex min-h-0 flex-1 flex-col"
             description="Quick access to upcoming cached events from selected calendars."
             eyebrow="Agenda"
             icon={<CalendarDays aria-hidden="true" className="h-6 w-6" />}

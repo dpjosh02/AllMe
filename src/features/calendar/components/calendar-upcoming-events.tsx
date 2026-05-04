@@ -29,7 +29,7 @@ export function CalendarUpcomingEvents({
   }
 
   return (
-    <div className="min-h-0 overflow-y-auto pr-1">
+    <div className="min-h-0 flex-1 overflow-y-auto pr-1">
       <div className="grid gap-2">
         {events.map((event) => (
           <UpcomingEventRow
