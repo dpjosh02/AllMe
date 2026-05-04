@@ -485,9 +485,18 @@ function ProviderEventEditPanel({
         className="mt-4 inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={Boolean(event.recurringEventId)}
         onClick={() => setIsEditingProviderEvent((current) => !current)}
+        title={
+          event.recurringEventId
+            ? "Recurring event edits are not supported yet."
+            : undefined
+        }
         type="button"
       >
-        {isEditingProviderEvent ? "Hide Google editor" : "Edit Google event"}
+        {event.recurringEventId
+          ? "Google edits unavailable"
+          : isEditingProviderEvent
+            ? "Hide Google editor"
+            : "Edit Google event"}
       </button>
 
       {event.recurringEventId ? (
@@ -869,6 +878,7 @@ function LinkedNoteEditor({
     lastPublishedBody,
     linkedNoteBody: linkedNote.body,
     publishResult,
+    recurringEventId: event.recurringEventId,
   });
 
   return (
@@ -908,7 +918,14 @@ function LinkedNoteEditor({
           ref={publishFormRef}
         >
           <input name="eventId" type="hidden" value={event.id} />
-          <ProviderPublishButton disabled={hasUnsavedChanges} />
+          <ProviderPublishButton
+            disabled={hasUnsavedChanges || Boolean(event.recurringEventId)}
+            title={
+              event.recurringEventId
+                ? "Recurring event note publishing is not supported yet."
+                : undefined
+            }
+          />
         </form>
         <form
           action={deleteEventNote}
@@ -945,7 +962,9 @@ function LinkedNoteEditor({
           "text-xs font-semibold",
           providerStatus.tone === "danger"
             ? "text-[var(--danger)]"
-            : providerStatus.tone === "success"
+            : providerStatus.tone === "warn"
+              ? "text-[var(--warn)]"
+              : providerStatus.tone === "success"
               ? "text-[var(--success)]"
               : "text-[var(--muted)]",
         ].join(" ")}
@@ -1005,12 +1024,22 @@ function getProviderPublishStatus({
   lastPublishedBody,
   linkedNoteBody,
   publishResult,
+  recurringEventId,
 }: {
   hasUnsavedChanges: boolean;
   lastPublishedBody: string | null;
   linkedNoteBody: string;
   publishResult: CalendarProviderWriteMutationResult | null;
+  recurringEventId: string | null;
 }) {
+  if (recurringEventId) {
+    return {
+      message:
+        "Local note only. Google publishing for repeating events is blocked until recurrence write flows are implemented.",
+      tone: "warn" as const,
+    };
+  }
+
   if (hasUnsavedChanges) {
     return {
       message: "Local changes are not published. Save the AllMe note first.",
@@ -1118,13 +1147,20 @@ function LinkedNoteActionButton({
   );
 }
 
-function ProviderPublishButton({ disabled }: { disabled: boolean }) {
+function ProviderPublishButton({
+  disabled,
+  title,
+}: {
+  disabled: boolean;
+  title?: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
     <button
       className="inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-2.5 text-[0.72rem] font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
       disabled={pending || disabled}
+      title={title}
       type="submit"
     >
       {pending ? "Publishing..." : "Publish to Google Calendar"}
