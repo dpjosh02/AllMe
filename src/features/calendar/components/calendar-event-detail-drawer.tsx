@@ -250,28 +250,6 @@ function CalendarEventDetailDrawerContent({
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            {todayHref ? (
-              <Link
-                className="inline-flex rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                href={todayHref}
-                onClick={onClose}
-              >
-                Review day in Today
-              </Link>
-            ) : null}
-            {event.htmlLink ? (
-              <a
-                className="inline-flex rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                href={event.htmlLink}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Open in Google Calendar
-              </a>
-            ) : null}
-          </div>
-
           <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
             <p className="allme-kicker">Overview</p>
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -296,11 +274,36 @@ function CalendarEventDetailDrawerContent({
             event={event}
             updateGoogleCalendarEvent={updateGoogleCalendarEvent}
           />
+        </div>
 
-          <ProviderEventDeletePanel
-            deleteGoogleCalendarEvent={deleteGoogleCalendarEvent}
-            event={event}
-          />
+        <div className="border-t border-[var(--line)] bg-[var(--panel-strong)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {todayHref ? (
+                <Link
+                  className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  href={todayHref}
+                  onClick={onClose}
+                >
+                  Review day in Today
+                </Link>
+              ) : null}
+              {event.htmlLink ? (
+                <a
+                  className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  href={event.htmlLink}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open in Google Calendar
+                </a>
+              ) : null}
+            </div>
+            <ProviderEventDeleteAction
+              deleteGoogleCalendarEvent={deleteGoogleCalendarEvent}
+              event={event}
+            />
+          </div>
         </div>
       </section>
     </div>
@@ -623,7 +626,7 @@ function ProviderEventEditButton() {
   );
 }
 
-function ProviderEventDeletePanel({
+function ProviderEventDeleteAction({
   deleteGoogleCalendarEvent,
   event,
 }: {
@@ -639,7 +642,6 @@ function ProviderEventDeletePanel({
   const [dontShowConfirmationAgain, setDontShowConfirmationAgain] =
     useState(false);
   const [isDeleted, setIsDeleted] = useState(event.status === "cancelled");
-  const [isShowingDeleteOptions, setIsShowingDeleteOptions] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   async function deleteProviderEvent(formData: FormData) {
@@ -678,52 +680,37 @@ function ProviderEventDeletePanel({
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[var(--empty)] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="allme-kicker text-[var(--danger)]">Danger zone</p>
-          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-            Destructive provider actions are hidden by default.
-          </p>
-        </div>
-        <button
-          className="inline-flex min-h-9 items-center rounded-xl border border-[var(--danger)]/45 px-3 text-xs font-semibold text-[var(--danger)] transition hover:bg-[var(--danger)]/10"
-          onClick={() => setIsShowingDeleteOptions((current) => !current)}
-          type="button"
-        >
-          {isShowingDeleteOptions ? "Hide delete options" : "Show delete options"}
-        </button>
-      </div>
-
-      {isShowingDeleteOptions && event.recurringEventId ? (
-        <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
-          Recurring event deletion is not supported in this slice. Open Google
-          Calendar for recurrence changes.
-        </p>
-      ) : null}
-
-      {isShowingDeleteOptions && !event.recurringEventId ? (
+    <div className="flex flex-col items-end gap-1">
+      {!event.recurringEventId ? (
         <form
           action={deleteProviderEvent}
-          className="mt-4 grid gap-2"
           onSubmit={handleDeleteSubmit}
           ref={deleteFormRef}
         >
           <input name="eventId" type="hidden" value={event.id} />
           <ProviderEventDeleteButton disabled={isDeleted} />
-          {deleteResult ? (
-            <p
-              className={[
-                "text-xs font-semibold",
-                deleteResult.status === "succeeded"
-                  ? "text-[var(--success)]"
-                  : "text-[var(--danger)]",
-              ].join(" ")}
-            >
-              {deleteResult.message}
-            </p>
-          ) : null}
         </form>
+      ) : (
+        <button
+          className="inline-flex min-h-9 items-center rounded-xl border border-[var(--danger)]/45 px-3 text-xs font-semibold text-[var(--danger)] opacity-50"
+          disabled
+          title="Recurring event deletion is not supported yet."
+          type="button"
+        >
+          Delete event
+        </button>
+      )}
+      {deleteResult ? (
+        <p
+          className={[
+            "max-w-56 text-right text-xs font-semibold",
+            deleteResult.status === "succeeded"
+              ? "text-[var(--success)]"
+              : "text-[var(--danger)]",
+          ].join(" ")}
+        >
+          {deleteResult.message}
+        </p>
       ) : null}
 
       {showDeleteConfirmation ? (
@@ -868,107 +855,85 @@ function LinkedNoteEditor({
 
   return (
     <div className="mt-4 grid gap-3">
-      <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-        <div>
-          <p className="allme-kicker">AllMe note</p>
-          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-            Local workspace. Saving updates the same note shown in Notes and
-            does not change Google Calendar.
-          </p>
-        </div>
-        <form action={saveAllMeNote} className="mt-3 grid gap-3">
+      <p className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+        Saving updates AllMe only. Publishing copies the saved note body into
+        the real Google Calendar event description.
+      </p>
+      <label className="grid gap-1.5">
+        <span className="allme-kicker">Title</span>
+        <input
+          className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+          onChange={(event) => setDraftTitle(event.target.value)}
+          required
+          value={draftTitle}
+        />
+      </label>
+      <label className="grid gap-1.5">
+        <span className="allme-kicker">Note</span>
+        <textarea
+          className="min-h-36 resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+          onChange={(event) => setDraftBody(event.target.value)}
+          placeholder="Add prep notes, context, follow-ups, or decisions..."
+          value={draftBody}
+        />
+      </label>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <form action={saveAllMeNote}>
           <input name="noteId" type="hidden" value={linkedNote.id} />
-          <label className="grid gap-1.5">
-            <span className="allme-kicker">Title</span>
-            <input
-              className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
-              name="title"
-              onChange={(event) => setDraftTitle(event.target.value)}
-              required
-              value={draftTitle}
-            />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="allme-kicker">Note</span>
-            <textarea
-              className="min-h-36 resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
-              name="body"
-              onChange={(event) => setDraftBody(event.target.value)}
-              placeholder="Add prep notes, context, follow-ups, or decisions..."
-              value={draftBody}
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <LinkedNoteActionButton label="Save AllMe note" tone="primary" />
-            {hasUnsavedChanges ? (
-              <span className="text-xs font-semibold text-[var(--warn)]">
-                Unsaved local changes
-              </span>
-            ) : null}
-          </div>
+          <input name="title" type="hidden" value={draftTitle} />
+          <input name="body" type="hidden" value={draftBody} />
+          <LinkedNoteActionButton label="Save AllMe note" tone="primary" />
         </form>
-        {localSaveMessage ? (
-          <p className="mt-2 text-xs font-semibold text-[var(--success)]">
-            {localSaveMessage}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="rounded-xl border border-[var(--accent)]/35 bg-[var(--empty)] p-3">
-        <p className="allme-kicker text-[var(--accent)]">
-          Google Calendar description
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-          Publishing copies the saved AllMe note body into the real Google
-          Calendar event description. Other event fields are not changed.
-        </p>
         <form
           action={publishEventNote}
-          className="mt-3"
           onSubmit={handlePublishSubmit}
           ref={publishFormRef}
         >
           <input name="eventId" type="hidden" value={event.id} />
           <ProviderPublishButton disabled={hasUnsavedChanges} />
         </form>
-        <p
-          className={[
-            "mt-2 text-xs font-semibold",
-            providerStatus.tone === "danger"
-              ? "text-[var(--danger)]"
-              : providerStatus.tone === "success"
-                ? "text-[var(--success)]"
-                : "text-[var(--muted)]",
-          ].join(" ")}
+        <form
+          action={deleteEventNote}
+          onSubmit={(submitEvent) => {
+            if (
+              !window.confirm(
+                "Delete this AllMe note? This removes the note from Notes and Calendar, but does not change Google Calendar.",
+              )
+            ) {
+              submitEvent.preventDefault();
+            }
+          }}
         >
-          {providerStatus.message}
-        </p>
+          <input name="noteId" type="hidden" value={linkedNote.id} />
+          <LinkedNoteActionButton
+            label="Delete note"
+            pendingLabel="Deleting..."
+            tone="danger"
+          />
+        </form>
       </div>
-
-      <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-        <p className="allme-kicker">Note actions</p>
-        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-          Delete note removes the AllMe note from Calendar and Notes only.
-          Google Calendar is not changed.
+      {hasUnsavedChanges ? (
+        <p className="text-xs font-semibold text-[var(--warn)]">
+          Unsaved local changes. Save before publishing.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <form
-            action={deleteEventNote}
-            onSubmit={(submitEvent) => {
-              if (
-                !window.confirm(
-                  "Delete this AllMe note? This removes the note from Notes and Calendar, but does not change Google Calendar.",
-                )
-              ) {
-                submitEvent.preventDefault();
-              }
-            }}
-          >
-            <input name="noteId" type="hidden" value={linkedNote.id} />
-            <LinkedNoteActionButton label="Delete AllMe note" tone="danger" />
-          </form>
-        </div>
-      </div>
+      ) : null}
+      {localSaveMessage ? (
+        <p className="text-xs font-semibold text-[var(--success)]">
+          {localSaveMessage}
+        </p>
+      ) : null}
+      <p
+        className={[
+          "text-xs font-semibold",
+          providerStatus.tone === "danger"
+            ? "text-[var(--danger)]"
+            : providerStatus.tone === "success"
+              ? "text-[var(--success)]"
+              : "text-[var(--muted)]",
+        ].join(" ")}
+      >
+        {providerStatus.message}
+      </p>
 
       {showFirstWriteWarning ? (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4 backdrop-blur-sm">
@@ -1104,9 +1069,11 @@ function toLinkedNoteState({
 
 function LinkedNoteActionButton({
   label,
+  pendingLabel = "Saving...",
   tone = "neutral",
 }: {
   label: string;
+  pendingLabel?: string;
   tone?: "danger" | "neutral" | "primary";
 }) {
   const { pending } = useFormStatus();
@@ -1122,13 +1089,13 @@ function LinkedNoteActionButton({
   return (
     <button
       className={[
-        "inline-flex min-h-9 items-center rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-60",
+        "inline-flex min-h-9 w-full items-center justify-center rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-60",
         toneClassName,
       ].join(" ")}
       disabled={pending}
       type="submit"
     >
-      {pending ? "Saving..." : label}
+      {pending ? pendingLabel : label}
     </button>
   );
 }
@@ -1138,11 +1105,11 @@ function ProviderPublishButton({ disabled }: { disabled: boolean }) {
 
   return (
     <button
-      className="inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60"
+      className="inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
       disabled={pending || disabled}
       type="submit"
     >
-      {pending ? "Publishing..." : "Publish note to Google Calendar"}
+      {pending ? "Publishing..." : "Publish to Google Calendar"}
     </button>
   );
 }
