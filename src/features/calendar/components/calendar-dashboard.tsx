@@ -243,10 +243,10 @@ function TodayActionStrip({
           {formatEventCount(events.length)}
         </span>
       </div>
-      <div className="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-4">
-        {events.slice(0, 4).map((event) => (
+      <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
+        {events.map((event) => (
           <button
-            className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-left transition hover:border-[var(--accent)]"
+            className="h-14 w-56 shrink-0 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-left transition hover:border-[var(--accent)]"
             key={event.id}
             onClick={() => openEvent(event)}
             type="button"
@@ -266,11 +266,6 @@ function TodayActionStrip({
           </button>
         ))}
       </div>
-      {events.length > 4 ? (
-        <p className="mt-2 text-xs font-semibold text-[var(--muted)]">
-          +{events.length - 4} more visible in the Planning view.
-        </p>
-      ) : null}
     </div>
   );
 }
