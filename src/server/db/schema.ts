@@ -52,6 +52,16 @@ export const calendarEventReviewStatus = pgEnum("calendar_event_review_status", 
   "ignored",
 ]);
 
+export const calendarProviderWriteOperation = pgEnum(
+  "calendar_provider_write_operation",
+  ["create_event", "update_event", "delete_event", "publish_note_description"],
+);
+
+export const calendarProviderWriteStatus = pgEnum(
+  "calendar_provider_write_status",
+  ["pending", "running", "succeeded", "failed", "conflict", "skipped"],
+);
+
 export const financeCategoryAssignmentSource = pgEnum(
   "finance_category_assignment_source",
   ["manual", "rule", "system", "uncategorized"],
@@ -387,6 +397,63 @@ export const calendarSyncRuns = pgTable(
       table.calendarId,
       table.createdAt,
     ),
+  }),
+);
+
+export const calendarProviderWriteAudit = pgTable(
+  "calendar_provider_write_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id").references(() => calendarConnections.id, {
+      onDelete: "set null",
+    }),
+    calendarId: uuid("calendar_id").references(() => calendarCalendars.id, {
+      onDelete: "set null",
+    }),
+    eventId: uuid("event_id").references(() => calendarEvents.id, {
+      onDelete: "set null",
+    }),
+    sourceCalendarId: text("source_calendar_id").notNull(),
+    sourceEventId: text("source_event_id"),
+    operation: calendarProviderWriteOperation("operation").notNull(),
+    status: calendarProviderWriteStatus("status").notNull().default("pending"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    entryPoint: text("entry_point")
+      .$type<"calendar" | "today">()
+      .notNull()
+      .default("calendar"),
+    scopeSnapshot: jsonb("scope_snapshot").$type<string[]>().notNull().default([]),
+    requestPatch: jsonb("request_patch")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    previousEtag: text("previous_etag"),
+    providerEtag: text("provider_etag"),
+    providerUpdatedAt: timestamp("provider_updated_at", { withTimezone: true }),
+    errorCode: text("error_code"),
+    errorSummary: text("error_summary"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userCreatedIdx: index("calendar_provider_write_audit_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userEventCreatedIdx: index(
+      "calendar_provider_write_audit_user_event_created_idx",
+    ).on(table.userId, table.eventId, table.createdAt),
+    userIdempotencyUnique: uniqueIndex(
+      "calendar_provider_write_audit_user_idempotency_unique",
+    ).on(table.userId, table.idempotencyKey),
+    userStatusCreatedIdx: index(
+      "calendar_provider_write_audit_user_status_created_idx",
+    ).on(table.userId, table.status, table.createdAt),
   }),
 );
 

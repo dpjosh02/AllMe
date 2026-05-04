@@ -85,6 +85,13 @@
       "when": 1777867145984,
       "tag": "0011_opposite_mentallo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777909664309,
+      "tag": "0012_bizarre_sentinel",
+      "breakpoints": true
     }
   ]
 }
