@@ -78,6 +78,13 @@
       "when": 1777865449977,
       "tag": "0010_first_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777867145984,
+      "tag": "0011_opposite_mentallo",
+      "breakpoints": true
     }
   ]
 }

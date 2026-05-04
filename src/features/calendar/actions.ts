@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, or, type SQL } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { syncGoogleCalendarIncremental } from "@/features/calendar/sync/initial-full-sync";
@@ -92,11 +92,22 @@ export async function updateCalendarEventReviewStatus(formData: FormData) {
 export async function createLinkedNoteFromCalendarEvent(formData: FormData) {
   const user = await requireOwnerUser();
   const eventId = getCalendarEventId(formData);
-  const linkScope = parseCalendarEventNoteLinkScope(formData);
   const event = await getCalendarEventForLink({ eventId, userId: user.id });
 
   if (!event) {
     throw new Error("Calendar event not found.");
+  }
+
+  const existingNote = await getExistingCalendarEventNote({
+    eventId: event.id,
+    userId: user.id,
+  });
+
+  if (existingNote) {
+    return toCalendarLinkedNoteMutationResult({
+      note: existingNote,
+      scope: "event_instance",
+    });
   }
 
   const [createdNote] = await db.transaction(async (tx) => {
@@ -119,7 +130,6 @@ export async function createLinkedNoteFromCalendarEvent(formData: FormData) {
 
     await replaceCalendarEventNoteLink({
       event,
-      linkScope,
       noteId: note.id,
       tx,
       userId: user.id,
@@ -132,68 +142,39 @@ export async function createLinkedNoteFromCalendarEvent(formData: FormData) {
 
   return toCalendarLinkedNoteMutationResult({
     note: createdNote,
-    scope: linkScope,
+    scope: "event_instance",
   });
 }
 
-export async function linkExistingNoteToCalendarEvent(formData: FormData) {
+export async function deleteLinkedCalendarNote(formData: FormData) {
   const user = await requireOwnerUser();
-  const eventId = getCalendarEventId(formData);
   const noteId = String(formData.get("noteId") ?? "");
-  const linkScope = parseCalendarEventNoteLinkScope(formData);
 
   if (!noteId) {
     throw new Error("Missing note target.");
   }
 
-  const [event, note] = await Promise.all([
-    getCalendarEventForLink({ eventId, userId: user.id }),
-    getNoteForLink({ noteId, userId: user.id }),
-  ]);
+  const [link] = await db
+    .select({ noteId: calendarEventNoteLinks.noteId })
+    .from(calendarEventNoteLinks)
+    .where(
+      and(
+        eq(calendarEventNoteLinks.noteId, noteId),
+        eq(calendarEventNoteLinks.userId, user.id),
+      ),
+    )
+    .limit(1);
 
-  if (!event) {
-    throw new Error("Calendar event not found.");
-  }
-
-  if (!note) {
-    throw new Error("Note not found.");
-  }
-
-  await db.transaction(async (tx) => {
-    await replaceCalendarEventNoteLink({
-      event,
-      linkScope,
-      noteId: note.id,
-      tx,
-      userId: user.id,
-    });
-  });
-
-  revalidateCalendarNoteViews(note.id);
-}
-
-export async function unlinkNoteFromCalendarEvent(formData: FormData) {
-  const user = await requireOwnerUser();
-  const eventId = getCalendarEventId(formData);
-  const noteId = String(formData.get("noteId") ?? "");
-  const linkScope = parseCalendarEventNoteLinkScope(formData);
-  const event = await getCalendarEventForLink({ eventId, userId: user.id });
-
-  if (!noteId) {
-    throw new Error("Missing note target.");
-  }
-
-  if (!event) {
-    throw new Error("Calendar event not found.");
+  if (!link) {
+    throw new Error("Linked calendar note not found.");
   }
 
   await db
-    .delete(calendarEventNoteLinks)
+    .delete(notes)
     .where(
       and(
-        eq(calendarEventNoteLinks.userId, user.id),
-        eq(calendarEventNoteLinks.noteId, noteId),
-        getCalendarEventNoteLinkTargetPredicate({ event, linkScope }),
+        eq(notes.id, noteId),
+        eq(notes.userId, user.id),
       ),
     );
 
@@ -296,17 +277,29 @@ async function getCalendarEventForLink({
   return event ?? null;
 }
 
-async function getNoteForLink({
-  noteId,
+async function getExistingCalendarEventNote({
+  eventId,
   userId,
 }: {
-  noteId: string;
+  eventId: string;
   userId: string;
 }) {
   const [note] = await db
-    .select({ id: notes.id })
-    .from(notes)
-    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)))
+    .select({
+      body: notes.body,
+      id: notes.id,
+      noteDate: notes.noteDate,
+      title: notes.title,
+    })
+    .from(calendarEventNoteLinks)
+    .innerJoin(notes, eq(notes.id, calendarEventNoteLinks.noteId))
+    .where(
+      and(
+        eq(calendarEventNoteLinks.userId, userId),
+        eq(calendarEventNoteLinks.eventId, eventId),
+        eq(notes.userId, userId),
+      ),
+    )
     .limit(1);
 
   return note ?? null;
@@ -314,13 +307,11 @@ async function getNoteForLink({
 
 async function replaceCalendarEventNoteLink({
   event,
-  linkScope,
   noteId,
   tx,
   userId,
 }: {
   event: CalendarEventForLink;
-  linkScope: CalendarEventNoteLinkScope;
   noteId: string;
   tx: CalendarEventNoteLinkTransaction;
   userId: string;
@@ -330,54 +321,19 @@ async function replaceCalendarEventNoteLink({
     .where(
       and(
         eq(calendarEventNoteLinks.userId, userId),
-        getCalendarEventNoteLinkTargetPredicate({ event, linkScope }),
+        eq(calendarEventNoteLinks.eventId, event.id),
       ),
     );
 
   await tx.insert(calendarEventNoteLinks).values({
     calendarId: event.calendarId,
-    eventId: linkScope === "event_instance" ? event.id : null,
+    eventId: event.id,
     noteId,
-    recurringEventId:
-      linkScope === "recurring_series" ? event.recurringEventId : null,
-    scope: linkScope,
-    sourceIcalUid: linkScope === "recurring_series" ? event.sourceIcalUid : null,
+    recurringEventId: null,
+    scope: "event_instance",
+    sourceIcalUid: null,
     userId,
   });
-}
-
-function getCalendarEventNoteLinkTargetPredicate({
-  event,
-  linkScope,
-}: {
-  event: CalendarEventForLink;
-  linkScope: CalendarEventNoteLinkScope;
-}): SQL {
-  if (linkScope === "event_instance") {
-    return and(
-      eq(calendarEventNoteLinks.scope, "event_instance"),
-      eq(calendarEventNoteLinks.eventId, event.id),
-    ) as SQL;
-  }
-
-  const seriesPredicates = [
-    event.sourceIcalUid
-      ? eq(calendarEventNoteLinks.sourceIcalUid, event.sourceIcalUid)
-      : null,
-    event.recurringEventId
-      ? eq(calendarEventNoteLinks.recurringEventId, event.recurringEventId)
-      : null,
-  ].filter((predicate): predicate is SQL => Boolean(predicate));
-
-  if (seriesPredicates.length === 0) {
-    throw new Error("Calendar event does not have recurring-series identity.");
-  }
-
-  return and(
-    eq(calendarEventNoteLinks.scope, "recurring_series"),
-    eq(calendarEventNoteLinks.calendarId, event.calendarId),
-    or(...seriesPredicates),
-  ) as SQL;
 }
 
 function getCalendarEventId(formData: FormData) {
@@ -388,21 +344,6 @@ function getCalendarEventId(formData: FormData) {
   }
 
   return eventId;
-}
-
-function parseCalendarEventNoteLinkScope(
-  formData: FormData,
-): CalendarEventNoteLinkScope {
-  const linkScope = String(formData.get("linkScope") ?? "event_instance");
-
-  if (
-    linkScope === "event_instance" ||
-    linkScope === "recurring_series"
-  ) {
-    return linkScope;
-  }
-
-  throw new Error("Invalid calendar event note link scope.");
 }
 
 function revalidateCalendarNoteViews(noteId: string) {

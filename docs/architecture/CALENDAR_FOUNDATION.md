@@ -381,19 +381,22 @@ Phase 2.1 foundation:
 
 - `calendar_event_note_links` stores local AllMe note relationships without
   modifying Google Calendar provider fields.
+- Calendar event notes are one-note-per-event local workspaces. Saving from the
+  Calendar drawer updates the existing `notes` row instead of creating another
+  note.
 - Instance links use `scope = event_instance` and target one concrete
-  `calendar_events.id`.
-- Recurring-series links use `scope = recurring_series` and target
-  `calendar_id + source_ical_uid`, with `recurring_event_id` retained as
-  supporting provider context.
-- Calendar and Today read models prefer instance links, then fall back to
-  matching recurring-series links.
+  `calendar_events.id`; the database enforces one link per user/event pair.
 - Created linked notes are normal `notes` rows, so they appear in Notes and can
   be opened through the existing note/capture route.
-- Unlinking removes the AllMe local relationship only; it does not delete the
-  note or change Google Calendar.
-- Link-existing-note remains a server action foundation; a picker/search UI is
-  deferred until Notes has a stronger note selection surface.
+- There is no unlink flow in v1. Removing an event note means deleting the note,
+  which cascades the local Calendar relationship and lets the user create a new
+  event note later.
+- Google Calendar remains read-only in this phase. Future controlled provider
+  writes may map this event note body to the Google Calendar event description.
+- Recurring-series note sharing remains a schema/read-model capability, but the
+  current user flow creates and edits one event-instance note at a time.
+- Link-existing-note remains deferred until Notes has a stronger note selection
+  surface.
 
 ## Deferred Enhancements
 

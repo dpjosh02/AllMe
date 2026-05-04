@@ -327,6 +327,10 @@ export const calendarEventNoteLinks = pgTable(
       table.userId,
       table.eventId,
     ),
+    userEventUnique: uniqueIndex("calendar_event_note_links_user_event_unique").on(
+      table.userId,
+      table.eventId,
+    ),
     userNoteIdx: index("calendar_event_note_links_user_note_idx").on(
       table.userId,
       table.noteId,

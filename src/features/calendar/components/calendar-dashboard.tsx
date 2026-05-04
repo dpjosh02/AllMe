@@ -37,7 +37,7 @@ type CalendarEventCollectionItem = {
 export function CalendarDashboardInteractive({
   createLinkedNoteFromEvent,
   data,
-  unlinkNoteFromEvent,
+  deleteLinkedNote,
   updateLinkedNote,
   updateCalendarSelection,
   updateEventReviewStatus,
@@ -46,7 +46,7 @@ export function CalendarDashboardInteractive({
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
   data: CalendarPageData;
-  unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
+  deleteLinkedNote: (formData: FormData) => Promise<void>;
   updateLinkedNote: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
@@ -228,10 +228,10 @@ export function CalendarDashboardInteractive({
       />
       <CalendarEventDetailDrawer
         createLinkedNoteFromEvent={createLinkedNoteFromEvent}
+        deleteLinkedNote={deleteLinkedNote}
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
         onReviewStatusChange={updateLocalReviewStatus}
-        unlinkNoteFromEvent={unlinkNoteFromEvent}
         updateLinkedNote={updateLinkedNote}
         updateEventReviewStatus={updateEventReviewStatus}
       />

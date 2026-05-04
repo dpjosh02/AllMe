@@ -1,11 +1,12 @@
 "use server";
 
-import { and, eq, isNull, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireCurrentUser } from "@/server/auth/guards";
 import { db } from "@/server/db";
-import { notes } from "@/server/db/schema";
+import { calendarEventNoteLinks, notes } from "@/server/db/schema";
 
 export type CaptureSaveState = {
   savedAt: string | null;
@@ -110,6 +111,39 @@ export async function restoreCapture(formData: FormData) {
     );
 
   revalidateCaptureViews(captureId);
+}
+
+export async function deleteCapture(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const captureId = getCaptureId(formData);
+
+  const [link] = await db
+    .select({ noteId: calendarEventNoteLinks.noteId })
+    .from(calendarEventNoteLinks)
+    .where(
+      and(
+        eq(calendarEventNoteLinks.noteId, captureId),
+        eq(calendarEventNoteLinks.userId, currentUser.id),
+      ),
+    )
+    .limit(1);
+
+  if (!link) {
+    throw new Error("Linked calendar note not found");
+  }
+
+  await db
+    .delete(notes)
+    .where(
+      and(
+        eq(notes.id, captureId),
+        eq(notes.userId, currentUser.id),
+        isNull(notes.noteDate),
+      ),
+    );
+
+  revalidateCaptureViews(captureId);
+  redirect("/notes");
 }
 
 function getCaptureId(formData: FormData) {

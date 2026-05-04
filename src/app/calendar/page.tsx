@@ -10,8 +10,8 @@ import {
 } from "@/components/layout/page-scaffold";
 import {
   createLinkedNoteFromCalendarEvent,
+  deleteLinkedCalendarNote,
   syncGoogleCalendarNow,
-  unlinkNoteFromCalendarEvent,
   updateLinkedCalendarNote,
   updateCalendarEventReviewStatus,
   updateCalendarSelection,
@@ -54,7 +54,7 @@ export default async function CalendarPage() {
         <CalendarDashboardInteractive
           createLinkedNoteFromEvent={createLinkedNoteFromCalendarEvent}
           data={data}
-          unlinkNoteFromEvent={unlinkNoteFromCalendarEvent}
+          deleteLinkedNote={deleteLinkedCalendarNote}
           updateLinkedNote={updateLinkedCalendarNote}
           updateCalendarSelection={updateCalendarSelection}
           updateEventReviewStatus={updateCalendarEventReviewStatus}

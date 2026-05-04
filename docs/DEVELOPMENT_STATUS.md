@@ -37,7 +37,7 @@ Implemented:
 - First Settings foundation slice with owner preferences, timezone/currency persistence, read-only Fintable/Auth integration status, and Fintable sync health visibility.
 - First auth-boundary decision slice documented in `docs/architecture/AUTH_BOUNDARY.md` and surfaced in Settings.
 - Calendar v1 is now a read-only local-cache planning surface backed by Google Calendar OAuth/sync. `/calendar` includes sync action/status, source visibility filters, a next-seven-days planner, next-events list, day agenda drawer, event detail drawer, and local AllMe review states (`Needs prep`, `Done`, `Ignored`, `Unreviewed`). Today consumes cached calendar rows only; Google Calendar writes remain deferred.
-- Calendar Phase 2.1 adds local event-linked notes through `calendar_event_note_links`. Links can target one event instance or a recurring-series identity, appear in Calendar/Today/Notes read models, and remain separate from Google Calendar provider writes.
+- Calendar Phase 2.1 adds local event notes through `calendar_event_note_links`. The current user flow supports one note per event, inline Calendar editing of the same Notes row, open-in-Notes, and delete-from-Calendar-or-Notes behavior. Google Calendar provider writes remain deferred.
 
 ## Verified Local Import
 

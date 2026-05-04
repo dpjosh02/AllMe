@@ -102,6 +102,8 @@ Acceptance criteria:
 - Today shows agenda data from the app database, not directly from Google
 - Calendar event-linked notes are local AllMe relationships and do not mutate
   Google Calendar
+- event notes are one-note-per-event local workspaces that can be edited from
+  Calendar or Notes and deleted to remove the relationship
 
 ### Milestone 5: Finance Hardening
 

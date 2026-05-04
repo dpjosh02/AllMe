@@ -51,7 +51,13 @@ export async function getCaptureDetail({
     )
     .limit(1);
 
-  return rows.length > 0 ? rows[0] : null;
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const [capture] = await attachLinkedCalendarNoteState({ notes: rows, userId });
+
+  return capture ?? null;
 }
 
 async function getActiveCaptures(userId: string) {

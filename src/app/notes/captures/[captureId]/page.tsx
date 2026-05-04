@@ -13,6 +13,7 @@ import {
 } from "@/components/layout/page-scaffold";
 import { completeCapture, restoreCapture } from "@/features/notes/actions";
 import { CaptureDetailForm } from "@/features/notes/components/capture-detail-form";
+import { DeleteCaptureForm } from "@/features/notes/components/delete-capture-form";
 import { getCaptureDetail } from "@/features/notes/queries";
 import { requirePageUser } from "@/server/auth/guards";
 
@@ -122,6 +123,18 @@ export default async function CaptureDetailPage({
                 </form>
               </PageSection>
             </AllMeCard>
+
+            {capture.isLinkedToCalendarEvent ? (
+              <AllMeCard variant="status">
+                <PageSection
+                  description="Deleting this note removes the event note relationship and the note body. Google Calendar is not changed yet."
+                  eyebrow="Calendar"
+                  title="Event note"
+                >
+                  <DeleteCaptureForm captureId={capture.id} />
+                </PageSection>
+              </AllMeCard>
+            ) : null}
           </div>
         </PageGridItem>
       </PageGrid>
