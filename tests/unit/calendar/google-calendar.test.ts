@@ -138,6 +138,52 @@ describe("Google Calendar reader", () => {
     expect(eventUrl).not.toContain("timeMax=");
   });
 
+  it("preserves all-day recurring occurrence original start dates", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          items: [
+            {
+              accessRole: "owner",
+              id: "primary",
+              selected: true,
+              summary: "Personal",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          items: [
+            {
+              end: { date: "2026-02-27" },
+              etag: "etag-recurring-1",
+              id: "birthday-series_20260226",
+              originalStartTime: { date: "2026-02-26" },
+              recurringEventId: "birthday-series",
+              start: { date: "2026-02-26" },
+              summary: "Happy birthday!",
+            },
+          ],
+        }),
+      );
+
+    const snapshot = await readGoogleCalendarSnapshot({
+      accessToken: "access-token",
+      fetcher,
+    });
+
+    expect(snapshot.events[0]).toMatchObject({
+      endDate: "2026-02-27",
+      originalStartAt: new Date("2026-02-26T00:00:00.000Z"),
+      recurringEventId: "birthday-series",
+      sourceEventId: "birthday-series_20260226",
+      startDate: "2026-02-26",
+      title: "Happy birthday!",
+    });
+  });
+
   it("follows Google pagination for calendar lists and events", async () => {
     const fetcher = vi
       .fn<typeof fetch>()

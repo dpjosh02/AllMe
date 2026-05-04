@@ -420,7 +420,7 @@ function toCalendarEventSnapshot({
     etag: event.etag ?? null,
     htmlLink: event.htmlLink ?? null,
     location: event.location ?? null,
-    originalStartAt: parseGoogleDateTime(event.originalStartTime),
+    originalStartAt: parseGoogleOriginalStartTime(event.originalStartTime),
     providerUpdatedAt: event.updated ? new Date(event.updated) : null,
     rawPayload: event as Record<string, unknown>,
     recurringEventId: event.recurringEventId ?? null,
@@ -439,6 +439,20 @@ function toCalendarEventSnapshot({
 
 function parseGoogleDateTime(value: GoogleCalendarEventDateTime | undefined) {
   return value?.dateTime ? new Date(value.dateTime) : null;
+}
+
+function parseGoogleOriginalStartTime(
+  value: GoogleCalendarEventDateTime | undefined,
+) {
+  if (value?.dateTime) {
+    return new Date(value.dateTime);
+  }
+
+  if (value?.date) {
+    return new Date(`${value.date}T00:00:00.000Z`);
+  }
+
+  return null;
 }
 
 function requireGoogleId(value: string | undefined, resource: string) {
