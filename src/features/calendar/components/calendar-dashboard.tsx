@@ -66,10 +66,6 @@ export function CalendarDashboardInteractive({
     effectiveUpcomingEvents,
     reviewFocus,
   );
-  const focusedEventCount =
-    reviewFocus === "all"
-      ? 0
-      : getFocusedWeekEventCount(effectiveWeekAgenda, reviewFocus);
 
   function openEvent(event: CalendarDashboardEvent) {
     setSelectedEvent(toEventDetail(event));
@@ -141,7 +137,6 @@ export function CalendarDashboardInteractive({
                 openEvent={openEvent}
               />
               <CalendarReviewFocusControls
-                focusedEventCount={focusedEventCount}
                 reviewFocus={reviewFocus}
                 setReviewFocus={setReviewFocus}
               />
@@ -281,11 +276,9 @@ function TodayActionStrip({
 }
 
 function CalendarReviewFocusControls({
-  focusedEventCount,
   reviewFocus,
   setReviewFocus,
 }: {
-  focusedEventCount: number;
   reviewFocus: CalendarReviewFocus;
   setReviewFocus: (reviewFocus: CalendarReviewFocus) => void;
 }) {
@@ -308,15 +301,14 @@ function CalendarReviewFocusControls({
         </button>
       ))}
       {reviewFocus !== "all" ? (
-        <div className="basis-full text-xs font-semibold text-[var(--muted)]">
-          Showing {formatEventCount(focusedEventCount)} marked{" "}
-          {getReviewFocusLabel(reviewFocus)} ·{" "}
+        <div className="basis-full rounded-full border border-[var(--accent-soft)] bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+          Showing {getReviewFocusLabel(reviewFocus)} events ·{" "}
           <button
-            className="text-[var(--accent)] transition hover:text-[var(--foreground)]"
+            className="text-[var(--foreground)] underline-offset-2 transition hover:underline"
             onClick={() => setReviewFocus("all")}
             type="button"
           >
-            Clear filter
+            Clear
           </button>
         </div>
       ) : null}
@@ -449,7 +441,9 @@ function filterEvents<T extends CalendarEventCollectionItem>(
   reviewFocus: CalendarReviewFocus,
 ) {
   if (reviewFocus === "all") {
-    return events;
+    return events.filter(
+      (event) => (event.localReviewStatus ?? "none") !== "ignored",
+    );
   }
 
   return events.filter(
@@ -474,16 +468,6 @@ function getTodayActionItems(
 
     return reviewStatus === "needs_prep" || reviewStatus === "none";
   });
-}
-
-function getFocusedWeekEventCount(
-  weekAgenda: CalendarPageData["weekAgenda"],
-  reviewFocus: CalendarEventReviewStatus,
-) {
-  return weekAgenda.reduce(
-    (count, day) => count + filterEvents(day.items, reviewFocus).length,
-    0,
-  );
 }
 
 function toEventDetail(event: CalendarDashboardEvent): CalendarEventDetail {
@@ -550,9 +534,9 @@ const reviewFocusOptions: Array<{
 }> = [
   { label: "All", value: "all" },
   { label: "Needs prep", value: "needs_prep" },
+  { label: "Unreviewed", value: "none" },
   { label: "Done", value: "done" },
   { label: "Ignored", value: "ignored" },
-  { label: "Unreviewed", value: "none" },
 ];
 
 const compactEventTimeFormatter = new Intl.DateTimeFormat("en-US", {
