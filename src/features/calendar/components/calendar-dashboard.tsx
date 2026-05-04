@@ -180,7 +180,6 @@ export function CalendarDashboardInteractive({
             <CalendarWeekPlanner
               openDay={openDay}
               openEvent={openEvent}
-              reviewFocus={reviewFocus}
               weekAgenda={filteredWeekAgenda}
             />
           </PageSection>
