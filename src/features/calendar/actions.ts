@@ -106,7 +106,12 @@ export async function createLinkedNoteFromCalendarEvent(formData: FormData) {
         title: `Event note · ${event.title}`,
         userId: user.id,
       })
-      .returning({ id: notes.id });
+      .returning({
+        body: notes.body,
+        id: notes.id,
+        noteDate: notes.noteDate,
+        title: notes.title,
+      });
 
     if (!note) {
       throw new Error("Unable to create linked note.");
@@ -124,6 +129,11 @@ export async function createLinkedNoteFromCalendarEvent(formData: FormData) {
   });
 
   revalidateCalendarNoteViews(createdNote.id);
+
+  return toCalendarLinkedNoteMutationResult({
+    note: createdNote,
+    scope: linkScope,
+  });
 }
 
 export async function linkExistingNoteToCalendarEvent(formData: FormData) {
@@ -190,6 +200,44 @@ export async function unlinkNoteFromCalendarEvent(formData: FormData) {
   revalidateCalendarNoteViews(noteId);
 }
 
+export async function updateLinkedCalendarNote(formData: FormData) {
+  const user = await requireOwnerUser();
+  const noteId = String(formData.get("noteId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "");
+
+  if (!noteId) {
+    throw new Error("Missing note target.");
+  }
+
+  if (!title) {
+    throw new Error("Linked note title is required.");
+  }
+
+  const [updatedNote] = await db
+    .update(notes)
+    .set({
+      body,
+      title,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)))
+    .returning({
+      body: notes.body,
+      id: notes.id,
+      noteDate: notes.noteDate,
+      title: notes.title,
+    });
+
+  if (!updatedNote) {
+    throw new Error("Linked note not found.");
+  }
+
+  revalidateCalendarNoteViews(updatedNote.id);
+
+  return toCalendarLinkedNoteMutationResult({ note: updatedNote });
+}
+
 const calendarEventReviewStatuses = [
   "none",
   "needs_prep",
@@ -208,6 +256,15 @@ function parseCalendarEventReviewStatus(formData: FormData) {
 }
 
 type CalendarEventNoteLinkScope = "event_instance" | "recurring_series";
+
+export type CalendarLinkedNoteMutationResult = {
+  body: string;
+  href: string;
+  id: string;
+  noteDate: string | null;
+  scope: CalendarEventNoteLinkScope | null;
+  title: string;
+};
 
 type CalendarEventForLink = NonNullable<
   Awaited<ReturnType<typeof getCalendarEventForLink>>
@@ -353,6 +410,30 @@ function revalidateCalendarNoteViews(noteId: string) {
   revalidatePath("/today");
   revalidatePath("/notes");
   revalidatePath(`/notes/captures/${noteId}`);
+}
+
+function toCalendarLinkedNoteMutationResult({
+  note,
+  scope = null,
+}: {
+  note: {
+    body: string;
+    id: string;
+    noteDate: string | null;
+    title: string;
+  };
+  scope?: CalendarEventNoteLinkScope | null;
+}): CalendarLinkedNoteMutationResult {
+  return {
+    body: note.body,
+    href: note.noteDate
+      ? `/today?date=${note.noteDate}`
+      : `/notes/captures/${note.id}`,
+    id: note.id,
+    noteDate: note.noteDate,
+    scope,
+    title: note.title,
+  };
 }
 
 function isCalendarEventReviewStatus(

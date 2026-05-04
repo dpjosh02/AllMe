@@ -7,6 +7,8 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
+import type { CalendarLinkedNoteMutationResult } from "@/features/calendar/actions";
+
 export type CalendarEventReviewStatus =
   | "done"
   | "ignored"
@@ -22,6 +24,7 @@ export type CalendarEventDetail = {
   htmlLink: string | null;
   id: string;
   isAllDay: boolean;
+  linkedNoteBody: string | null;
   linkedNoteDate: string | null;
   linkedNoteHref: string | null;
   linkedNoteId: string | null;
@@ -43,9 +46,12 @@ export function CalendarEventDetailDrawer({
   onClose,
   onReviewStatusChange,
   unlinkNoteFromEvent,
+  updateLinkedNote,
   updateEventReviewStatus,
 }: {
-  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
+  createLinkedNoteFromEvent: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
   event: CalendarEventDetail | null;
   onClose: () => void;
   onReviewStatusChange?: (
@@ -53,6 +59,9 @@ export function CalendarEventDetailDrawer({
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
   unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
+  updateLinkedNote: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   if (!event) {
@@ -67,6 +76,7 @@ export function CalendarEventDetailDrawer({
       onClose={onClose}
       onReviewStatusChange={onReviewStatusChange}
       unlinkNoteFromEvent={unlinkNoteFromEvent}
+      updateLinkedNote={updateLinkedNote}
       updateEventReviewStatus={updateEventReviewStatus}
     />
   );
@@ -78,9 +88,12 @@ function CalendarEventDetailDrawerContent({
   onClose,
   onReviewStatusChange,
   unlinkNoteFromEvent,
+  updateLinkedNote,
   updateEventReviewStatus,
 }: {
-  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
+  createLinkedNoteFromEvent: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
   event: CalendarEventDetail;
   onClose: () => void;
   onReviewStatusChange?: (
@@ -88,10 +101,16 @@ function CalendarEventDetailDrawerContent({
     reviewStatus: CalendarEventReviewStatus,
   ) => void;
   unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
+  updateLinkedNote: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
   const [currentReviewStatus, setCurrentReviewStatus] =
     useState<CalendarEventReviewStatus>(event.localReviewStatus);
+  const [linkedNote, setLinkedNote] = useState<CalendarLinkedNoteState | null>(
+    getLinkedNoteState(event),
+  );
 
   useEffect(() => {
     function closeOnEscape(keyboardEvent: KeyboardEvent) {
@@ -185,7 +204,10 @@ function CalendarEventDetailDrawerContent({
           <LinkedNotePanel
             createLinkedNoteFromEvent={createLinkedNoteFromEvent}
             event={event}
+            linkedNote={linkedNote}
+            setLinkedNote={setLinkedNote}
             unlinkNoteFromEvent={unlinkNoteFromEvent}
+            updateLinkedNote={updateLinkedNote}
           />
 
           <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
@@ -248,13 +270,41 @@ function CalendarEventDetailDrawerContent({
 function LinkedNotePanel({
   createLinkedNoteFromEvent,
   event,
+  linkedNote,
+  setLinkedNote,
   unlinkNoteFromEvent,
+  updateLinkedNote,
 }: {
-  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
+  createLinkedNoteFromEvent: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
   event: CalendarEventDetail;
+  linkedNote: CalendarLinkedNoteState | null;
+  setLinkedNote: (linkedNote: CalendarLinkedNoteState | null) => void;
   unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
+  updateLinkedNote: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
 }) {
   const canLinkSeries = Boolean(event.sourceIcalUid || event.recurringEventId);
+
+  async function createLinkedNote(formData: FormData) {
+    const note = await createLinkedNoteFromEvent(formData);
+    const linkScope = getLinkScopeFromFormData(formData);
+
+    setLinkedNote(toLinkedNoteState({ note, scope: linkScope }));
+  }
+
+  async function saveLinkedNote(formData: FormData) {
+    const note = await updateLinkedNote(formData);
+
+    setLinkedNote(toLinkedNoteState({ note, scope: linkedNote?.scope ?? null }));
+  }
+
+  async function unlinkLinkedNote(formData: FormData) {
+    await unlinkNoteFromEvent(formData);
+    setLinkedNote(null);
+  }
 
   return (
     <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--empty)] p-4">
@@ -265,7 +315,7 @@ function LinkedNotePanel({
             Local AllMe context only. Google Calendar is not changed.
           </p>
         </div>
-        {event.linkedNoteId ? (
+        {linkedNote ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
             <StickyNote aria-hidden="true" className="h-3.5 w-3.5" />
             Linked
@@ -273,32 +323,53 @@ function LinkedNotePanel({
         ) : null}
       </div>
 
-      {event.linkedNoteId ? (
+      {linkedNote ? (
         <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
-          <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-            {event.linkedNoteTitle ?? "Untitled note"}
-          </p>
+          <form action={saveLinkedNote} className="grid gap-3">
+            <input name="noteId" type="hidden" value={linkedNote.id} />
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Title</span>
+              <input
+                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                defaultValue={linkedNote.title}
+                name="title"
+                required
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Note</span>
+              <textarea
+                className="min-h-36 resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+                defaultValue={linkedNote.body}
+                name="body"
+                placeholder="Add prep notes, context, follow-ups, or decisions..."
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <LinkedNoteActionButton label="Save linked note" />
+            </div>
+          </form>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            {event.linkedNoteScope === "recurring_series"
+            {linkedNote.scope === "recurring_series"
               ? "Shared across matching recurring occurrences"
               : "Linked to this event"}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {event.linkedNoteHref ? (
+            {linkedNote.href ? (
               <Link
                 className="inline-flex min-h-9 items-center rounded-xl border border-[var(--line)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                href={event.linkedNoteHref as Route}
+                href={linkedNote.href as Route}
               >
                 Open linked note
               </Link>
             ) : null}
-            <form action={unlinkNoteFromEvent}>
+            <form action={unlinkLinkedNote}>
               <input name="eventId" type="hidden" value={event.id} />
-              <input name="noteId" type="hidden" value={event.linkedNoteId} />
+              <input name="noteId" type="hidden" value={linkedNote.id} />
               <input
                 name="linkScope"
                 type="hidden"
-                value={event.linkedNoteScope ?? "event_instance"}
+                value={linkedNote.scope ?? "event_instance"}
               />
               <LinkedNoteActionButton label="Unlink note" />
             </form>
@@ -306,13 +377,13 @@ function LinkedNotePanel({
         </div>
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
-          <form action={createLinkedNoteFromEvent}>
+          <form action={createLinkedNote}>
             <input name="eventId" type="hidden" value={event.id} />
             <input name="linkScope" type="hidden" value="event_instance" />
             <LinkedNoteActionButton label="Create note for event" />
           </form>
           {canLinkSeries ? (
-            <form action={createLinkedNoteFromEvent}>
+            <form action={createLinkedNote}>
               <input name="eventId" type="hidden" value={event.id} />
               <input name="linkScope" type="hidden" value="recurring_series" />
               <LinkedNoteActionButton label="Create note for series" />
@@ -322,6 +393,57 @@ function LinkedNotePanel({
       )}
     </div>
   );
+}
+
+type CalendarLinkedNoteState = {
+  body: string;
+  href: string | null;
+  id: string;
+  noteDate: string | null;
+  scope: "event_instance" | "recurring_series" | null;
+  title: string;
+};
+
+function getLinkedNoteState(
+  event: CalendarEventDetail,
+): CalendarLinkedNoteState | null {
+  if (!event.linkedNoteId) {
+    return null;
+  }
+
+  return {
+    body: event.linkedNoteBody ?? "",
+    href: event.linkedNoteHref,
+    id: event.linkedNoteId,
+    noteDate: event.linkedNoteDate,
+    scope: event.linkedNoteScope,
+    title: event.linkedNoteTitle ?? "Untitled note",
+  };
+}
+
+function toLinkedNoteState({
+  note,
+  scope,
+}: {
+  note: CalendarLinkedNoteMutationResult;
+  scope: CalendarLinkedNoteState["scope"];
+}): CalendarLinkedNoteState {
+  return {
+    body: note.body,
+    href: note.href,
+    id: note.id,
+    noteDate: note.noteDate,
+    scope,
+    title: note.title,
+  };
+}
+
+function getLinkScopeFromFormData(
+  formData: FormData,
+): CalendarLinkedNoteState["scope"] {
+  const linkScope = String(formData.get("linkScope") ?? "event_instance");
+
+  return linkScope === "recurring_series" ? "recurring_series" : "event_instance";
 }
 
 function LinkedNoteActionButton({ label }: { label: string }) {

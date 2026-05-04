@@ -20,6 +20,7 @@ export type TodayAgendaSourceRow = {
   id: string;
   isAllDay: boolean;
   location: string | null;
+  linkedNoteBody: string | null;
   linkedNoteDate: string | null;
   linkedNoteHref: string | null;
   linkedNoteId: string | null;
@@ -45,6 +46,7 @@ export type TodayAgendaItem = {
   id: string;
   isAllDay: boolean;
   location: string | null;
+  linkedNoteBody: string | null;
   linkedNoteDate: string | null;
   linkedNoteHref: string | null;
   linkedNoteId: string | null;
@@ -173,6 +175,7 @@ function toTodayAgendaItem(row: TodayAgendaSourceRow): TodayAgendaItem {
     id: row.id,
     isAllDay: row.isAllDay,
     location: row.location,
+    linkedNoteBody: row.linkedNoteBody,
     linkedNoteDate: row.linkedNoteDate,
     linkedNoteHref: row.linkedNoteHref,
     linkedNoteId: row.linkedNoteId,

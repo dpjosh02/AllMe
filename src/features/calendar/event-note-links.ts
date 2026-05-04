@@ -11,6 +11,7 @@ export type CalendarEventNoteLinkScope =
   | "recurring_series";
 
 export type CalendarEventLinkedNoteFields = {
+  linkedNoteBody: string | null;
   linkedNoteDate: string | null;
   linkedNoteHref: string | null;
   linkedNoteId: string | null;
@@ -28,6 +29,7 @@ export type CalendarEventNoteLinkTargetEvent = {
 export type CalendarEventNoteLinkRecord = {
   calendarId: string | null;
   eventId: string | null;
+  noteBody: string;
   noteDate: string | null;
   noteId: string;
   noteTitle: string;
@@ -53,6 +55,7 @@ export async function getCalendarEventNoteLinksForEvents({
     .select({
       calendarId: calendarEventNoteLinks.calendarId,
       eventId: calendarEventNoteLinks.eventId,
+      noteBody: notes.body,
       noteDate: notes.noteDate,
       noteId: calendarEventNoteLinks.noteId,
       noteTitle: notes.title,
@@ -86,6 +89,7 @@ export function attachLinkedNotesToCalendarEvents<
 
     return {
       ...event,
+      linkedNoteBody: link?.noteBody ?? null,
       linkedNoteDate: link?.noteDate ?? null,
       linkedNoteHref: link ? getLinkedNoteHref(link) : null,
       linkedNoteId: link?.noteId ?? null,

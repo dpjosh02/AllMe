@@ -23,6 +23,7 @@ import {
 } from "@/features/calendar/components/calendar-review-filtering";
 import { CalendarUpcomingEvents } from "@/features/calendar/components/calendar-upcoming-events";
 import { CalendarWeekPlanner } from "@/features/calendar/components/calendar-week-planner";
+import type { CalendarLinkedNoteMutationResult } from "@/features/calendar/actions";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
 type CalendarDashboardEvent =
@@ -37,12 +38,18 @@ export function CalendarDashboardInteractive({
   createLinkedNoteFromEvent,
   data,
   unlinkNoteFromEvent,
+  updateLinkedNote,
   updateCalendarSelection,
   updateEventReviewStatus,
 }: {
-  createLinkedNoteFromEvent: (formData: FormData) => Promise<void>;
+  createLinkedNoteFromEvent: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
   data: CalendarPageData;
   unlinkNoteFromEvent: (formData: FormData) => Promise<void>;
+  updateLinkedNote: (
+    formData: FormData,
+  ) => Promise<CalendarLinkedNoteMutationResult>;
   updateCalendarSelection: (formData: FormData) => Promise<void>;
   updateEventReviewStatus: (formData: FormData) => Promise<void>;
 }) {
@@ -225,6 +232,7 @@ export function CalendarDashboardInteractive({
         onClose={() => setSelectedEvent(null)}
         onReviewStatusChange={updateLocalReviewStatus}
         unlinkNoteFromEvent={unlinkNoteFromEvent}
+        updateLinkedNote={updateLinkedNote}
         updateEventReviewStatus={updateEventReviewStatus}
       />
     </>
@@ -602,6 +610,7 @@ function toEventDetail(event: CalendarDashboardEvent): CalendarEventDetail {
     htmlLink: event.htmlLink,
     id: event.id,
     isAllDay: event.isAllDay,
+    linkedNoteBody: event.linkedNoteBody,
     linkedNoteDate: event.linkedNoteDate,
     linkedNoteHref: event.linkedNoteHref,
     linkedNoteId: event.linkedNoteId,

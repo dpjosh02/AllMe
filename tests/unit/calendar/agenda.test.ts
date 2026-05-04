@@ -176,6 +176,7 @@ function agendaRow(
     id: "event-1",
     isAllDay: false,
     location: null,
+    linkedNoteBody: null,
     linkedNoteDate: null,
     linkedNoteHref: null,
     linkedNoteId: null,

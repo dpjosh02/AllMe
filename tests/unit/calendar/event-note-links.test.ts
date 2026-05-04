@@ -76,6 +76,7 @@ function linkFixture(
   return {
     calendarId: "calendar-1",
     eventId: null,
+    noteBody: "Linked note body",
     noteDate: null,
     noteId: "note-1",
     noteTitle: "Linked note",

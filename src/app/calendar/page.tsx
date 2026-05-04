@@ -12,6 +12,7 @@ import {
   createLinkedNoteFromCalendarEvent,
   syncGoogleCalendarNow,
   unlinkNoteFromCalendarEvent,
+  updateLinkedCalendarNote,
   updateCalendarEventReviewStatus,
   updateCalendarSelection,
 } from "@/features/calendar/actions";
@@ -54,6 +55,7 @@ export default async function CalendarPage() {
           createLinkedNoteFromEvent={createLinkedNoteFromCalendarEvent}
           data={data}
           unlinkNoteFromEvent={unlinkNoteFromCalendarEvent}
+          updateLinkedNote={updateLinkedCalendarNote}
           updateCalendarSelection={updateCalendarSelection}
           updateEventReviewStatus={updateCalendarEventReviewStatus}
         />
