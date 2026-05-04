@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import type { CalendarEventReviewStatus } from "@/features/calendar/components/calendar-event-detail-drawer";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
@@ -9,10 +7,12 @@ type WeekAgendaDayData = CalendarPageData["weekAgenda"][number];
 type WeekAgendaItemData = WeekAgendaDayData["items"][number];
 
 export function CalendarWeekPlanner({
+  openDay,
   openEvent,
   reviewFocus,
   weekAgenda,
 }: {
+  openDay: (day: WeekAgendaDayData) => void;
   openEvent: (item: WeekAgendaItemData) => void;
   reviewFocus: CalendarEventReviewStatus | "all";
   weekAgenda: CalendarPageData["weekAgenda"];
@@ -24,6 +24,7 @@ export function CalendarWeekPlanner({
           <WeekAgendaDay
             day={day}
             key={day.dateKey}
+            openDay={() => openDay(day)}
             openEvent={openEvent}
             reviewFocus={reviewFocus}
           />
@@ -35,25 +36,23 @@ export function CalendarWeekPlanner({
 
 function WeekAgendaDay({
   day,
+  openDay,
   openEvent,
   reviewFocus,
 }: {
   day: WeekAgendaDayData;
+  openDay: () => void;
   openEvent: (item: WeekAgendaItemData) => void;
   reviewFocus: CalendarEventReviewStatus | "all";
 }) {
   const isQuiet = day.items.length === 0;
-  const todayHref = {
-    pathname: "/today",
-    query: { date: day.dateKey },
-  };
-
   return (
     <div className="flex min-h-0 flex-col rounded-xl border border-[var(--line)] bg-[var(--empty)] p-3 transition hover:border-[var(--accent)]">
       <div className="flex items-start justify-between gap-2">
-        <Link
-          className="min-w-0 rounded-lg transition hover:text-[var(--accent)]"
-          href={todayHref}
+        <button
+          className="min-w-0 rounded-lg text-left transition hover:text-[var(--accent)]"
+          onClick={openDay}
+          type="button"
         >
           <p className="text-sm font-semibold">
             {weekdayFormatter.format(toLocalDate(day.dateKey))}
@@ -61,10 +60,14 @@ function WeekAgendaDay({
           <p className="text-xs text-[var(--muted)]">
             {shortDateFormatter.format(toLocalDate(day.dateKey))}
           </p>
-        </Link>
-        <span className="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
+        </button>
+        <button
+          className="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          onClick={openDay}
+          type="button"
+        >
           {day.items.length}
-        </span>
+        </button>
       </div>
 
       {isQuiet ? (
@@ -83,12 +86,13 @@ function WeekAgendaDay({
             ))}
           </div>
           {day.items.length > 8 ? (
-            <Link
+            <button
               className="mt-2 inline-flex text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
-              href={todayHref}
+              onClick={openDay}
+              type="button"
             >
               +{day.items.length - 8} more
-            </Link>
+            </button>
           ) : null}
         </div>
       )}

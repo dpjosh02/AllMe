@@ -10,6 +10,7 @@ import {
   PageGridItem,
   PageSection,
 } from "@/components/layout/page-scaffold";
+import { CalendarDayDetailDrawer } from "@/features/calendar/components/calendar-day-detail-drawer";
 import type { CalendarEventReviewStatus } from "@/features/calendar/components/calendar-event-detail-drawer";
 import {
   CalendarEventDetailDrawer,
@@ -27,6 +28,7 @@ type CalendarDashboardEvent =
 type CalendarEventCollectionItem = {
   localReviewStatus: CalendarEventReviewStatus | null;
 };
+type CalendarDayDetail = CalendarPageData["weekAgenda"][number];
 
 export function CalendarDashboardInteractive({
   data,
@@ -44,6 +46,7 @@ export function CalendarDashboardInteractive({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventDetail | null>(
     null,
   );
+  const [selectedDay, setSelectedDay] = useState<CalendarDayDetail | null>(null);
   const effectiveWeekAgenda = applyWeekAgendaReviewStatusOverrides(
     data.weekAgenda,
     reviewStatusOverrides,
@@ -69,6 +72,10 @@ export function CalendarDashboardInteractive({
 
   function openEvent(event: CalendarDashboardEvent) {
     setSelectedEvent(toEventDetail(event));
+  }
+
+  function openDay(day: CalendarDayDetail) {
+    setSelectedDay(day);
   }
 
   function updateLocalReviewStatus(
@@ -169,6 +176,7 @@ export function CalendarDashboardInteractive({
                 : ""}
             </p>
             <CalendarWeekPlanner
+              openDay={openDay}
               openEvent={openEvent}
               reviewFocus={reviewFocus}
               weekAgenda={filteredWeekAgenda}
@@ -198,6 +206,14 @@ export function CalendarDashboardInteractive({
         </AllMeCard>
       </PageGridItem>
 
+      <CalendarDayDetailDrawer
+        day={selectedDay}
+        onClose={() => setSelectedDay(null)}
+        openEvent={(event) => {
+          setSelectedDay(null);
+          openEvent(event);
+        }}
+      />
       <CalendarEventDetailDrawer
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
