@@ -165,7 +165,7 @@ export function CalendarDashboardInteractive({
                 updateCalendarSelection={updateCalendarSelection}
               />
             }
-            title={weekRangeLabel ? `Next 7 days ${weekRangeLabel}` : "Next 7 days"}
+            title={weekRangeLabel ? `Next 7 days · ${weekRangeLabel}` : "Next 7 days"}
           >
             <p className="-mt-2 mb-3 text-xs font-semibold text-[var(--muted)]">
               {data.selectedCalendars}/{data.calendars} calendars shown
@@ -376,18 +376,6 @@ function CalendarReviewFocusControls({
           ))}
         </div>
       </div>
-      {reviewFocus !== "all" ? (
-        <div className="rounded-full px-1 text-xs font-semibold text-[var(--muted)]">
-          Showing {getReviewFocusLabel(reviewFocus)} events ·{" "}
-          <button
-            className="text-[var(--accent)] underline-offset-2 transition hover:underline"
-            onClick={() => setReviewFocus("all")}
-            type="button"
-          >
-            Clear
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
