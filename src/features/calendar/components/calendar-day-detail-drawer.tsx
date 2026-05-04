@@ -77,7 +77,7 @@ function CalendarDayDetailDrawerContent({
               {weekdayFormatter.format(toLocalDate(day.dateKey))}
             </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              {fullDateFormatter.format(toLocalDate(day.dateKey))} ·{" "}
+              {compactDateFormatter.format(toLocalDate(day.dateKey))} ·{" "}
               {formatEventCount(day.items.length)}
             </p>
           </div>
@@ -164,8 +164,9 @@ const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
 });
 
-const fullDateFormatter = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
+const compactDateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  month: "2-digit",
 });
 
 const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {

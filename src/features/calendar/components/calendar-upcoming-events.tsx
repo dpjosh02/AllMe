@@ -104,7 +104,8 @@ function toLocalDate(dateKey: string) {
 }
 
 const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
+  day: "2-digit",
+  month: "2-digit",
 });
 
 const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {

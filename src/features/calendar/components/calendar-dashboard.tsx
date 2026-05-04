@@ -69,6 +69,7 @@ export function CalendarDashboardInteractive({
     effectiveUpcomingEvents,
     reviewFocus,
   );
+  const weekRangeLabel = getWeekRangeLabel(effectiveWeekAgenda);
 
   function openEvent(event: CalendarDashboardEvent) {
     setSelectedEvent(toEventDetail(event));
@@ -95,7 +96,6 @@ export function CalendarDashboardInteractive({
           <div className="grid gap-3 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
             <div className="grid gap-2 sm:grid-cols-2">
               <TodayAgendaLinkStat
-                detail="Open today's operating view."
                 href={{
                   pathname: "/today",
                   query: { date: todayAgenda?.dateKey },
@@ -104,10 +104,7 @@ export function CalendarDashboardInteractive({
                 value={formatEventCount(todayAgendaItems.length)}
               />
               <TodayAgendaButtonStat
-                detail={
-                  nextUpcomingEvent?.title ??
-                  "No selected-calendar event queued."
-                }
+                detail={getNextEventSummaryDetail(nextUpcomingEvent)}
                 disabled={!nextUpcomingEvent}
                 label="Next event"
                 onClick={() => {
@@ -122,7 +119,6 @@ export function CalendarDashboardInteractive({
                 }
               />
               <TodayAgendaButtonStat
-                detail="Focus preparation."
                 icon={<Flag aria-hidden="true" className="h-4 w-4" />}
                 isActive={reviewFocus === "needs_prep"}
                 label="Needs prep"
@@ -130,7 +126,6 @@ export function CalendarDashboardInteractive({
                 value={String(todayNeedsPrepCount)}
               />
               <TodayAgendaButtonStat
-                detail="Focus completed."
                 icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
                 isActive={reviewFocus === "done"}
                 label="Done"
@@ -170,6 +165,7 @@ export function CalendarDashboardInteractive({
             title="Next 7 days"
           >
             <p className="-mt-2 mb-3 text-xs font-semibold text-[var(--muted)]">
+              {weekRangeLabel ? `${weekRangeLabel} · ` : ""}
               {data.selectedCalendars}/{data.calendars} calendars shown
               {reviewFocus !== "all"
                 ? ` · ${getReviewFocusLabel(reviewFocus)} focus`
@@ -327,10 +323,10 @@ function CalendarReviewFocusControls({
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <div className="relative" ref={menuRef}>
+      <div className="relative flex items-center" ref={menuRef}>
         <button
           aria-expanded={isOpen}
-          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--empty)] px-3 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+          className="relative z-30 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--empty)] px-3 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
           onClick={() => setIsOpen((current) => !current)}
           type="button"
         >
@@ -340,32 +336,43 @@ function CalendarReviewFocusControls({
           </span>
           <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
-        {isOpen ? (
-          <div className="absolute left-0 top-[calc(100%+0.5rem)] z-20 w-44 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-1.5 shadow-xl">
-            {reviewFocusOptions.map((option) => (
-              <button
-                aria-pressed={reviewFocus === option.value}
-                className={[
-                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition",
-                  reviewFocus === option.value
-                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                    : "text-[var(--muted)] hover:bg-[var(--empty)] hover:text-[var(--foreground)]",
-                ].join(" ")}
-                key={option.value}
-                onClick={() => {
-                  setReviewFocus(option.value);
-                  setIsOpen(false);
-                }}
-                type="button"
-              >
-                {option.label}
-                {reviewFocus === option.value ? (
-                  <span aria-hidden="true">✓</span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div
+          aria-hidden={!isOpen}
+          className={[
+            "absolute left-[calc(100%+0.5rem)] top-0 z-20 flex items-center",
+            isOpen ? "pointer-events-auto" : "pointer-events-none",
+          ].join(" ")}
+        >
+          {reviewFocusOptions.map((option, index) => (
+            <button
+              aria-pressed={reviewFocus === option.value}
+              className={[
+                "h-7 min-w-24 rounded-full border px-3 text-xs font-semibold shadow-sm transition-all duration-300 ease-out",
+                index > 0 ? "-ml-4" : "",
+                reviewFocus === option.value
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]",
+                isOpen
+                  ? "translate-x-0 opacity-100"
+                  : "-translate-x-12 opacity-0",
+              ].join(" ")}
+              key={option.value}
+              onClick={() => {
+                setReviewFocus(option.value);
+                setIsOpen(false);
+              }}
+              style={{
+                transitionDelay: isOpen
+                  ? `${index * 45}ms`
+                  : `${(reviewFocusOptions.length - index) * 25}ms`,
+                zIndex: reviewFocusOptions.length - index,
+              }}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
       {reviewFocus !== "all" ? (
         <div className="rounded-full px-1 text-xs font-semibold text-[var(--muted)]">
@@ -392,7 +399,7 @@ function TodayAgendaButtonStat({
   onClick,
   value,
 }: {
-  detail: string;
+  detail?: string;
   disabled?: boolean;
   icon?: ReactNode;
   isActive?: boolean;
@@ -418,7 +425,7 @@ function TodayAgendaLinkStat({
   label,
   value,
 }: {
-  detail: string;
+  detail?: string;
   href: { pathname: string; query: { date: string | undefined } };
   label: string;
   value: string;
@@ -436,7 +443,7 @@ function SummaryCardContent({
   label,
   value,
 }: {
-  detail: string;
+  detail?: string;
   icon?: ReactNode;
   label: string;
   value: string;
@@ -448,7 +455,9 @@ function SummaryCardContent({
         {icon ? <span className="text-[var(--accent)]">{icon}</span> : null}
       </div>
       <p className="mt-1 text-xl font-semibold tracking-[-0.04em]">{value}</p>
-      <p className="mt-1 truncate text-xs text-[var(--muted)]">{detail}</p>
+      {detail ? (
+        <p className="mt-1 truncate text-xs text-[var(--muted)]">{detail}</p>
+      ) : null}
     </>
   );
 }
@@ -564,6 +573,24 @@ function getCompactEventTime(event: CalendarPageData["upcomingEvents"][number]) 
   return event.startAt ? compactEventTimeFormatter.format(event.startAt) : "TBD";
 }
 
+function getNextEventSummaryDetail(
+  event: CalendarPageData["upcomingEvents"][number] | null,
+) {
+  if (!event) {
+    return "No selected-calendar event queued.";
+  }
+
+  const dateKey = event.startDate;
+  const dateValue = event.startAt;
+  const dateLabel = dateKey
+    ? compactDateFormatter.format(new Date(`${dateKey}T00:00:00`))
+    : dateValue
+      ? compactDateFormatter.format(dateValue)
+      : "Date TBD";
+
+  return [event.title, dateLabel, event.location].filter(Boolean).join(" · ");
+}
+
 function getCompactAgendaItemTime(
   event: CalendarPageData["weekAgenda"][number]["items"][number],
 ) {
@@ -595,6 +622,26 @@ function formatEventCount(count: number) {
   return `${count} ${count === 1 ? "event" : "events"}`;
 }
 
+function getWeekRangeLabel(weekAgenda: CalendarPageData["weekAgenda"]) {
+  const startDateKey = weekAgenda[0]?.dateKey;
+  const endDateKey = weekAgenda.at(-1)?.dateKey;
+
+  if (!startDateKey || !endDateKey) {
+    return null;
+  }
+
+  const endDateExclusive = toLocalDate(endDateKey);
+  endDateExclusive.setDate(endDateExclusive.getDate() + 1);
+
+  return `${compactDateFormatter.format(
+    toLocalDate(startDateKey),
+  )}-${compactDateFormatter.format(endDateExclusive)}`;
+}
+
+function toLocalDate(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00`);
+}
+
 const reviewFocusOptions: Array<{
   label: string;
   value: CalendarReviewFocus;
@@ -609,4 +656,9 @@ const reviewFocusOptions: Array<{
 const compactEventTimeFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
+});
+
+const compactDateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  month: "2-digit",
 });

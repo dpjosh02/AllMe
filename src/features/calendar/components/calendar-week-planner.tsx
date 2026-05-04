@@ -160,8 +160,8 @@ const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
+  day: "2-digit",
+  month: "2-digit",
 });
 
 const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
