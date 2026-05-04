@@ -105,6 +105,30 @@ export type CalendarProviderPatchValidation =
       reason: "blocked_field" | "unknown_field";
     };
 
+export type CalendarRecurrenceEditScope =
+  | "entire_series"
+  | "this_and_following"
+  | "this_event_only";
+
+export type CalendarThisEventOnlyContext = {
+  etag?: string | null;
+  originalStartAt?: Date | null;
+  recurringEventId?: string | null;
+  sourceEventId?: string | null;
+};
+
+export type CalendarProviderRecurrenceClassificationInput = {
+  providerEvent: {
+    originalStartAt?: Date | null;
+    recurringEventId?: string | null;
+    sourceEventId?: string | null;
+  };
+  requestedEvent: {
+    recurringEventId?: string | null;
+    sourceEventId?: string | null;
+  };
+};
+
 export const calendarProviderPatchAllowedKeys = [
   "summary",
   "description",
@@ -218,6 +242,73 @@ export function isRecurringProviderEvent({
   recurringEventId?: string | null;
 }) {
   return Boolean(recurringEventId);
+}
+
+export function evaluateThisEventOnlyRecurrenceEditPolicy({
+  context,
+  scope,
+}: {
+  context: CalendarThisEventOnlyContext;
+  scope: CalendarRecurrenceEditScope;
+}):
+  | { allowed: true }
+  | {
+      allowed: false;
+      reason:
+        | "missing_cached_etag"
+        | "missing_original_start"
+        | "missing_recurring_event_id"
+        | "missing_source_event_id"
+        | "unsupported_recurrence_scope";
+    } {
+  if (scope !== "this_event_only") {
+    return { allowed: false, reason: "unsupported_recurrence_scope" };
+  }
+
+  if (!context.recurringEventId) {
+    return { allowed: false, reason: "missing_recurring_event_id" };
+  }
+
+  if (!context.sourceEventId) {
+    return { allowed: false, reason: "missing_source_event_id" };
+  }
+
+  if (!context.originalStartAt) {
+    return { allowed: false, reason: "missing_original_start" };
+  }
+
+  if (!context.etag) {
+    return { allowed: false, reason: "missing_cached_etag" };
+  }
+
+  return { allowed: true };
+}
+
+export function classifyFetchedRecurringOccurrence({
+  providerEvent,
+  requestedEvent,
+}: CalendarProviderRecurrenceClassificationInput):
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | "provider_master_response"
+        | "provider_recurring_identity_mismatch"
+        | "provider_source_event_mismatch";
+    } {
+  if (!providerEvent.recurringEventId || !providerEvent.originalStartAt) {
+    return { ok: false, reason: "provider_master_response" };
+  }
+
+  if (providerEvent.sourceEventId !== requestedEvent.sourceEventId) {
+    return { ok: false, reason: "provider_source_event_mismatch" };
+  }
+
+  if (providerEvent.recurringEventId !== requestedEvent.recurringEventId) {
+    return { ok: false, reason: "provider_recurring_identity_mismatch" };
+  }
+
+  return { ok: true };
 }
 
 export function evaluateCalendarProviderWritePolicy(

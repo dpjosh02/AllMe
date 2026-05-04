@@ -4,8 +4,10 @@ import {
   calendarProviderWriteOperations,
   calendarProviderWritePolicyOwner,
   calendarProviderWriteStatuses,
+  classifyFetchedRecurringOccurrence,
   evaluateCalendarProviderWritePolicy,
   evaluateProviderWriteFreshnessPolicy,
+  evaluateThisEventOnlyRecurrenceEditPolicy,
   getCalendarProviderWriteActionOwner,
   getDuplicateIdempotencyPolicy,
   getGoogleCalendarWriteReadiness,
@@ -133,6 +135,108 @@ describe("Calendar provider-write policy", () => {
     expect(evaluatePolicy({ recurringEventId: "series-1" })).toEqual({
       allowed: false,
       reason: "recurring_event_not_supported",
+    });
+  });
+
+  it("allows this-event-only recurrence edits with explicit occurrence context", () => {
+    expect(
+      evaluateThisEventOnlyRecurrenceEditPolicy({
+        context: recurrenceContextFixture(),
+        scope: "this_event_only",
+      }),
+    ).toEqual({ allowed: true });
+  });
+
+  it("blocks unsupported recurrence edit scopes", () => {
+    for (const scope of ["this_and_following", "entire_series"] as const) {
+      expect(
+        evaluateThisEventOnlyRecurrenceEditPolicy({
+          context: recurrenceContextFixture(),
+          scope,
+        }),
+      ).toEqual({
+        allowed: false,
+        reason: "unsupported_recurrence_scope",
+      });
+    }
+  });
+
+  it("requires occurrence identity for this-event-only recurrence edits", () => {
+    expect(
+      evaluateThisEventOnlyRecurrenceEditPolicy({
+        context: recurrenceContextFixture({ recurringEventId: null }),
+        scope: "this_event_only",
+      }),
+    ).toEqual({ allowed: false, reason: "missing_recurring_event_id" });
+    expect(
+      evaluateThisEventOnlyRecurrenceEditPolicy({
+        context: recurrenceContextFixture({ sourceEventId: null }),
+        scope: "this_event_only",
+      }),
+    ).toEqual({ allowed: false, reason: "missing_source_event_id" });
+    expect(
+      evaluateThisEventOnlyRecurrenceEditPolicy({
+        context: recurrenceContextFixture({ originalStartAt: null }),
+        scope: "this_event_only",
+      }),
+    ).toEqual({ allowed: false, reason: "missing_original_start" });
+    expect(
+      evaluateThisEventOnlyRecurrenceEditPolicy({
+        context: recurrenceContextFixture({ etag: null }),
+        scope: "this_event_only",
+      }),
+    ).toEqual({ allowed: false, reason: "missing_cached_etag" });
+  });
+
+  it("classifies fetched provider occurrences before recurring writes", () => {
+    expect(
+      classifyFetchedRecurringOccurrence({
+        providerEvent: providerOccurrenceFixture(),
+        requestedEvent: {
+          recurringEventId: "series-1",
+          sourceEventId: "occurrence-1",
+        },
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("rejects provider master or mismatched recurrence responses", () => {
+    expect(
+      classifyFetchedRecurringOccurrence({
+        providerEvent: providerOccurrenceFixture({
+          originalStartAt: null,
+          recurringEventId: null,
+        }),
+        requestedEvent: {
+          recurringEventId: "series-1",
+          sourceEventId: "occurrence-1",
+        },
+      }),
+    ).toEqual({ ok: false, reason: "provider_master_response" });
+    expect(
+      classifyFetchedRecurringOccurrence({
+        providerEvent: providerOccurrenceFixture({
+          sourceEventId: "occurrence-2",
+        }),
+        requestedEvent: {
+          recurringEventId: "series-1",
+          sourceEventId: "occurrence-1",
+        },
+      }),
+    ).toEqual({ ok: false, reason: "provider_source_event_mismatch" });
+    expect(
+      classifyFetchedRecurringOccurrence({
+        providerEvent: providerOccurrenceFixture({
+          recurringEventId: "series-2",
+        }),
+        requestedEvent: {
+          recurringEventId: "series-1",
+          sourceEventId: "occurrence-1",
+        },
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "provider_recurring_identity_mismatch",
     });
   });
 
@@ -322,4 +426,36 @@ function evaluatePolicy({
     operation,
     scopes,
   });
+}
+
+function recurrenceContextFixture(
+  overrides: Partial<{
+    etag: string | null;
+    originalStartAt: Date | null;
+    recurringEventId: string | null;
+    sourceEventId: string | null;
+  }> = {},
+) {
+  return {
+    etag: "etag-1",
+    originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+    recurringEventId: "series-1",
+    sourceEventId: "occurrence-1",
+    ...overrides,
+  };
+}
+
+function providerOccurrenceFixture(
+  overrides: Partial<{
+    originalStartAt: Date | null;
+    recurringEventId: string | null;
+    sourceEventId: string | null;
+  }> = {},
+) {
+  return {
+    originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+    recurringEventId: "series-1",
+    sourceEventId: "occurrence-1",
+    ...overrides,
+  };
 }
