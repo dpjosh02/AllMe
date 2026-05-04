@@ -96,6 +96,7 @@ export function CalendarDashboardInteractive({
           <div className="grid gap-3 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
             <div className="grid gap-2 sm:grid-cols-2">
               <TodayAgendaLinkStat
+                detail="Open today's operating view."
                 href={{
                   pathname: "/today",
                   query: { date: todayAgenda?.dateKey },
@@ -119,6 +120,7 @@ export function CalendarDashboardInteractive({
                 }
               />
               <TodayAgendaButtonStat
+                detail="Focus preparation."
                 icon={<Flag aria-hidden="true" className="h-4 w-4" />}
                 isActive={reviewFocus === "needs_prep"}
                 label="Needs prep"
@@ -126,6 +128,7 @@ export function CalendarDashboardInteractive({
                 value={String(todayNeedsPrepCount)}
               />
               <TodayAgendaButtonStat
+                detail="Focus completed."
                 icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
                 isActive={reviewFocus === "done"}
                 label="Done"
@@ -162,10 +165,9 @@ export function CalendarDashboardInteractive({
                 updateCalendarSelection={updateCalendarSelection}
               />
             }
-            title="Next 7 days"
+            title={weekRangeLabel ? `Next 7 days ${weekRangeLabel}` : "Next 7 days"}
           >
             <p className="-mt-2 mb-3 text-xs font-semibold text-[var(--muted)]">
-              {weekRangeLabel ? `${weekRangeLabel} · ` : ""}
               {data.selectedCalendars}/{data.calendars} calendars shown
               {reviewFocus !== "all"
                 ? ` · ${getReviewFocusLabel(reviewFocus)} focus`
@@ -347,14 +349,13 @@ function CalendarReviewFocusControls({
             <button
               aria-pressed={reviewFocus === option.value}
               className={[
-                "h-7 min-w-24 rounded-full border px-3 text-xs font-semibold shadow-sm transition-all duration-300 ease-out",
-                index > 0 ? "-ml-4" : "",
+                "h-7 min-w-28 whitespace-nowrap rounded-full border px-3 text-xs font-semibold shadow-sm transition-all duration-300 ease-out",
                 reviewFocus === option.value
                   ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
                   : "border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]",
                 isOpen
                   ? "translate-x-0 opacity-100"
-                  : "-translate-x-12 opacity-0",
+                  : "-translate-x-10 opacity-0",
               ].join(" ")}
               key={option.value}
               onClick={() => {
@@ -362,6 +363,7 @@ function CalendarReviewFocusControls({
                 setIsOpen(false);
               }}
               style={{
+                marginLeft: index === 0 ? "0" : "0.375rem",
                 transitionDelay: isOpen
                   ? `${index * 45}ms`
                   : `${(reviewFocusOptions.length - index) * 25}ms`,
