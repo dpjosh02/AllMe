@@ -84,6 +84,11 @@ function UpcomingEventRow({
               style={{ backgroundColor: event.calendarColor ?? "var(--accent)" }}
             />
             <p className="truncate text-sm font-semibold">{event.title}</p>
+            {event.recurringEventId ? (
+              <span className="shrink-0 rounded-full border border-[var(--line)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                Repeats
+              </span>
+            ) : null}
             {event.linkedNoteId ? (
               <StickyNote
                 aria-label="Linked note"

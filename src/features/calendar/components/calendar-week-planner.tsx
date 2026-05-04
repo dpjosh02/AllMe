@@ -126,6 +126,11 @@ function WeekAgendaItem({
               <p className="min-w-0 truncate text-xs font-semibold">
                 {item.title}
               </p>
+              {item.recurringEventId ? (
+                <span className="shrink-0 rounded-full border border-[var(--line)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                  Repeats
+                </span>
+              ) : null}
               {item.linkedNoteId ? (
                 <StickyNote
                   aria-label="Linked note"

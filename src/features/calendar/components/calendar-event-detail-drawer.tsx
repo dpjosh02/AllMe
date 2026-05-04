@@ -160,6 +160,7 @@ function CalendarEventDetailDrawerContent({
   }, [onClose]);
 
   const timeLabel = getEventTimeLabel(event);
+  const isRecurringEvent = Boolean(event.recurringEventId);
   const todayDateKey = getEventTodayDateKey(event);
   const todayHref = todayDateKey
     ? { pathname: "/today", query: { date: todayDateKey } }
@@ -192,6 +193,11 @@ function CalendarEventDetailDrawerContent({
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
               {event.title}
             </h2>
+            {isRecurringEvent ? (
+              <span className="mt-3 inline-flex rounded-full border border-[var(--warn)]/35 px-3 py-1 text-xs font-semibold text-[var(--warn)]">
+                Repeating event
+              </span>
+            ) : null}
           </div>
           <button
             aria-label="Close event details"
@@ -274,6 +280,9 @@ function CalendarEventDetailDrawerContent({
             event={event}
             updateGoogleCalendarEvent={updateGoogleCalendarEvent}
           />
+          {isRecurringEvent ? (
+            <RecurringProviderWriteNotice />
+          ) : null}
         </div>
 
         <div className="border-t border-[var(--line)] bg-[var(--panel-strong)] p-4">
@@ -619,6 +628,19 @@ function ProviderEventEditButton() {
     >
       {pending ? "Updating..." : "Update Google Calendar event"}
     </button>
+  );
+}
+
+function RecurringProviderWriteNotice() {
+  return (
+    <div className="mt-5 rounded-2xl border border-[var(--warn)]/30 bg-[var(--empty)] p-4">
+      <p className="allme-kicker text-[var(--warn)]">Recurrence guardrail</p>
+      <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+        AllMe can show and annotate repeating events, but Google Calendar edits
+        and deletion for recurring events are blocked until recurrence-specific
+        write flows are implemented.
+      </p>
+    </div>
   );
 }
 

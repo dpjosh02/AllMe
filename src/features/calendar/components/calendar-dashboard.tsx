@@ -685,6 +685,7 @@ function TodayActionStrip({
             </div>
             <p className="mt-1 truncate text-xs text-[var(--muted)]">
               {getReviewFocusLabel(event.localReviewStatus ?? "none")}
+              {event.recurringEventId ? " · Repeats" : ""}
               {event.location ? ` · ${event.location}` : ""}
             </p>
           </button>
