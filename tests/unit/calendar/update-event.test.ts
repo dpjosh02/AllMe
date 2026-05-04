@@ -126,6 +126,63 @@ describe("update calendar event provider-write flow", () => {
     }
   });
 
+  it("blocks non-writable, deleted, or unselected calendars before provider calls", async () => {
+    for (const context of [
+      contextFixture({ accessRole: "reader" }),
+      contextFixture({ accessRole: "freeBusyReader" }),
+      contextFixture({ isCalendarDeleted: true }),
+      contextFixture({ isCalendarSelected: false }),
+    ]) {
+      const deps = createDeps();
+
+      await expect(
+        updateCalendarEventInGoogle({
+          deps,
+          input: {
+            context,
+            form: formFixture(),
+            idempotencyKey: `update-${Math.random()}`,
+          },
+        }),
+      ).rejects.toThrow(CalendarProviderWriteUserError);
+
+      expect(deps.fetchProviderEvent).not.toHaveBeenCalled();
+      expect(deps.patchProviderEvent).not.toHaveBeenCalled();
+      expect(deps.reconcileLocalEvent).not.toHaveBeenCalled();
+    }
+  });
+
+  it("blocks when resolved token scopes are read-only before fetch or PATCH", async () => {
+    const deps = createDeps({
+      resolveAccessToken: vi.fn(async () => ({
+        accessToken: "access-token",
+        scopes: [googleCalendarReadonlyScope],
+      })),
+    });
+
+    await expect(
+      updateCalendarEventInGoogle({
+        deps,
+        input: {
+          context: contextFixture(),
+          form: formFixture(),
+          idempotencyKey: "update-1",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "reauthorization_required" });
+
+    expect(deps.markAudit).toHaveBeenLastCalledWith({
+      auditId: "audit-1",
+      errorCode: "reauthorization_required",
+      errorSummary:
+        "Reconnect Google Calendar with write access before editing events.",
+      status: "skipped",
+    });
+    expect(deps.fetchProviderEvent).not.toHaveBeenCalled();
+    expect(deps.patchProviderEvent).not.toHaveBeenCalled();
+    expect(deps.reconcileLocalEvent).not.toHaveBeenCalled();
+  });
+
   it("records conflict and does not PATCH when provider ETag changed", async () => {
     const deps = createDeps({
       providerEvent: providerEventFixture({ etag: "provider-new-etag" }),

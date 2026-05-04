@@ -102,6 +102,61 @@ describe("delete calendar event provider-write flow", () => {
     }
   });
 
+  it("blocks non-writable, deleted, or unselected calendars before provider calls", async () => {
+    for (const context of [
+      contextFixture({ accessRole: "reader" }),
+      contextFixture({ accessRole: "freeBusyReader" }),
+      contextFixture({ isCalendarDeleted: true }),
+      contextFixture({ isCalendarSelected: false }),
+    ]) {
+      const deps = createDeps();
+
+      await expect(
+        deleteCalendarEventInGoogle({
+          deps,
+          input: {
+            context,
+            idempotencyKey: `delete-${Math.random()}`,
+          },
+        }),
+      ).rejects.toThrow(CalendarProviderWriteUserError);
+
+      expect(deps.fetchProviderEvent).not.toHaveBeenCalled();
+      expect(deps.deleteProviderEvent).not.toHaveBeenCalled();
+      expect(deps.reconcileLocalEventDeletion).not.toHaveBeenCalled();
+    }
+  });
+
+  it("blocks when resolved token scopes are read-only before fetch or DELETE", async () => {
+    const deps = createDeps({
+      resolveAccessToken: vi.fn(async () => ({
+        accessToken: "access-token",
+        scopes: [googleCalendarReadonlyScope],
+      })),
+    });
+
+    await expect(
+      deleteCalendarEventInGoogle({
+        deps,
+        input: {
+          context: contextFixture(),
+          idempotencyKey: "delete-1",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "reauthorization_required" });
+
+    expect(deps.markAudit).toHaveBeenLastCalledWith({
+      auditId: "audit-1",
+      errorCode: "reauthorization_required",
+      errorSummary:
+        "Reconnect Google Calendar with write access before deleting events.",
+      status: "skipped",
+    });
+    expect(deps.fetchProviderEvent).not.toHaveBeenCalled();
+    expect(deps.deleteProviderEvent).not.toHaveBeenCalled();
+    expect(deps.reconcileLocalEventDeletion).not.toHaveBeenCalled();
+  });
+
   it("records conflict and does not DELETE when provider ETag changed", async () => {
     const deps = createDeps({
       providerEvent: providerEventFixture({ etag: "provider-new-etag" }),
