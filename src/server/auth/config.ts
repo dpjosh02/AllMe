@@ -15,15 +15,12 @@ import {
   isOwnerEmail,
   resolveAuthorizationDecision,
 } from "@/server/auth/access-control";
+import {
+  googleCalendarOfflineConsentParams,
+  googleCalendarReadOnlyAuthScope,
+} from "@/server/auth/google-calendar-scopes";
 import { upsertGoogleOAuthToken } from "@/server/auth/oauth-token-store";
 import { db } from "@/server/db";
-
-const googleAuthScopes = [
-  "openid",
-  "email",
-  "profile",
-  googleCalendarReadonlyScope,
-].join(" ");
 
 export const authOptions: NextAuthConfig = {
   callbacks: {
@@ -138,9 +135,8 @@ export const authOptions: NextAuthConfig = {
           GoogleProvider({
             authorization: {
               params: {
-                access_type: "offline",
-                prompt: "consent",
-                scope: googleAuthScopes,
+                ...googleCalendarOfflineConsentParams,
+                scope: googleCalendarReadOnlyAuthScope,
               },
             },
             clientId: serverEnv.AUTH_GOOGLE_ID,

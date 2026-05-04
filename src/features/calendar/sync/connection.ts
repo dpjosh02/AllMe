@@ -8,6 +8,8 @@ type Database = typeof appDb;
 export const googleCalendarProvider = "google_calendar";
 export const googleCalendarReadonlyScope =
   "https://www.googleapis.com/auth/calendar.readonly";
+export const googleCalendarEventsWriteScope =
+  "https://www.googleapis.com/auth/calendar.events";
 
 export type GoogleCalendarConnectionInput = {
   accountEmail: string;

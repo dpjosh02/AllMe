@@ -4,7 +4,12 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { syncGoogleCalendarIncremental } from "@/features/calendar/sync/initial-full-sync";
+import {
+  googleCalendarOfflineConsentParams,
+  googleCalendarWriteAuthScope,
+} from "@/server/auth/google-calendar-scopes";
 import { requireOwnerUser } from "@/server/auth/guards";
+import { signIn } from "@/server/auth";
 import { db } from "@/server/db";
 import {
   calendarCalendars,
@@ -20,6 +25,23 @@ export async function syncGoogleCalendarNow() {
   revalidatePath("/calendar");
   revalidatePath("/settings");
   revalidatePath("/today");
+}
+
+export async function reconnectGoogleCalendarWithWriteAccess(formData: FormData) {
+  await requireOwnerUser();
+
+  await signIn(
+    "google",
+    {
+      redirectTo: normalizeCalendarReauthorizationRedirect(
+        String(formData.get("redirectTo") ?? "/calendar"),
+      ),
+    },
+    {
+      ...googleCalendarOfflineConsentParams,
+      scope: googleCalendarWriteAuthScope,
+    },
+  );
 }
 
 export async function updateCalendarSelection(formData: FormData) {
@@ -46,6 +68,19 @@ export async function updateCalendarSelection(formData: FormData) {
 
   revalidatePath("/calendar");
   revalidatePath("/today");
+}
+
+function normalizeCalendarReauthorizationRedirect(value: string) {
+  if (
+    value === "/calendar" ||
+    value === "/settings" ||
+    value.startsWith("/calendar?") ||
+    value.startsWith("/settings?")
+  ) {
+    return value;
+  }
+
+  return "/calendar";
 }
 
 export async function updateCalendarEventReviewStatus(formData: FormData) {

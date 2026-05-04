@@ -24,6 +24,9 @@ import {
 } from "@/components/layout/page-scaffold";
 import { updateOwnerSettings } from "@/features/settings/actions";
 import {
+  reconnectGoogleCalendarWithWriteAccess,
+} from "@/features/calendar/actions";
+import {
   currencyOptions,
   getSettingsPageData,
   timezoneOptions,
@@ -495,6 +498,20 @@ function CalendarHealthCard({
             <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
               {calendar.writeAccessMessage}
             </p>
+          ) : null}
+          {calendar.hasConnection && !calendar.writeAccessReady ? (
+            <form
+              action={reconnectGoogleCalendarWithWriteAccess}
+              className="mt-3"
+            >
+              <input name="redirectTo" type="hidden" value="/settings" />
+              <button
+                className="inline-flex min-h-9 items-center justify-center rounded-xl bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)]"
+                type="submit"
+              >
+                Reconnect with write access
+              </button>
+            </form>
           ) : null}
         </div>
 

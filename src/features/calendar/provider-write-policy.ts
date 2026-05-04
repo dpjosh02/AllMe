@@ -1,10 +1,10 @@
 import {
+  googleCalendarEventsWriteScope as googleCalendarEventsWriteScopeValue,
   googleCalendarReadonlyScope as googleCalendarReadonlyScopeValue,
   parseOAuthScopes,
 } from "@/features/calendar/sync/connection";
 
-export const googleCalendarEventsWriteScope =
-  "https://www.googleapis.com/auth/calendar.events";
+export const googleCalendarEventsWriteScope = googleCalendarEventsWriteScopeValue;
 export const googleCalendarBroadWriteScope =
   "https://www.googleapis.com/auth/calendar";
 export const googleCalendarReadonlyScope = googleCalendarReadonlyScopeValue;

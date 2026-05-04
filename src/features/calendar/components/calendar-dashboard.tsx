@@ -41,12 +41,14 @@ export function CalendarDashboardInteractive({
   updateLinkedNote,
   updateCalendarSelection,
   updateEventReviewStatus,
+  reconnectGoogleCalendarWithWriteAccess,
 }: {
   createLinkedNoteFromEvent: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
   data: CalendarPageData;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
+  reconnectGoogleCalendarWithWriteAccess: (formData: FormData) => Promise<void>;
   updateLinkedNote: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
@@ -107,7 +109,12 @@ export function CalendarDashboardInteractive({
     <>
       <PageGridItem span="full">
         <AllMeCard className="p-3 sm:p-4" variant="metrics">
-          <CalendarReadinessNotice data={data} />
+          <CalendarReadinessNotice
+            data={data}
+            reconnectGoogleCalendarWithWriteAccess={
+              reconnectGoogleCalendarWithWriteAccess
+            }
+          />
           <div className="grid gap-3 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
             <div className="grid gap-2 sm:grid-cols-2">
               <TodayAgendaLinkStat
@@ -239,7 +246,13 @@ export function CalendarDashboardInteractive({
   );
 }
 
-function CalendarReadinessNotice({ data }: { data: CalendarPageData }) {
+function CalendarReadinessNotice({
+  data,
+  reconnectGoogleCalendarWithWriteAccess,
+}: {
+  data: CalendarPageData;
+  reconnectGoogleCalendarWithWriteAccess: (formData: FormData) => Promise<void>;
+}) {
   const notice = getCalendarReadinessNotice(data);
 
   if (!notice) {
@@ -254,6 +267,17 @@ function CalendarReadinessNotice({ data }: { data: CalendarPageData }) {
       <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
         {notice.detail}
       </p>
+      {notice.action === "reconnect_write_access" ? (
+        <form action={reconnectGoogleCalendarWithWriteAccess} className="mt-3">
+          <input name="redirectTo" type="hidden" value="/calendar" />
+          <button
+            className="inline-flex min-h-9 items-center justify-center rounded-xl bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)]"
+            type="submit"
+          >
+            Reconnect with write access
+          </button>
+        </form>
+      ) : null}
     </div>
   );
 }
@@ -269,6 +293,7 @@ function getCalendarReadinessNotice(data: CalendarPageData) {
 
   if (!data.connection.writeReadiness.isWriteReady) {
     return {
+      action: "reconnect_write_access" as const,
       detail: data.connection.writeReadiness.message,
       title: "Provider writes need reauthorization.",
     };
