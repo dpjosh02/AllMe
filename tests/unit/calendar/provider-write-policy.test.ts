@@ -34,14 +34,35 @@ describe("Calendar provider-write policy", () => {
     expect(
       getGoogleCalendarWriteReadiness([googleCalendarReadonlyScope]),
     ).toEqual({
+      hasReadonlyScope: true,
+      hasWriteScope: false,
       isWriteReady: false,
+      message: "Reconnect Google Calendar with write access before publishing changes.",
       reason: "reauthorization_required",
       status: "reauthorization_required",
     });
     expect(
       getGoogleCalendarWriteReadiness([googleCalendarEventsWriteScope]),
     ).toEqual({
+      hasReadonlyScope: false,
+      hasWriteScope: true,
       isWriteReady: true,
+      message: null,
+      status: "write_ready",
+    });
+  });
+
+  it("detects mixed read and write Calendar scopes as write-ready", () => {
+    expect(
+      getGoogleCalendarWriteReadiness([
+        googleCalendarReadonlyScope,
+        googleCalendarEventsWriteScope,
+      ]),
+    ).toEqual({
+      hasReadonlyScope: true,
+      hasWriteScope: true,
+      isWriteReady: true,
+      message: null,
       status: "write_ready",
     });
   });

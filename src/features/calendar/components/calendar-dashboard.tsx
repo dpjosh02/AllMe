@@ -267,6 +267,13 @@ function getCalendarReadinessNotice(data: CalendarPageData) {
     };
   }
 
+  if (!data.connection.writeReadiness.isWriteReady) {
+    return {
+      detail: data.connection.writeReadiness.message,
+      title: "Provider writes need reauthorization.",
+    };
+  }
+
   if (data.calendars === 0) {
     return {
       detail:

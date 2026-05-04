@@ -4,6 +4,7 @@ import {
   getGoogleCalendarConnectionStatus,
   googleCalendarReadonlyScope,
 } from "@/features/calendar/sync/connection";
+import { getGoogleCalendarWriteReadiness } from "@/features/calendar/provider-write-policy";
 import { serverEnv } from "@/lib/env";
 import { resolveAuthBoundary } from "@/server/auth/access-control";
 import { db } from "@/server/db";
@@ -48,6 +49,9 @@ type CalendarSettingsStatus = {
   status: string;
   tone: SettingsStatusTone;
   updatedAt: Date | null;
+  writeAccessLabel: string;
+  writeAccessReady: boolean;
+  writeAccessMessage: string | null;
 };
 
 export async function getSettingsPageData(userId: string) {
@@ -106,6 +110,7 @@ async function getCalendarStatus(userId: string): Promise<CalendarSettingsStatus
   }
 
   const hasReadonlyScope = connection.scopes.includes(googleCalendarReadonlyScope);
+  const writeReadiness = getGoogleCalendarWriteReadiness(connection.scopes);
   const ready = connection.status === "active" && hasReadonlyScope;
   const tone: SettingsStatusTone = ready ? "ready" : "attention";
 
@@ -121,6 +126,11 @@ async function getCalendarStatus(userId: string): Promise<CalendarSettingsStatus
     status: connection.status,
     tone,
     updatedAt: connection.updatedAt,
+    writeAccessLabel: writeReadiness.isWriteReady
+      ? "Write access granted"
+      : "Reconnect required",
+    writeAccessMessage: writeReadiness.message,
+    writeAccessReady: writeReadiness.isWriteReady,
   };
 }
 
@@ -137,6 +147,9 @@ function getEmptyCalendarStatus(): CalendarSettingsStatus {
     status: "not_connected",
     tone: "neutral" satisfies SettingsStatusTone,
     updatedAt: null,
+    writeAccessLabel: "Not granted",
+    writeAccessMessage: null,
+    writeAccessReady: false,
   };
 }
 

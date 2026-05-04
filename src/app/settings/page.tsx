@@ -481,7 +481,7 @@ function CalendarHealthCard({
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
                 {calendar.hasConnection
-                  ? "Google Calendar read-only access metadata is present. Tokens and secret values stay hidden."
+                  ? "Google Calendar access metadata is present. Tokens and secret values stay hidden."
                   : "Calendar sync is not connected yet. OAuth will request read-only calendar access when hosted Google sign-in is used."}
               </p>
             </div>
@@ -491,13 +491,19 @@ function CalendarHealthCard({
             />
           </div>
           <StatusPill label={calendar.badgeLabel} tone={calendar.tone} />
+          {calendar.writeAccessMessage ? (
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+              {calendar.writeAccessMessage}
+            </p>
+          ) : null}
         </div>
 
         <MetricGrid>
           {[
             ["Status", calendar.status],
             ["Account", calendar.accountEmail],
-            ["Scope", calendar.scopeStatus],
+            ["Sync scope", calendar.scopeStatus],
+            ["Write access", calendar.writeAccessLabel],
             ["Latest run", formatImportStatus(latest?.status)],
             [
               "Last sync",

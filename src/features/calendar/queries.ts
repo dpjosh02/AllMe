@@ -5,6 +5,7 @@ import {
   attachLinkedNotesToCalendarEvents,
   getCalendarEventNoteLinksForEvents,
 } from "@/features/calendar/event-note-links";
+import { getGoogleCalendarWriteReadiness } from "@/features/calendar/provider-write-policy";
 import {
   getGoogleCalendarConnectionStatus,
   googleCalendarReadonlyScope,
@@ -53,6 +54,7 @@ export async function getCalendarPageData(userId: string) {
   const hasReadonlyScope = Boolean(
     connection?.scopes.includes(googleCalendarReadonlyScope),
   );
+  const writeReadiness = getGoogleCalendarWriteReadiness(connection?.scopes);
   const connectionReady = connection?.status === "active" && hasReadonlyScope;
   const tone: CalendarStatusTone = connectionReady
     ? "ready"
@@ -81,6 +83,7 @@ export async function getCalendarPageData(userId: string) {
       lastSyncedAt: connection?.lastSyncedAt ?? null,
       status: connection?.status ?? "not_connected",
       tone,
+      writeReadiness,
     },
     events: calendarCounts.events,
     selectedCalendars: calendarCounts.selectedCalendars,

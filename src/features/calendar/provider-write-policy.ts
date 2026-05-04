@@ -1,11 +1,15 @@
-import { parseOAuthScopes } from "@/features/calendar/sync/connection";
+import {
+  googleCalendarReadonlyScope as googleCalendarReadonlyScopeValue,
+  parseOAuthScopes,
+} from "@/features/calendar/sync/connection";
 
 export const googleCalendarEventsWriteScope =
   "https://www.googleapis.com/auth/calendar.events";
 export const googleCalendarBroadWriteScope =
   "https://www.googleapis.com/auth/calendar";
-export const googleCalendarReadonlyScope =
-  "https://www.googleapis.com/auth/calendar.readonly";
+export const googleCalendarReadonlyScope = googleCalendarReadonlyScopeValue;
+export const googleCalendarWriteReauthorizationMessage =
+  "Reconnect Google Calendar with write access before publishing changes.";
 
 export const calendarProviderWriteOperations = [
   "create_event",
@@ -41,11 +45,17 @@ export type OAuthScopeInput = string | string[] | null | undefined;
 
 export type CalendarProviderWriteReadiness =
   | {
+      hasReadonlyScope: boolean;
+      hasWriteScope: true;
       isWriteReady: true;
+      message: null;
       status: "write_ready";
     }
   | {
+      hasReadonlyScope: boolean;
+      hasWriteScope: false;
       isWriteReady: false;
+      message: typeof googleCalendarWriteReauthorizationMessage;
       reason: "reauthorization_required";
       status: "reauthorization_required";
     };
@@ -167,12 +177,27 @@ export function hasGoogleCalendarWriteScope(scopes: OAuthScopeInput) {
 export function getGoogleCalendarWriteReadiness(
   scopes: OAuthScopeInput,
 ): CalendarProviderWriteReadiness {
-  if (hasGoogleCalendarWriteScope(scopes)) {
-    return { isWriteReady: true, status: "write_ready" };
+  const normalizedScopes = normalizeOAuthScopes(scopes);
+  const hasReadonlyScope = normalizedScopes.includes(googleCalendarReadonlyScope);
+  const hasWriteScope = normalizedScopes.some((scope) =>
+    writeCapableGoogleCalendarScopes.has(scope),
+  );
+
+  if (hasWriteScope) {
+    return {
+      hasReadonlyScope,
+      hasWriteScope: true,
+      isWriteReady: true,
+      message: null,
+      status: "write_ready",
+    };
   }
 
   return {
+    hasReadonlyScope,
+    hasWriteScope: false,
     isWriteReady: false,
+    message: googleCalendarWriteReauthorizationMessage,
     reason: "reauthorization_required",
     status: "reauthorization_required",
   };
