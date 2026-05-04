@@ -16,6 +16,7 @@ import {
   type CalendarEventCreateForm,
 } from "@/features/calendar/provider-write/create-event";
 import { deleteCalendarEventInGoogle } from "@/features/calendar/provider-write/delete-event";
+import type { CalendarRecurrenceEditScope } from "@/features/calendar/provider-write-policy";
 import { updateCalendarEventInGoogle } from "@/features/calendar/provider-write/update-event";
 import {
   CalendarProviderWriteUserError,
@@ -496,6 +497,7 @@ export async function updateGoogleCalendarEventFromCalendar(
         context,
         form: getCalendarEventCreateForm(formData),
         idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
+        recurrenceEditScope: getCalendarRecurrenceEditScope(formData),
       },
     });
 
@@ -1094,6 +1096,22 @@ function getCalendarEventCreateForm(formData: FormData): CalendarEventCreateForm
     startTime: String(formData.get("startTime") ?? ""),
     title: String(formData.get("title") ?? ""),
   };
+}
+
+function getCalendarRecurrenceEditScope(
+  formData: FormData,
+): CalendarRecurrenceEditScope | undefined {
+  const scope = String(formData.get("recurrenceEditScope") ?? "");
+
+  if (!scope) {
+    return undefined;
+  }
+
+  if (scope === "this_event_only") {
+    return scope;
+  }
+
+  throw new Error("Unsupported recurrence edit scope.");
 }
 
 function revalidateCalendarNoteViews(noteId: string) {

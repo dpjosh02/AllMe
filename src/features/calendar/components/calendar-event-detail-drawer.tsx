@@ -280,9 +280,6 @@ function CalendarEventDetailDrawerContent({
             event={event}
             updateGoogleCalendarEvent={updateGoogleCalendarEvent}
           />
-          {isRecurringEvent ? (
-            <RecurringProviderWriteNotice />
-          ) : null}
         </div>
 
         <div className="border-t border-[var(--line)] bg-[var(--panel-strong)] p-4">
@@ -447,9 +444,13 @@ function ProviderEventEditPanel({
 }) {
   const [isEditingProviderEvent, setIsEditingProviderEvent] = useState(false);
   const [isAllDay, setIsAllDay] = useState(event.isAllDay);
+  const [recurrenceEditScope, setRecurrenceEditScope] = useState<
+    "this_event_only" | null
+  >(null);
   const [result, setResult] = useState<CalendarProviderWriteMutationResult | null>(
     null,
   );
+  const canEditProviderEvent = !event.recurringEventId || Boolean(recurrenceEditScope);
 
   async function updateProviderEvent(formData: FormData) {
     formData.set("idempotencyKey", createIdempotencyKey());
@@ -476,37 +477,82 @@ function ProviderEventEditPanel({
         </div>
         {event.recurringEventId ? (
           <span className="rounded-full border border-[var(--warn)]/35 px-3 py-1 text-xs font-semibold text-[var(--warn)]">
-            Recurring blocked
+            Repeating event
           </span>
         ) : null}
       </div>
 
+      {event.recurringEventId ? (
+        <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
+          <p className="text-xs font-semibold text-[var(--muted)]">
+            Choose how Google Calendar should apply this edit.
+          </p>
+          <div className="mt-3 grid gap-2">
+            <button
+              aria-pressed={recurrenceEditScope === "this_event_only"}
+              className={[
+                "min-h-9 rounded-xl border px-3 text-left text-xs font-semibold transition",
+                recurrenceEditScope === "this_event_only"
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--line)] text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)]",
+              ].join(" ")}
+              onClick={() => setRecurrenceEditScope("this_event_only")}
+              type="button"
+            >
+              Only this event
+            </button>
+            <button
+              className="min-h-9 cursor-not-allowed rounded-xl border border-[var(--line)] px-3 text-left text-xs font-semibold text-[var(--muted)] opacity-60"
+              disabled
+              type="button"
+            >
+              This and following · Deferred
+            </button>
+            <button
+              className="min-h-9 cursor-not-allowed rounded-xl border border-[var(--line)] px-3 text-left text-xs font-semibold text-[var(--muted)] opacity-60"
+              disabled
+              type="button"
+            >
+              Entire series · Deferred
+            </button>
+          </div>
+          {recurrenceEditScope ? (
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+              This updates only this Google Calendar occurrence. The repeating
+              series pattern remains unchanged.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <button
         className="mt-4 inline-flex min-h-9 items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={Boolean(event.recurringEventId)}
+        disabled={!canEditProviderEvent}
         onClick={() => setIsEditingProviderEvent((current) => !current)}
         title={
-          event.recurringEventId
-            ? "Recurring event edits are not supported yet."
+          event.recurringEventId && !recurrenceEditScope
+            ? "Choose Only this event before editing this occurrence."
             : undefined
         }
         type="button"
       >
-        {event.recurringEventId
-          ? "Google edits unavailable"
-          : isEditingProviderEvent
-            ? "Hide Google editor"
+        {isEditingProviderEvent
+          ? "Hide Google editor"
+          : event.recurringEventId
+            ? "Edit only this event"
             : "Edit Google event"}
       </button>
 
-      {event.recurringEventId ? (
-        <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
-          Recurring event edits are not supported in this slice. Open Google
-          Calendar for recurrence changes.
-        </p>
-      ) : isEditingProviderEvent ? (
+      {isEditingProviderEvent ? (
         <form action={updateProviderEvent} className="mt-4 grid gap-3">
           <input name="eventId" type="hidden" value={event.id} />
+          {recurrenceEditScope ? (
+            <input
+              name="recurrenceEditScope"
+              type="hidden"
+              value={recurrenceEditScope}
+            />
+          ) : null}
           <label className="grid gap-1.5">
             <span className="allme-kicker">Title</span>
             <input
@@ -607,7 +653,7 @@ function ProviderEventEditPanel({
             />
           </label>
 
-          <ProviderEventEditButton />
+          <ProviderEventEditButton isRecurring={Boolean(event.recurringEventId)} />
           {result ? (
             <p
               className={[
@@ -626,7 +672,7 @@ function ProviderEventEditPanel({
   );
 }
 
-function ProviderEventEditButton() {
+function ProviderEventEditButton({ isRecurring }: { isRecurring: boolean }) {
   const { pending } = useFormStatus();
 
   return (
@@ -635,21 +681,12 @@ function ProviderEventEditButton() {
       disabled={pending}
       type="submit"
     >
-      {pending ? "Updating..." : "Update Google Calendar event"}
+      {pending
+        ? "Updating..."
+        : isRecurring
+          ? "Update only this event"
+          : "Update Google Calendar event"}
     </button>
-  );
-}
-
-function RecurringProviderWriteNotice() {
-  return (
-    <div className="mt-5 rounded-2xl border border-[var(--warn)]/30 bg-[var(--empty)] p-4">
-      <p className="allme-kicker text-[var(--warn)]">Recurrence guardrail</p>
-      <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
-        AllMe can show and annotate repeating events, but Google Calendar edits
-        and deletion for recurring events are blocked until recurrence-specific
-        write flows are implemented.
-      </p>
-    </div>
   );
 }
 
