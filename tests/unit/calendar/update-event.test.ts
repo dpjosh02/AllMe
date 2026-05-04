@@ -126,6 +126,170 @@ describe("update calendar event provider-write flow", () => {
     }
   });
 
+  it("updates one recurring occurrence when this-event-only scope is explicit", async () => {
+    const callLog: string[] = [];
+    const deps = createDeps({
+      callLog,
+      providerEvent: providerEventFixture({
+        originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+        recurringEventId: "series-1",
+        sourceEventId: "occurrence-1",
+      }),
+    });
+
+    await expect(
+      updateCalendarEventInGoogle({
+        deps,
+        input: {
+          context: contextFixture({
+            originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+            recurringEventId: "series-1",
+            sourceEventId: "occurrence-1",
+          }),
+          form: formFixture(),
+          idempotencyKey: "update-recurring-1",
+          recurrenceEditScope: "this_event_only",
+        },
+      }),
+    ).resolves.toEqual({
+      eventId: "event-1",
+      status: "succeeded",
+    });
+
+    expect(callLog).toEqual([
+      "audit:create",
+      "token",
+      "audit:running",
+      "provider:fetch",
+      "provider:patch",
+      "local:reconcile",
+      "audit:succeeded",
+    ]);
+    expect(deps.fetchProviderEvent).toHaveBeenCalledWith({
+      accessToken: "access-token",
+      sourceCalendarId: "primary",
+      sourceEventId: "occurrence-1",
+    });
+    expect(deps.patchProviderEvent).toHaveBeenCalledWith({
+      accessToken: "access-token",
+      patch: {
+        end: {
+          dateTime: "2026-05-04T10:00:00",
+          timeZone: "America/Chicago",
+        },
+        start: {
+          dateTime: "2026-05-04T09:00:00",
+          timeZone: "America/Chicago",
+        },
+        summary: "Updated planning block",
+      },
+      sourceCalendarId: "primary",
+      sourceEventId: "occurrence-1",
+    });
+  });
+
+  it("blocks unsupported recurrence scopes before provider calls", async () => {
+    const deps = createDeps();
+
+    await expect(
+      updateCalendarEventInGoogle({
+        deps,
+        input: {
+          context: contextFixture({
+            originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+            recurringEventId: "series-1",
+            sourceEventId: "occurrence-1",
+          }),
+          form: formFixture(),
+          idempotencyKey: "update-recurring-1",
+          recurrenceEditScope: "this_and_following",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "unsupported_event" });
+
+    expect(deps.fetchProviderEvent).not.toHaveBeenCalled();
+    expect(deps.patchProviderEvent).not.toHaveBeenCalled();
+    expect(deps.reconcileLocalEvent).not.toHaveBeenCalled();
+    expect(deps.markAudit).toHaveBeenLastCalledWith({
+      auditId: "audit-1",
+      errorCode: "unsupported_recurrence_scope",
+      errorSummary: "Only this-event recurrence edits are supported in this slice.",
+      status: "skipped",
+    });
+  });
+
+  it("records conflict and does not PATCH when provider returns a recurring master", async () => {
+    const deps = createDeps({
+      providerEvent: providerEventFixture({
+        originalStartAt: null,
+        recurringEventId: null,
+        sourceEventId: "series-1",
+      }),
+    });
+
+    await expect(
+      updateCalendarEventInGoogle({
+        deps,
+        input: {
+          context: contextFixture({
+            originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+            recurringEventId: "series-1",
+            sourceEventId: "occurrence-1",
+          }),
+          form: formFixture(),
+          idempotencyKey: "update-recurring-1",
+          recurrenceEditScope: "this_event_only",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "conflict" });
+
+    expect(deps.markAudit).toHaveBeenLastCalledWith({
+      auditId: "audit-1",
+      errorCode: "provider_master_response",
+      errorSummary:
+        "Google returned the recurring series instead of this occurrence. Sync Calendar and try again.",
+      status: "conflict",
+    });
+    expect(deps.patchProviderEvent).not.toHaveBeenCalled();
+    expect(deps.reconcileLocalEvent).not.toHaveBeenCalled();
+  });
+
+  it("records conflict and does not PATCH when provider occurrence identity differs", async () => {
+    const deps = createDeps({
+      providerEvent: providerEventFixture({
+        originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+        recurringEventId: "series-2",
+        sourceEventId: "occurrence-1",
+      }),
+    });
+
+    await expect(
+      updateCalendarEventInGoogle({
+        deps,
+        input: {
+          context: contextFixture({
+            originalStartAt: new Date("2026-05-04T14:00:00.000Z"),
+            recurringEventId: "series-1",
+            sourceEventId: "occurrence-1",
+          }),
+          form: formFixture(),
+          idempotencyKey: "update-recurring-1",
+          recurrenceEditScope: "this_event_only",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "conflict" });
+
+    expect(deps.markAudit).toHaveBeenLastCalledWith({
+      auditId: "audit-1",
+      errorCode: "provider_recurring_identity_mismatch",
+      errorSummary:
+        "Google returned a different recurring series. Sync Calendar and try again.",
+      status: "conflict",
+    });
+    expect(deps.patchProviderEvent).not.toHaveBeenCalled();
+    expect(deps.reconcileLocalEvent).not.toHaveBeenCalled();
+  });
+
   it("blocks non-writable, deleted, or unselected calendars before provider calls", async () => {
     for (const context of [
       contextFixture({ accessRole: "reader" }),
@@ -246,7 +410,7 @@ function createDeps({
 }: {
   callLog?: string[];
   patchProviderEvent?: UpdateCalendarEventDependencies["patchProviderEvent"];
-  providerEvent?: ReturnType<typeof providerEventFixture>;
+  providerEvent?: ProviderEventFixture;
   resolveAccessToken?: UpdateCalendarEventDependencies["resolveAccessToken"];
 } = {}) {
   const deps: UpdateCalendarEventDependencies = {
@@ -300,6 +464,7 @@ function contextFixture(
     eventId: "event-1",
     isCalendarDeleted: false,
     isCalendarSelected: true,
+    originalStartAt: null,
     recurringEventId: null,
     scopes: [googleCalendarReadonlyScope, googleCalendarEventsWriteScope],
     sourceCalendarId: "primary",
@@ -323,13 +488,21 @@ function formFixture() {
 }
 
 function providerEventFixture(
-  overrides: Partial<ReturnType<typeof baseProviderEventFixture>> = {},
-) {
+  overrides: Partial<ProviderEventFixture> = {},
+): ProviderEventFixture {
   return {
     ...baseProviderEventFixture(),
     ...overrides,
   };
 }
+
+type ProviderEventFixture = Omit<
+  ReturnType<typeof baseProviderEventFixture>,
+  "originalStartAt" | "recurringEventId"
+> & {
+  originalStartAt: Date | null;
+  recurringEventId: string | null;
+};
 
 function baseProviderEventFixture() {
   return {

@@ -790,6 +790,7 @@ async function getCalendarEventForProviderEventUpdate({
       eventId: calendarEvents.id,
       isCalendarDeleted: calendarCalendars.isDeleted,
       isCalendarSelected: calendarCalendars.isSelected,
+      originalStartAt: calendarEvents.originalStartAt,
       recurringEventId: calendarEvents.recurringEventId,
       scopes: calendarConnections.scopes,
       sourceCalendarId: calendarCalendars.sourceCalendarId,

@@ -3,9 +3,12 @@ import type {
   GoogleCalendarProviderEventPatch,
 } from "@/features/calendar/integrations/google-calendar";
 import {
+  classifyFetchedRecurringOccurrence,
   evaluateCalendarProviderWritePolicy,
+  evaluateThisEventOnlyRecurrenceEditPolicy,
   validateCalendarProviderPatch,
   validateIdempotencyKey,
+  type CalendarRecurrenceEditScope,
   type CalendarProviderWriteOperation,
   type CalendarProviderWriteStatus,
   type OAuthScopeInput,
@@ -31,6 +34,7 @@ export type UpdateCalendarEventContext = {
   eventId: string;
   isCalendarDeleted: boolean;
   isCalendarSelected: boolean;
+  originalStartAt: Date | null;
   recurringEventId: string | null;
   scopes: OAuthScopeInput;
   sourceCalendarId: string;
@@ -67,6 +71,7 @@ export type UpdateCalendarEventInput = {
   context: UpdateCalendarEventContext;
   form: CalendarEventCreateForm;
   idempotencyKey: string | null | undefined;
+  recurrenceEditScope?: CalendarRecurrenceEditScope;
 };
 
 export async function updateCalendarEventInGoogle({
@@ -111,6 +116,20 @@ export async function updateCalendarEventInGoogle({
     sourceCalendarId: input.context.sourceCalendarId,
     sourceEventId: input.context.sourceEventId,
   });
+  const recurrencePolicy = evaluateUpdateRecurrencePolicy(input);
+
+  if (!recurrencePolicy.allowed) {
+    await deps.markAudit({
+      auditId: audit.id,
+      errorCode: recurrencePolicy.reason,
+      errorSummary: getUpdateRecurrencePolicyErrorMessage(recurrencePolicy.reason),
+      status: "skipped",
+    });
+    throw new CalendarProviderWriteUserError(
+      getUpdateRecurrencePolicyErrorMessage(recurrencePolicy.reason),
+      "unsupported_event",
+    );
+  }
 
   const policy = evaluateCalendarProviderWritePolicy({
     calendar: {
@@ -120,7 +139,10 @@ export async function updateCalendarEventInGoogle({
     },
     connectionStatus: input.context.connectionStatus,
     event: {
-      recurringEventId: input.context.recurringEventId,
+      recurringEventId:
+        input.recurrenceEditScope === "this_event_only"
+          ? null
+          : input.context.recurringEventId,
       sourceEventId: input.context.sourceEventId,
     },
     operation: updateEventOperation,
@@ -152,7 +174,10 @@ export async function updateCalendarEventInGoogle({
       },
       connectionStatus: input.context.connectionStatus,
       event: {
-        recurringEventId: input.context.recurringEventId,
+        recurringEventId:
+          input.recurrenceEditScope === "this_event_only"
+            ? null
+            : input.context.recurringEventId,
         sourceEventId: input.context.sourceEventId,
       },
       operation: updateEventOperation,
@@ -180,6 +205,31 @@ export async function updateCalendarEventInGoogle({
       sourceCalendarId: input.context.sourceCalendarId,
       sourceEventId,
     });
+    const providerOccurrenceClassification =
+      input.recurrenceEditScope === "this_event_only"
+        ? classifyFetchedRecurringOccurrence({
+            providerEvent: currentProviderEvent,
+            requestedEvent: {
+              recurringEventId: input.context.recurringEventId,
+              sourceEventId,
+            },
+          })
+        : ({ ok: true } as const);
+
+    if (!providerOccurrenceClassification.ok) {
+      await deps.markAudit({
+        auditId: audit.id,
+        errorCode: providerOccurrenceClassification.reason,
+        errorSummary: getProviderOccurrenceErrorMessage(
+          providerOccurrenceClassification.reason,
+        ),
+        status: "conflict",
+      });
+      throw new CalendarProviderWriteUserError(
+        getProviderOccurrenceErrorMessage(providerOccurrenceClassification.reason),
+        "conflict",
+      );
+    }
 
     if (currentProviderEvent.etag !== input.context.etag) {
       await deps.markAudit({
@@ -232,6 +282,39 @@ export async function updateCalendarEventInGoogle({
   }
 }
 
+function evaluateUpdateRecurrencePolicy(input: UpdateCalendarEventInput):
+  | { allowed: true }
+  | {
+      allowed: false;
+      reason:
+        | "missing_cached_etag"
+        | "missing_original_start"
+        | "missing_recurring_event_id"
+        | "missing_source_event_id"
+        | "recurring_event_not_supported"
+        | "unsupported_recurrence_scope";
+    } {
+  if (!input.context.recurringEventId) {
+    return input.recurrenceEditScope
+      ? { allowed: false, reason: "unsupported_recurrence_scope" }
+      : { allowed: true };
+  }
+
+  if (!input.recurrenceEditScope) {
+    return { allowed: false, reason: "recurring_event_not_supported" };
+  }
+
+  return evaluateThisEventOnlyRecurrenceEditPolicy({
+    context: {
+      etag: input.context.etag,
+      originalStartAt: input.context.originalStartAt,
+      recurringEventId: input.context.recurringEventId,
+      sourceEventId: input.context.sourceEventId,
+    },
+    scope: input.recurrenceEditScope,
+  });
+}
+
 function requireSourceEventId(sourceEventId: string | null) {
   if (!sourceEventId) {
     throw new CalendarProviderWriteUserError(
@@ -275,5 +358,46 @@ function getUpdatePolicyErrorMessage(
       return "This event is missing its Google event id.";
     case "recurring_event_not_supported":
       return "Recurring event edits are not supported yet.";
+  }
+}
+
+function getUpdateRecurrencePolicyErrorMessage(
+  reason:
+    | "missing_cached_etag"
+    | "missing_original_start"
+    | "missing_recurring_event_id"
+    | "missing_source_event_id"
+    | "recurring_event_not_supported"
+    | "unsupported_recurrence_scope",
+) {
+  switch (reason) {
+    case "missing_cached_etag":
+      return "This recurring event is missing a cached Google version. Sync Calendar and try again.";
+    case "missing_original_start":
+      return "This recurring event occurrence is missing its original start time. Sync Calendar and try again.";
+    case "missing_recurring_event_id":
+      return "This event is missing its recurring series id.";
+    case "missing_source_event_id":
+      return "This event is missing its Google event id.";
+    case "recurring_event_not_supported":
+      return "Recurring event edits require choosing Only this event.";
+    case "unsupported_recurrence_scope":
+      return "Only this-event recurrence edits are supported in this slice.";
+  }
+}
+
+function getProviderOccurrenceErrorMessage(
+  reason:
+    | "provider_master_response"
+    | "provider_recurring_identity_mismatch"
+    | "provider_source_event_mismatch",
+) {
+  switch (reason) {
+    case "provider_master_response":
+      return "Google returned the recurring series instead of this occurrence. Sync Calendar and try again.";
+    case "provider_recurring_identity_mismatch":
+      return "Google returned a different recurring series. Sync Calendar and try again.";
+    case "provider_source_event_mismatch":
+      return "Google returned a different event occurrence. Sync Calendar and try again.";
   }
 }
