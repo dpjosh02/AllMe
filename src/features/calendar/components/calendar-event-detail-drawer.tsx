@@ -53,6 +53,7 @@ export function CalendarEventDetailDrawer({
   onClose,
   onReviewStatusChange,
   publishLinkedNoteToGoogle,
+  updateGoogleCalendarEvent,
   updateLinkedNote,
   updateEventReviewStatus,
 }: {
@@ -67,6 +68,9 @@ export function CalendarEventDetailDrawer({
   ) => void;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
   publishLinkedNoteToGoogle: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
+  updateGoogleCalendarEvent: (
     formData: FormData,
   ) => Promise<CalendarProviderWriteMutationResult>;
   updateLinkedNote: (
@@ -87,6 +91,7 @@ export function CalendarEventDetailDrawer({
       onClose={onClose}
       onReviewStatusChange={onReviewStatusChange}
       publishLinkedNoteToGoogle={publishLinkedNoteToGoogle}
+      updateGoogleCalendarEvent={updateGoogleCalendarEvent}
       updateLinkedNote={updateLinkedNote}
       updateEventReviewStatus={updateEventReviewStatus}
     />
@@ -100,6 +105,7 @@ function CalendarEventDetailDrawerContent({
   onClose,
   onReviewStatusChange,
   publishLinkedNoteToGoogle,
+  updateGoogleCalendarEvent,
   updateLinkedNote,
   updateEventReviewStatus,
 }: {
@@ -114,6 +120,9 @@ function CalendarEventDetailDrawerContent({
   ) => void;
   deleteLinkedNote: (formData: FormData) => Promise<void>;
   publishLinkedNoteToGoogle: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
+  updateGoogleCalendarEvent: (
     formData: FormData,
   ) => Promise<CalendarProviderWriteMutationResult>;
   updateLinkedNote: (
@@ -215,6 +224,11 @@ function CalendarEventDetailDrawerContent({
               </p>
             </div>
           ) : null}
+
+          <ProviderEventEditPanel
+            event={event}
+            updateGoogleCalendarEvent={updateGoogleCalendarEvent}
+          />
 
           <LinkedNotePanel
             createLinkedNoteFromEvent={createLinkedNoteFromEvent}
@@ -365,6 +379,189 @@ function LinkedNotePanel({
         </div>
       )}
     </div>
+  );
+}
+
+function ProviderEventEditPanel({
+  event,
+  updateGoogleCalendarEvent,
+}: {
+  event: CalendarEventDetail;
+  updateGoogleCalendarEvent: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
+}) {
+  const [isAllDay, setIsAllDay] = useState(event.isAllDay);
+  const [result, setResult] = useState<CalendarProviderWriteMutationResult | null>(
+    null,
+  );
+
+  async function updateProviderEvent(formData: FormData) {
+    formData.set("idempotencyKey", createIdempotencyKey());
+    formData.set("isAllDay", isAllDay ? "true" : "false");
+
+    const nextResult = await updateGoogleCalendarEvent(formData);
+
+    setResult(nextResult);
+  }
+
+  return (
+    <div className="mt-5 rounded-2xl border border-[var(--accent)]/35 bg-[var(--empty)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="allme-kicker text-[var(--accent)]">
+            Google Calendar event
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            Editing updates the real Google Calendar event after AllMe checks
+            provider freshness. Local review state and notes stay separate.
+          </p>
+        </div>
+        {event.recurringEventId ? (
+          <span className="rounded-full border border-[var(--warn)]/35 px-3 py-1 text-xs font-semibold text-[var(--warn)]">
+            Recurring blocked
+          </span>
+        ) : null}
+      </div>
+
+      {event.recurringEventId ? (
+        <p className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+          Recurring event edits are not supported in this slice. Open Google
+          Calendar for recurrence changes.
+        </p>
+      ) : (
+        <form action={updateProviderEvent} className="mt-4 grid gap-3">
+          <input name="eventId" type="hidden" value={event.id} />
+          <label className="grid gap-1.5">
+            <span className="allme-kicker">Title</span>
+            <input
+              className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+              defaultValue={event.title}
+              name="title"
+              required
+            />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Location</span>
+              <input
+                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                defaultValue={event.location ?? ""}
+                name="location"
+                placeholder="Optional"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Type</span>
+              <button
+                aria-pressed={isAllDay}
+                className={[
+                  "min-h-10 rounded-xl border px-3 text-left text-sm font-semibold transition",
+                  isAllDay
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--line)] bg-[var(--input)] text-[var(--foreground)]",
+                ].join(" ")}
+                onClick={() => setIsAllDay((current) => !current)}
+                type="button"
+              >
+                {isAllDay ? "All-day event" : "Timed event"}
+              </button>
+            </label>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Start date</span>
+              <input
+                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                defaultValue={getProviderEditStartDate(event)}
+                name="startDate"
+                required
+                type="date"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">End date</span>
+              <input
+                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                defaultValue={getProviderEditEndDate(event)}
+                name="endDate"
+                required
+                type="date"
+              />
+            </label>
+          </div>
+
+          {!isAllDay ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1.5">
+                <span className="allme-kicker">Start time</span>
+                <input
+                  className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                  defaultValue={getProviderEditStartTime(event)}
+                  name="startTime"
+                  required
+                  type="time"
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="allme-kicker">End time</span>
+                <input
+                  className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                  defaultValue={getProviderEditEndTime(event)}
+                  name="endTime"
+                  required
+                  type="time"
+                />
+              </label>
+            </div>
+          ) : (
+            <>
+              <input name="startTime" type="hidden" value="" />
+              <input name="endTime" type="hidden" value="" />
+            </>
+          )}
+
+          <label className="grid gap-1.5">
+            <span className="allme-kicker">Description</span>
+            <textarea
+              className="min-h-24 resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+              defaultValue={event.description ?? ""}
+              name="description"
+              placeholder="Optional provider description"
+            />
+          </label>
+
+          <ProviderEventEditButton />
+          {result ? (
+            <p
+              className={[
+                "text-xs font-semibold",
+                result.status === "succeeded"
+                  ? "text-[var(--success)]"
+                  : "text-[var(--danger)]",
+              ].join(" ")}
+            >
+              {result.message}
+            </p>
+          ) : null}
+        </form>
+      )}
+    </div>
+  );
+}
+
+function ProviderEventEditButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className="inline-flex min-h-9 w-fit items-center rounded-xl border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60"
+      disabled={pending}
+      type="submit"
+    >
+      {pending ? "Updating..." : "Update Google Calendar event"}
+    </button>
   );
 }
 
@@ -821,6 +1018,59 @@ function getEventTodayDateKey(event: CalendarEventDetail) {
     event.startsAt.getFullYear(),
     String(event.startsAt.getMonth() + 1).padStart(2, "0"),
     String(event.startsAt.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getProviderEditStartDate(event: CalendarEventDetail) {
+  if (event.startDate) {
+    return event.startDate;
+  }
+
+  return event.startsAt ? toDateInputValue(event.startsAt) : "";
+}
+
+function getProviderEditEndDate(event: CalendarEventDetail) {
+  if (event.endDate) {
+    return addDaysToDateKey(event.endDate, -1);
+  }
+
+  return event.endsAt
+    ? toDateInputValue(event.endsAt)
+    : getProviderEditStartDate(event);
+}
+
+function getProviderEditStartTime(event: CalendarEventDetail) {
+  return event.startsAt ? toTimeInputValue(event.startsAt) : "09:00";
+}
+
+function getProviderEditEndTime(event: CalendarEventDetail) {
+  return event.endsAt ? toTimeInputValue(event.endsAt) : "10:00";
+}
+
+function toDateInputValue(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function toTimeInputValue(date: Date) {
+  return [
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+  ].join(":");
+}
+
+function addDaysToDateKey(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
   ].join("-");
 }
 

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import {
   createGoogleCalendarEvent,
   fetchGoogleCalendarEvent,
+  patchGoogleCalendarEvent,
   patchGoogleCalendarEventDescription,
   type GoogleCalendarProviderEvent,
 } from "@/features/calendar/integrations/google-calendar";
@@ -13,6 +14,7 @@ import {
   createCalendarEventInGoogle,
   type CalendarEventCreateForm,
 } from "@/features/calendar/provider-write/create-event";
+import { updateCalendarEventInGoogle } from "@/features/calendar/provider-write/update-event";
 import {
   CalendarProviderWriteUserError,
   publishNoteDescriptionToGoogle,
@@ -438,6 +440,85 @@ export async function createGoogleCalendarEventFromCalendar(
   }
 }
 
+export async function updateGoogleCalendarEventFromCalendar(
+  formData: FormData,
+): Promise<CalendarProviderWriteMutationResult> {
+  const user = await requireOwnerUser();
+  const eventId = getCalendarEventId(formData);
+  const context = await getCalendarEventForProviderEventUpdate({
+    eventId,
+    userId: user.id,
+  });
+
+  if (!context) {
+    return {
+      message: "Calendar event was not found.",
+      status: "error",
+    };
+  }
+
+  try {
+    await updateCalendarEventInGoogle({
+      deps: {
+        createAudit: (draft) => createProviderWriteAudit({ draft, userId: user.id }),
+        fetchProviderEvent: ({ accessToken, sourceCalendarId, sourceEventId }) =>
+          fetchGoogleCalendarEvent({
+            accessToken,
+            calendarId: sourceCalendarId,
+            eventId: sourceEventId,
+          }),
+        markAudit: markProviderWriteAudit,
+        patchProviderEvent: ({ accessToken, patch, sourceCalendarId, sourceEventId }) =>
+          patchGoogleCalendarEvent({
+            accessToken,
+            calendarId: sourceCalendarId,
+            eventId: sourceEventId,
+            patch,
+          }),
+        reconcileLocalEvent: (event) =>
+          updateLocalEventFromProviderWrite({
+            event,
+            eventId: context.eventId,
+            userId: user.id,
+          }),
+        resolveAccessToken: async () => {
+          const token = await resolveGoogleCalendarAccessToken({ userId: user.id });
+
+          return {
+            accessToken: token.accessToken,
+            scopes: token.scopes,
+          };
+        },
+      },
+      input: {
+        context,
+        form: getCalendarEventCreateForm(formData),
+        idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
+      },
+    });
+
+    revalidatePath("/calendar");
+    revalidatePath("/today");
+
+    return {
+      message: "Updated event in Google Calendar.",
+      status: "succeeded",
+    };
+  } catch (error) {
+    if (error instanceof CalendarProviderWriteUserError) {
+      return {
+        message: error.message,
+        status: "error",
+      };
+    }
+
+    return {
+      message: "Google Calendar event update failed. Try again after syncing.",
+      status: "error",
+    };
+  }
+}
+
 const calendarEventReviewStatuses = [
   "none",
   "needs_prep",
@@ -608,6 +689,51 @@ async function getCalendarForProviderEventCreate({
     ) ??
     null
   );
+}
+
+async function getCalendarEventForProviderEventUpdate({
+  eventId,
+  userId,
+}: {
+  eventId: string;
+  userId: string;
+}) {
+  const [event] = await db
+    .select({
+      accessRole: calendarCalendars.accessRole,
+      calendarId: calendarEvents.calendarId,
+      connectionId: calendarEvents.connectionId,
+      connectionStatus: calendarConnections.status,
+      etag: calendarEvents.etag,
+      eventId: calendarEvents.id,
+      isCalendarDeleted: calendarCalendars.isDeleted,
+      isCalendarSelected: calendarCalendars.isSelected,
+      recurringEventId: calendarEvents.recurringEventId,
+      scopes: calendarConnections.scopes,
+      sourceCalendarId: calendarCalendars.sourceCalendarId,
+      sourceEventId: calendarEvents.sourceEventId,
+      timezone: calendarEvents.timezone,
+    })
+    .from(calendarEvents)
+    .innerJoin(
+      calendarCalendars,
+      eq(calendarCalendars.id, calendarEvents.calendarId),
+    )
+    .innerJoin(
+      calendarConnections,
+      eq(calendarConnections.id, calendarEvents.connectionId),
+    )
+    .where(
+      and(
+        eq(calendarEvents.id, eventId),
+        eq(calendarEvents.userId, userId),
+        eq(calendarCalendars.userId, userId),
+        eq(calendarConnections.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return event ?? null;
 }
 
 async function createProviderWriteAudit({

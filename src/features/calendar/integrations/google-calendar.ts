@@ -92,6 +92,10 @@ export type GoogleCalendarPatchDescriptionConfig =
     description: string;
   };
 
+export type GoogleCalendarPatchEventConfig = GoogleCalendarEventWriteConfig & {
+  patch: GoogleCalendarProviderEventPatch;
+};
+
 export async function readGoogleCalendarSnapshot({
   accessToken,
   calendarIds,
@@ -181,6 +185,22 @@ export async function patchGoogleCalendarEventDescription({
   eventId,
   fetcher = fetch,
 }: GoogleCalendarPatchDescriptionConfig): Promise<GoogleCalendarProviderEvent> {
+  return patchGoogleCalendarEvent({
+    accessToken,
+    calendarId,
+    eventId,
+    fetcher,
+    patch: { description },
+  });
+}
+
+export async function patchGoogleCalendarEvent({
+  accessToken,
+  calendarId,
+  eventId,
+  fetcher = fetch,
+  patch,
+}: GoogleCalendarPatchEventConfig): Promise<GoogleCalendarProviderEvent> {
   const url = new URL(
     `${googleCalendarApiBaseUrl}/calendars/${encodeURIComponent(
       calendarId,
@@ -190,7 +210,7 @@ export async function patchGoogleCalendarEventDescription({
     accessToken,
     fetcher,
     init: {
-      body: JSON.stringify({ description }),
+      body: JSON.stringify(patch),
       headers: {
         "Content-Type": "application/json",
       },

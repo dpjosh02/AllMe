@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createGoogleCalendarEvent,
   fetchGoogleCalendarEvent,
+  patchGoogleCalendarEvent,
   patchGoogleCalendarEventDescription,
   readGoogleCalendarSnapshot,
 } from "@/features/calendar/integrations/google-calendar";
@@ -340,6 +341,52 @@ describe("Google Calendar reader", () => {
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("attendees");
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("recurrence");
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("reminders");
+  });
+
+  it("patches approved provider event fields", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        description: "Updated plan",
+        etag: "etag-2",
+        id: "event-1",
+        location: "Office",
+        summary: "Updated planning block",
+        updated: "2026-05-04T16:05:00.000Z",
+      }),
+    );
+
+    const event = await patchGoogleCalendarEvent({
+      accessToken: "access-token",
+      calendarId: "primary",
+      eventId: "event-1",
+      fetcher,
+      patch: {
+        description: "Updated plan",
+        location: "Office",
+        summary: "Updated planning block",
+      },
+    });
+
+    expect(event).toMatchObject({
+      description: "Updated plan",
+      etag: "etag-2",
+      location: "Office",
+      title: "Updated planning block",
+    });
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({
+        description: "Updated plan",
+        location: "Office",
+        summary: "Updated planning block",
+      }),
+      headers: {
+        Authorization: "Bearer access-token",
+        "Content-Type": "application/json",
+      },
+      method: "PATCH",
+    });
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("attendees");
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("recurrence");
   });
 });
 

@@ -18,6 +18,7 @@ import {
   updateLinkedCalendarNote,
   updateCalendarEventReviewStatus,
   updateCalendarSelection,
+  updateGoogleCalendarEventFromCalendar,
 } from "@/features/calendar/actions";
 import { CalendarDashboardInteractive } from "@/features/calendar/components/calendar-dashboard";
 import { SyncGoogleCalendarButton } from "@/features/calendar/components/sync-google-calendar-button";
@@ -73,6 +74,7 @@ export default async function CalendarPage() {
             reconnectGoogleCalendarWithWriteAccess
           }
           publishLinkedNoteToGoogle={publishLinkedCalendarNoteToGoogle}
+          updateGoogleCalendarEvent={updateGoogleCalendarEventFromCalendar}
           updateLinkedNote={updateLinkedCalendarNote}
           updateCalendarSelection={updateCalendarSelection}
           updateEventReviewStatus={updateCalendarEventReviewStatus}
