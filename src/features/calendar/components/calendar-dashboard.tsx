@@ -89,54 +89,64 @@ export function CalendarDashboardInteractive({
     <>
       <PageGridItem span="full">
         <AllMeCard className="p-3 sm:p-4" variant="metrics">
-          <div className="grid gap-3 md:grid-cols-4">
-            <TodayAgendaLinkStat
-              detail="Open today's operating view."
-              href={{
-                pathname: "/today",
-                query: { date: todayAgenda?.dateKey },
-              }}
-              label="Today"
-              value={formatEventCount(todayAgendaItems.length)}
-            />
-            <TodayAgendaButtonStat
-              detail={
-                nextUpcomingEvent?.title ?? "No selected-calendar event queued."
-              }
-              disabled={!nextUpcomingEvent}
-              label="Next event"
-              onClick={() => {
-                if (nextUpcomingEvent) {
-                  openEvent(nextUpcomingEvent);
+          <div className="grid gap-3 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <TodayAgendaLinkStat
+                detail="Open today's operating view."
+                href={{
+                  pathname: "/today",
+                  query: { date: todayAgenda?.dateKey },
+                }}
+                label="Today"
+                value={formatEventCount(todayAgendaItems.length)}
+              />
+              <TodayAgendaButtonStat
+                detail={
+                  nextUpcomingEvent?.title ??
+                  "No selected-calendar event queued."
                 }
-              }}
-              value={
-                nextUpcomingEvent ? getCompactEventTime(nextUpcomingEvent) : "None"
-              }
-            />
-            <TodayAgendaButtonStat
-              detail="Focus events marked for preparation."
-              icon={<Flag aria-hidden="true" className="h-4 w-4" />}
-              isActive={reviewFocus === "needs_prep"}
-              label="Needs prep"
-              onClick={() => setReviewFocus("needs_prep")}
-              value={String(todayNeedsPrepCount)}
-            />
-            <TodayAgendaButtonStat
-              detail="Focus events already marked complete."
-              icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
-              isActive={reviewFocus === "done"}
-              label="Done"
-              onClick={() => setReviewFocus("done")}
-              value={String(todayDoneCount)}
-            />
+                disabled={!nextUpcomingEvent}
+                label="Next event"
+                onClick={() => {
+                  if (nextUpcomingEvent) {
+                    openEvent(nextUpcomingEvent);
+                  }
+                }}
+                value={
+                  nextUpcomingEvent
+                    ? getCompactEventTime(nextUpcomingEvent)
+                    : "None"
+                }
+              />
+              <TodayAgendaButtonStat
+                detail="Focus preparation."
+                icon={<Flag aria-hidden="true" className="h-4 w-4" />}
+                isActive={reviewFocus === "needs_prep"}
+                label="Needs prep"
+                onClick={() => setReviewFocus("needs_prep")}
+                value={String(todayNeedsPrepCount)}
+              />
+              <TodayAgendaButtonStat
+                detail="Focus completed."
+                icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
+                isActive={reviewFocus === "done"}
+                label="Done"
+                onClick={() => setReviewFocus("done")}
+                value={String(todayDoneCount)}
+              />
+            </div>
+            <div className="min-w-0">
+              <TodayActionStrip
+                events={todayActionItems}
+                openEvent={openEvent}
+              />
+              <CalendarReviewFocusControls
+                focusedEventCount={focusedEventCount}
+                reviewFocus={reviewFocus}
+                setReviewFocus={setReviewFocus}
+              />
+            </div>
           </div>
-          <TodayActionStrip events={todayActionItems} openEvent={openEvent} />
-          <CalendarReviewFocusControls
-            focusedEventCount={focusedEventCount}
-            reviewFocus={reviewFocus}
-            setReviewFocus={setReviewFocus}
-          />
         </AllMeCard>
       </PageGridItem>
 
@@ -238,7 +248,7 @@ function TodayActionStrip({
           {formatEventCount(events.length)}
         </span>
       </div>
-      <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-4">
         {events.slice(0, 4).map((event) => (
           <button
             className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-left transition hover:border-[var(--accent)]"
@@ -378,7 +388,7 @@ function SummaryCardContent({
         <p className="allme-kicker">{label}</p>
         {icon ? <span className="text-[var(--accent)]">{icon}</span> : null}
       </div>
-      <p className="mt-1 text-2xl font-semibold tracking-[-0.04em]">{value}</p>
+      <p className="mt-1 text-xl font-semibold tracking-[-0.04em]">{value}</p>
       <p className="mt-1 truncate text-xs text-[var(--muted)]">{detail}</p>
     </>
   );
@@ -386,7 +396,7 @@ function SummaryCardContent({
 
 function getSummaryCardClassName({ isActive }: { isActive: boolean }) {
   return [
-    "group block w-full rounded-xl border bg-[var(--empty)] px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--panel)] hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
+    "group block w-full rounded-xl border bg-[var(--empty)] px-3 py-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--panel)] hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
     isActive
       ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[0_0_0_3px_var(--accent-soft)]"
       : "border-[var(--line)]",
