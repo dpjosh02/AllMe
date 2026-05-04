@@ -5,14 +5,17 @@ export type AllMeButtonVariant =
   | "ghost"
   | "outline"
   | "primary"
+  | "segmented"
   | "secondary";
 
 type AllMeButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  active?: boolean;
   fullWidth?: boolean;
   variant?: AllMeButtonVariant;
 };
 
 export function Button({
+  active = false,
   className,
   fullWidth = false,
   type = "button",
@@ -21,7 +24,12 @@ export function Button({
 }: AllMeButtonProps) {
   return (
     <button
-      className={allMeButtonClassName({ className, fullWidth, variant })}
+      className={allMeButtonClassName({
+        active,
+        className,
+        fullWidth,
+        variant,
+      })}
       type={type}
       {...props}
     />
@@ -29,10 +37,12 @@ export function Button({
 }
 
 export function allMeButtonClassName({
+  active = false,
   className,
   fullWidth = false,
   variant = "secondary",
 }: {
+  active?: boolean;
   className?: string;
   fullWidth?: boolean;
   variant?: AllMeButtonVariant;
@@ -42,14 +52,30 @@ export function allMeButtonClassName({
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
     "disabled:cursor-not-allowed disabled:opacity-55",
     fullWidth ? "w-full" : null,
-    buttonVariantClassNames[variant],
+    getButtonVariantClassName(variant, active),
     className,
   ]
     .filter(Boolean)
     .join(" ");
 }
 
-const buttonVariantClassNames: Record<AllMeButtonVariant, string> = {
+function getButtonVariantClassName(
+  variant: AllMeButtonVariant,
+  active: boolean,
+) {
+  if (variant === "segmented") {
+    return active
+      ? "border border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+      : "border border-transparent bg-transparent text-[var(--muted)] hover:bg-[var(--empty)] hover:text-[var(--foreground)]";
+  }
+
+  return buttonVariantClassNames[variant];
+}
+
+const buttonVariantClassNames: Record<
+  Exclude<AllMeButtonVariant, "segmented">,
+  string
+> = {
   destructive:
     "border border-[var(--danger)]/45 bg-transparent text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger)]/10",
   ghost:

@@ -243,7 +243,7 @@ function CalendarEventDetailDrawerContent({
                 {getReviewStatusLabel(currentReviewStatus)}
               </span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 inline-flex max-w-full flex-wrap gap-1 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-1">
               {eventReviewStatusOptions.map((option) => (
                 <form action={saveEventReviewStatus} key={option.value}>
                   <input name="eventId" type="hidden" value={event.id} />
@@ -1126,11 +1126,12 @@ function EventReviewStatusButton({
 
   return (
     <Button
+      active={isActive}
       aria-pressed={isActive}
-      className="min-h-8 rounded-full px-3 py-1.5"
+      className="min-h-8 rounded-xl px-3 py-1.5"
       disabled={pending}
       type="submit"
-      variant={isActive ? "outline" : "secondary"}
+      variant="segmented"
     >
       {pending ? "Saving..." : label}
     </Button>
