@@ -3,7 +3,6 @@ import type { ButtonHTMLAttributes } from "react";
 export type AllMeButtonVariant =
   | "destructive"
   | "ghost"
-  | "outline"
   | "primary"
   | "segmented"
   | "secondary";
@@ -80,8 +79,6 @@ const buttonVariantClassNames: Record<
     "border border-[var(--danger)]/45 bg-transparent text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger)]/10",
   ghost:
     "border border-transparent bg-transparent text-[var(--muted)] hover:bg-[var(--empty)] hover:text-[var(--foreground)]",
-  outline:
-    "border border-[var(--accent)] bg-transparent text-[var(--accent)] hover:bg-[var(--accent)]/10",
   primary:
     "border border-[var(--accent)] bg-[var(--accent)] text-[var(--background)] hover:bg-[var(--accent-strong)]",
   secondary:

@@ -523,18 +523,17 @@ function ProviderEventEditPanel({
             </label>
             <label className="grid gap-1.5">
               <span className="allme-kicker">Type</span>
-              <button
+              <Button
+                active={isAllDay}
                 aria-pressed={isAllDay}
-                className={allMeButtonClassName({
-                  fullWidth: true,
-                  variant: isAllDay ? "outline" : "secondary",
-                  className: "min-h-10 justify-start text-left text-sm",
-                })}
+                className="min-h-10 justify-start text-left text-sm"
+                fullWidth
                 onClick={() => setIsAllDay((current) => !current)}
                 type="button"
+                variant="segmented"
               >
                 {isAllDay ? "All-day event" : "Timed event"}
-              </button>
+              </Button>
             </label>
           </div>
 
