@@ -29,6 +29,7 @@
     "finance:categorize": "tsx scripts/finance-categorize.ts",
     "finance:test-data:seed": "tsx scripts/finance-seed-test-data.ts",
     "finance:test-data:clear": "tsx scripts/finance-clear-test-data.ts",
+    "calendar:full-sync": "tsx scripts/calendar-full-sync.ts",
     "calendar:recurring-readiness": "tsx scripts/calendar-recurring-readiness.ts",
     "verify": "npm run lint:minimal && npm run typecheck && npm run test"
   },
