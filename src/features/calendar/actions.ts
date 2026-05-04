@@ -4,10 +4,15 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
+  createGoogleCalendarEvent,
   fetchGoogleCalendarEvent,
   patchGoogleCalendarEventDescription,
   type GoogleCalendarProviderEvent,
 } from "@/features/calendar/integrations/google-calendar";
+import {
+  createCalendarEventInGoogle,
+  type CalendarEventCreateForm,
+} from "@/features/calendar/provider-write/create-event";
 import {
   CalendarProviderWriteUserError,
   publishNoteDescriptionToGoogle,
@@ -361,6 +366,78 @@ export async function publishLinkedCalendarNoteToGoogle(
   }
 }
 
+export async function createGoogleCalendarEventFromCalendar(
+  formData: FormData,
+): Promise<CalendarProviderWriteMutationResult> {
+  const user = await requireOwnerUser();
+  const context = await getCalendarForProviderEventCreate({
+    calendarId: String(formData.get("calendarId") ?? ""),
+    userId: user.id,
+  });
+
+  if (!context) {
+    return {
+      message: "No writable Google Calendar is available.",
+      status: "error",
+    };
+  }
+
+  try {
+    await createCalendarEventInGoogle({
+      deps: {
+        createAudit: (draft) => createProviderWriteAudit({ draft, userId: user.id }),
+        createProviderEvent: ({ accessToken, patch, sourceCalendarId }) =>
+          createGoogleCalendarEvent({
+            accessToken,
+            calendarId: sourceCalendarId,
+            patch,
+          }),
+        markAudit: markProviderWriteAudit,
+        reconcileLocalEvent: (event) =>
+          upsertLocalEventFromProviderWrite({
+            calendarId: context.calendarId,
+            connectionId: context.connectionId,
+            event,
+            userId: user.id,
+          }),
+        resolveAccessToken: async () => {
+          const token = await resolveGoogleCalendarAccessToken({ userId: user.id });
+
+          return {
+            accessToken: token.accessToken,
+            scopes: token.scopes,
+          };
+        },
+      },
+      input: {
+        context,
+        form: getCalendarEventCreateForm(formData),
+        idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
+      },
+    });
+
+    revalidatePath("/calendar");
+    revalidatePath("/today");
+
+    return {
+      message: "Created event in Google Calendar.",
+      status: "succeeded",
+    };
+  } catch (error) {
+    if (error instanceof CalendarProviderWriteUserError) {
+      return {
+        message: error.message,
+        status: "error",
+      };
+    }
+
+    return {
+      message: "Google Calendar event creation failed. Try again after syncing.",
+      status: "error",
+    };
+  }
+}
+
 const calendarEventReviewStatuses = [
   "none",
   "needs_prep",
@@ -473,6 +550,66 @@ async function getCalendarEventForProviderWrite({
   return event ?? null;
 }
 
+async function getCalendarForProviderEventCreate({
+  calendarId,
+  userId,
+}: {
+  calendarId: string;
+  userId: string;
+}) {
+  const rows = await db
+    .select({
+      accessRole: calendarCalendars.accessRole,
+      calendarId: calendarCalendars.id,
+      connectionId: calendarCalendars.connectionId,
+      connectionStatus: calendarConnections.status,
+      isCalendarDeleted: calendarCalendars.isDeleted,
+      isCalendarPrimary: calendarCalendars.isPrimary,
+      isCalendarSelected: calendarCalendars.isSelected,
+      scopes: calendarConnections.scopes,
+      sourceCalendarId: calendarCalendars.sourceCalendarId,
+      timezone: calendarCalendars.timezone,
+    })
+    .from(calendarCalendars)
+    .innerJoin(
+      calendarConnections,
+      eq(calendarConnections.id, calendarCalendars.connectionId),
+    )
+    .where(
+      and(
+        eq(calendarCalendars.userId, userId),
+        eq(calendarConnections.userId, userId),
+      ),
+    );
+
+  const requestedCalendar = calendarId
+    ? rows.find((calendar) => calendar.calendarId === calendarId)
+    : null;
+
+  if (requestedCalendar) {
+    return requestedCalendar;
+  }
+
+  return (
+    rows.find(
+      (calendar) =>
+        calendar.isCalendarPrimary &&
+        calendar.isCalendarSelected &&
+        !calendar.isCalendarDeleted &&
+        calendar.connectionStatus === "active" &&
+        (calendar.accessRole === "writer" || calendar.accessRole === "owner"),
+    ) ??
+    rows.find(
+      (calendar) =>
+        calendar.isCalendarSelected &&
+        !calendar.isCalendarDeleted &&
+        calendar.connectionStatus === "active" &&
+        (calendar.accessRole === "writer" || calendar.accessRole === "owner"),
+    ) ??
+    null
+  );
+}
+
 async function createProviderWriteAudit({
   draft,
   userId,
@@ -580,6 +717,77 @@ async function updateLocalEventFromProviderWrite({
     .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)));
 }
 
+async function upsertLocalEventFromProviderWrite({
+  calendarId,
+  connectionId,
+  event,
+  userId,
+}: {
+  calendarId: string;
+  connectionId: string;
+  event: GoogleCalendarProviderEvent;
+  userId: string;
+}) {
+  await db
+    .insert(calendarEvents)
+    .values({
+      calendarId,
+      cancelledAt: event.status === "cancelled" ? new Date() : null,
+      connectionId,
+      description: event.description,
+      endAt: event.endAt,
+      endDate: event.endDate,
+      etag: event.etag,
+      htmlLink: event.htmlLink,
+      isAllDay: Boolean(event.startDate),
+      location: event.location,
+      originalStartAt: event.originalStartAt,
+      providerUpdatedAt: event.providerUpdatedAt,
+      rawPayload: event.rawPayload,
+      recurringEventId: event.recurringEventId,
+      sourceEventId: event.sourceEventId,
+      sourceIcalUid: event.sourceIcalUid,
+      startAt: event.startAt,
+      startDate: event.startDate,
+      status: event.status ?? "confirmed",
+      timezone: event.timezone,
+      title: event.title?.trim() || "(No title)",
+      transparency: event.transparency,
+      userId,
+      visibility: event.visibility,
+    })
+    .onConflictDoUpdate({
+      target: [
+        calendarEvents.userId,
+        calendarEvents.calendarId,
+        calendarEvents.sourceEventId,
+      ],
+      set: {
+        cancelledAt: event.status === "cancelled" ? new Date() : null,
+        description: event.description,
+        endAt: event.endAt,
+        endDate: event.endDate,
+        etag: event.etag,
+        htmlLink: event.htmlLink,
+        isAllDay: Boolean(event.startDate),
+        location: event.location,
+        originalStartAt: event.originalStartAt,
+        providerUpdatedAt: event.providerUpdatedAt,
+        rawPayload: event.rawPayload,
+        recurringEventId: event.recurringEventId,
+        sourceIcalUid: event.sourceIcalUid,
+        startAt: event.startAt,
+        startDate: event.startDate,
+        status: event.status ?? "confirmed",
+        timezone: event.timezone,
+        title: event.title?.trim() || "(No title)",
+        transparency: event.transparency,
+        updatedAt: new Date(),
+        visibility: event.visibility,
+      },
+    });
+}
+
 async function getExistingCalendarEventNote({
   eventId,
   userId,
@@ -647,6 +855,19 @@ function getCalendarEventId(formData: FormData) {
   }
 
   return eventId;
+}
+
+function getCalendarEventCreateForm(formData: FormData): CalendarEventCreateForm {
+  return {
+    description: String(formData.get("description") ?? ""),
+    endDate: String(formData.get("endDate") ?? ""),
+    endTime: String(formData.get("endTime") ?? ""),
+    isAllDay: formData.get("isAllDay") === "true",
+    location: String(formData.get("location") ?? ""),
+    startDate: String(formData.get("startDate") ?? ""),
+    startTime: String(formData.get("startTime") ?? ""),
+    title: String(formData.get("title") ?? ""),
+  };
 }
 
 function revalidateCalendarNoteViews(noteId: string) {

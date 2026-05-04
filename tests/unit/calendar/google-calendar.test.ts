@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createGoogleCalendarEvent,
   fetchGoogleCalendarEvent,
   patchGoogleCalendarEventDescription,
   readGoogleCalendarSnapshot,
@@ -269,6 +270,76 @@ describe("Google Calendar reader", () => {
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("location");
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("attendees");
     expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("recurrence");
+  });
+
+  it("creates a provider event with only approved event fields", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        description: "Plan",
+        end: {
+          dateTime: "2026-05-04T10:00:00",
+          timeZone: "America/Chicago",
+        },
+        etag: "etag-1",
+        id: "event-1",
+        start: {
+          dateTime: "2026-05-04T09:00:00",
+          timeZone: "America/Chicago",
+        },
+        summary: "Planning block",
+        updated: "2026-05-04T16:05:00.000Z",
+      }),
+    );
+
+    const event = await createGoogleCalendarEvent({
+      accessToken: "access-token",
+      calendarId: "primary",
+      fetcher,
+      patch: {
+        description: "Plan",
+        end: {
+          dateTime: "2026-05-04T10:00:00",
+          timeZone: "America/Chicago",
+        },
+        start: {
+          dateTime: "2026-05-04T09:00:00",
+          timeZone: "America/Chicago",
+        },
+        summary: "Planning block",
+      },
+    });
+
+    expect(event).toMatchObject({
+      description: "Plan",
+      etag: "etag-1",
+      sourceEventId: "event-1",
+      title: "Planning block",
+    });
+    expect(fetcher.mock.calls[0]?.[0].toString()).toContain(
+      "/calendars/primary/events",
+    );
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({
+        description: "Plan",
+        end: {
+          dateTime: "2026-05-04T10:00:00",
+          timeZone: "America/Chicago",
+        },
+        start: {
+          dateTime: "2026-05-04T09:00:00",
+          timeZone: "America/Chicago",
+        },
+        summary: "Planning block",
+      }),
+      headers: {
+        Authorization: "Bearer access-token",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    });
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("attendees");
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("recurrence");
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("reminders");
   });
 });
 

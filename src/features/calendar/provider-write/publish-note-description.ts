@@ -34,7 +34,7 @@ export type PublishNoteDescriptionEventContext = {
   connectionStatus: string;
   description: string | null;
   etag: string | null;
-  eventId: string;
+  eventId: string | null;
   isCalendarDeleted: boolean;
   isCalendarSelected: boolean;
   linkedNoteBody: string;
@@ -49,9 +49,9 @@ export type ProviderWriteAuditDraft = {
   calendarId: string;
   connectionId: string;
   entryPoint: "calendar";
-  eventId: string;
+  eventId: string | null;
   idempotencyKey: string;
-  operation: typeof publishNoteDescriptionOperation;
+  operation: CalendarProviderWriteOperation;
   previousEtag: string | null;
   requestPatch: Record<string, unknown>;
   scopeSnapshot: string[];

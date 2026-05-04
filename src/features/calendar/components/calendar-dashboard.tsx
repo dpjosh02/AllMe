@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarDays, CheckCircle2, ChevronDown, Flag } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, Flag, Plus, X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 
 import {
   AllMeCard,
@@ -23,7 +24,10 @@ import {
 } from "@/features/calendar/components/calendar-review-filtering";
 import { CalendarUpcomingEvents } from "@/features/calendar/components/calendar-upcoming-events";
 import { CalendarWeekPlanner } from "@/features/calendar/components/calendar-week-planner";
-import type { CalendarLinkedNoteMutationResult } from "@/features/calendar/actions";
+import type {
+  CalendarLinkedNoteMutationResult,
+  CalendarProviderWriteMutationResult,
+} from "@/features/calendar/actions";
 import type { CalendarPageData } from "@/features/calendar/queries";
 
 type CalendarDashboardEvent =
@@ -35,6 +39,7 @@ type CalendarEventCollectionItem = {
 };
 
 export function CalendarDashboardInteractive({
+  createCalendarEvent,
   createLinkedNoteFromEvent,
   data,
   deleteLinkedNote,
@@ -44,6 +49,9 @@ export function CalendarDashboardInteractive({
   reconnectGoogleCalendarWithWriteAccess,
   publishLinkedNoteToGoogle,
 }: {
+  createCalendarEvent: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
   createLinkedNoteFromEvent: (
     formData: FormData,
   ) => Promise<CalendarLinkedNoteMutationResult>;
@@ -64,6 +72,7 @@ export function CalendarDashboardInteractive({
   const [reviewStatusOverrides, setReviewStatusOverrides] = useState<
     Record<string, CalendarEventReviewStatus>
   >({});
+  const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventDetail | null>(
     null,
   );
@@ -91,6 +100,11 @@ export function CalendarDashboardInteractive({
     reviewFocus,
   );
   const weekRangeLabel = getWeekRangeLabel(effectiveWeekAgenda);
+  const writableCalendarSources = data.calendarSources.filter(
+    (calendar) =>
+      calendar.isSelected &&
+      (calendar.accessRole === "writer" || calendar.accessRole === "owner"),
+  );
 
   function openEvent(event: CalendarDashboardEvent) {
     setSelectedEvent(toEventDetail(event));
@@ -120,6 +134,28 @@ export function CalendarDashboardInteractive({
               reconnectGoogleCalendarWithWriteAccess
             }
           />
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">
+                Calendar actions
+              </p>
+              <p className="text-xs text-[var(--muted)]">
+                Create provider-backed events explicitly in Google Calendar.
+              </p>
+            </div>
+            <button
+              className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                !data.connection.writeReadiness.isWriteReady ||
+                writableCalendarSources.length === 0
+              }
+              onClick={() => setIsCreateEventOpen(true)}
+              type="button"
+            >
+              <Plus aria-hidden="true" className="h-4 w-4" />
+              Create event
+            </button>
+          </div>
           <div className="grid gap-3 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
             <div className="grid gap-2 sm:grid-cols-2">
               <TodayAgendaLinkStat
@@ -248,7 +284,261 @@ export function CalendarDashboardInteractive({
         updateLinkedNote={updateLinkedNote}
         updateEventReviewStatus={updateEventReviewStatus}
       />
+      <CalendarCreateEventModal
+        calendars={writableCalendarSources}
+        createCalendarEvent={createCalendarEvent}
+        defaultDateKey={todayAgenda?.dateKey ?? data.weekStartDateKey}
+        isOpen={isCreateEventOpen}
+        onClose={() => setIsCreateEventOpen(false)}
+        timezone={data.timezone}
+      />
     </>
+  );
+}
+
+function CalendarCreateEventModal({
+  calendars,
+  createCalendarEvent,
+  defaultDateKey,
+  isOpen,
+  onClose,
+  timezone,
+}: {
+  calendars: CalendarPageData["calendarSources"];
+  createCalendarEvent: (
+    formData: FormData,
+  ) => Promise<CalendarProviderWriteMutationResult>;
+  defaultDateKey: string;
+  isOpen: boolean;
+  onClose: () => void;
+  timezone: string;
+}) {
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [result, setResult] = useState<CalendarProviderWriteMutationResult | null>(
+    null,
+  );
+
+  if (!isOpen) {
+    return null;
+  }
+
+  async function createEvent(formData: FormData) {
+    formData.set("idempotencyKey", createIdempotencyKey());
+    formData.set("isAllDay", isAllDay ? "true" : "false");
+
+    const nextResult = await createCalendarEvent(formData);
+
+    setResult(nextResult);
+
+    if (nextResult.status === "succeeded") {
+      onClose();
+    }
+  }
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4 backdrop-blur-sm"
+      role="dialog"
+    >
+      <button
+        aria-label="Close create event"
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+        type="button"
+      />
+      <section className="relative w-full max-w-2xl rounded-3xl border border-[var(--line)] bg-[var(--panel-strong)] p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="allme-kicker">Google Calendar event</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              Create event
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              This creates a real non-recurring Google Calendar event. AllMe
+              will cache the provider response after Google confirms it.
+            </p>
+          </div>
+          <button
+            aria-label="Close create event"
+            className="allme-control inline-flex h-10 w-10 shrink-0 items-center justify-center p-0"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form action={createEvent} className="mt-5 grid gap-4">
+          <input name="idempotencyKey" type="hidden" value="" />
+          <label className="grid gap-1.5">
+            <span className="allme-kicker">Calendar</span>
+            <select
+              className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+              defaultValue={getDefaultCalendarId(calendars)}
+              name="calendarId"
+            >
+              {calendars.map((calendar) => (
+                <option key={calendar.id} value={calendar.id}>
+                  {calendar.name}
+                  {calendar.isPrimary ? " · Primary" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="allme-kicker">Title</span>
+            <input
+              className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+              name="title"
+              placeholder="Event title"
+              required
+            />
+          </label>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Location</span>
+              <input
+                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                name="location"
+                placeholder="Optional"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Type</span>
+              <button
+                aria-pressed={isAllDay}
+                className={[
+                  "min-h-10 rounded-xl border px-3 text-left text-sm font-semibold transition",
+                  isAllDay
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--line)] bg-[var(--input)] text-[var(--foreground)]",
+                ].join(" ")}
+                onClick={() => setIsAllDay((current) => !current)}
+                type="button"
+              >
+                {isAllDay ? "All-day event" : "Timed event"}
+              </button>
+            </label>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">Start date</span>
+              <input
+                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                defaultValue={defaultDateKey}
+                name="startDate"
+                required
+                type="date"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="allme-kicker">
+                {isAllDay ? "End date" : "End date"}
+              </span>
+              <input
+                className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                defaultValue={defaultDateKey}
+                name="endDate"
+                required
+                type="date"
+              />
+            </label>
+          </div>
+
+          {!isAllDay ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1.5">
+                <span className="allme-kicker">Start time</span>
+                <input
+                  className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                  defaultValue="09:00"
+                  name="startTime"
+                  required
+                  type="time"
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="allme-kicker">End time</span>
+                <input
+                  className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--input)] px-3 text-sm font-semibold outline-none transition focus:border-[var(--accent)]"
+                  defaultValue="10:00"
+                  name="endTime"
+                  required
+                  type="time"
+                />
+              </label>
+            </div>
+          ) : (
+            <>
+              <input name="startTime" type="hidden" value="" />
+              <input name="endTime" type="hidden" value="" />
+            </>
+          )}
+
+          <label className="grid gap-1.5">
+            <span className="allme-kicker">Description</span>
+            <textarea
+              className="min-h-24 resize-y rounded-xl border border-[var(--line)] bg-[var(--input)] p-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+              name="description"
+              placeholder="Optional context for Google Calendar"
+            />
+          </label>
+
+          <p className="rounded-xl border border-[var(--line)] bg-[var(--empty)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+            Timed events use {timezone}. All-day end dates are treated as
+            inclusive in AllMe and converted to Google&apos;s exclusive end date.
+          </p>
+
+          {result ? (
+            <p
+              className={[
+                "text-xs font-semibold",
+                result.status === "succeeded"
+                  ? "text-[var(--success)]"
+                  : "text-[var(--danger)]",
+              ].join(" ")}
+            >
+              {result.message}
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              className="inline-flex min-h-10 items-center rounded-xl border border-[var(--line)] px-4 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              onClick={onClose}
+              type="button"
+            >
+              Cancel
+            </button>
+            <CreateEventSubmitButton />
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function CreateEventSubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className="inline-flex min-h-10 items-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--background)] transition hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
+      disabled={pending}
+      type="submit"
+    >
+      {pending ? "Creating..." : "Create in Google Calendar"}
+    </button>
+  );
+}
+
+function getDefaultCalendarId(calendars: CalendarPageData["calendarSources"]) {
+  return (
+    calendars.find((calendar) => calendar.isPrimary)?.id ?? calendars[0]?.id ?? ""
   );
 }
 
@@ -740,6 +1030,10 @@ function getWeekRangeLabel(weekAgenda: CalendarPageData["weekAgenda"]) {
 
 function toLocalDate(dateKey: string) {
   return new Date(`${dateKey}T00:00:00`);
+}
+
+function createIdempotencyKey() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
 const reviewFocusOptions: Array<{

@@ -53,6 +53,14 @@ type GoogleCalendarEventDateTime = {
   timeZone?: string;
 };
 
+export type GoogleCalendarProviderEventPatch = {
+  description?: string | null;
+  end?: GoogleCalendarEventDateTime;
+  location?: string | null;
+  start?: GoogleCalendarEventDateTime;
+  summary?: string;
+};
+
 export type GoogleCalendarSnapshotConfig = {
   accessToken: string;
   calendarIds?: string[];
@@ -70,6 +78,13 @@ export type GoogleCalendarEventWriteConfig = {
   calendarId: string;
   eventId: string;
   fetcher?: typeof fetch;
+};
+
+export type GoogleCalendarCreateEventConfig = {
+  accessToken: string;
+  calendarId: string;
+  fetcher?: typeof fetch;
+  patch: GoogleCalendarProviderEventPatch;
 };
 
 export type GoogleCalendarPatchDescriptionConfig =
@@ -128,6 +143,31 @@ export async function fetchGoogleCalendarEvent({
   const event = await fetchGoogleJson<GoogleCalendarEvent>({
     accessToken,
     fetcher,
+    url,
+  });
+
+  return toCalendarEventSnapshot({ calendarId, event });
+}
+
+export async function createGoogleCalendarEvent({
+  accessToken,
+  calendarId,
+  fetcher = fetch,
+  patch,
+}: GoogleCalendarCreateEventConfig): Promise<GoogleCalendarProviderEvent> {
+  const url = new URL(
+    `${googleCalendarApiBaseUrl}/calendars/${encodeURIComponent(calendarId)}/events`,
+  );
+  const event = await fetchGoogleJson<GoogleCalendarEvent>({
+    accessToken,
+    fetcher,
+    init: {
+      body: JSON.stringify(patch),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    },
     url,
   });
 

@@ -178,6 +178,7 @@ async function getCalendarSources(userId: string) {
   const rows = await db
     .select({
       color: calendarCalendars.color,
+      accessRole: calendarCalendars.accessRole,
       eventCount: sql<number>`count(${calendarEvents.id})::int`,
       id: calendarCalendars.id,
       isPrimary: calendarCalendars.isPrimary,
@@ -195,6 +196,7 @@ async function getCalendarSources(userId: string) {
     )
     .groupBy(
       calendarCalendars.id,
+      calendarCalendars.accessRole,
       calendarCalendars.color,
       calendarCalendars.isPrimary,
       calendarCalendars.isSelected,
