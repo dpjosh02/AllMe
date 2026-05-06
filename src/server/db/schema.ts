@@ -134,6 +134,55 @@ export const notes = pgTable(
   }),
 );
 
+export const progressItems = pgTable(
+  "progress_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userArchivedCreatedIdx: index("progress_items_user_archived_created_idx").on(
+      table.userId,
+      table.archivedAt,
+      table.createdAt,
+    ),
+  }),
+);
+
+export const progressLogs = pgTable(
+  "progress_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => progressItems.id, { onDelete: "cascade" }),
+    logDate: date("log_date").notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userItemDateUnique: uniqueIndex("progress_logs_user_item_date_unique").on(
+      table.userId,
+      table.itemId,
+      table.logDate,
+    ),
+    userLogDateIdx: index("progress_logs_user_log_date_idx").on(
+      table.userId,
+      table.logDate,
+    ),
+  }),
+);
+
 export const calendarConnections = pgTable(
   "calendar_connections",
   {
