@@ -19,6 +19,7 @@ import {
   PageSection,
   StatusPill,
 } from "@/components/layout/page-scaffold";
+import { ProgressSummaryCard } from "@/features/progress/components/progress-summary-card";
 import { DailyNoteForm } from "@/features/today/components/daily-note-form";
 import { QuickCaptureForm } from "@/features/today/components/quick-capture-form";
 import { QuickCaptureList } from "@/features/today/components/quick-capture-list";
@@ -65,7 +66,10 @@ export default async function TodayPage({
 
       <PageGrid>
         <PageGridItem span="primary" className="xl:h-[36rem]">
-          <AllMeCard className="flex min-h-0 flex-col overflow-hidden" variant="form">
+          <AllMeCard
+            className="flex min-h-0 flex-col overflow-hidden"
+            variant="form"
+          >
             <PageSection
               className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description="This note is stored in Postgres and keyed to today's date in your configured timezone."
@@ -123,7 +127,10 @@ export default async function TodayPage({
         </PageGridItem>
 
         <PageGridItem span="support" className="xl:h-[36rem]">
-          <AllMeCard className="flex min-h-0 flex-col overflow-hidden" variant="status">
+          <AllMeCard
+            className="flex min-h-0 flex-col overflow-hidden"
+            variant="status"
+          >
             <PageSection
               className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
               description="Jump back into roughly one month of daily notes. Opening a missing day creates its note on demand."
@@ -206,7 +213,8 @@ export default async function TodayPage({
                           tone="ready"
                         />
                         <span className="rounded-full border border-[var(--line)] px-2 py-1 text-xs font-semibold text-[var(--muted)]">
-                          {data.agendaSource.selectedCalendars} selected calendars
+                          {data.agendaSource.selectedCalendars} selected
+                          calendars
                         </span>
                         {data.agendaItems.some((item) => item.isAllDay) ? (
                           <span className="text-xs font-semibold text-[var(--muted)]">
@@ -233,8 +241,8 @@ export default async function TodayPage({
                   <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--empty)] px-3 py-3">
                     <StatusPill label="No events" tone="neutral" />
                     <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                      Run Calendar sync or review selected calendars to populate this
-                      local agenda cache.
+                      Run Calendar sync or review selected calendars to populate
+                      this local agenda cache.
                     </p>
                     <Link
                       className="mt-3 inline-flex text-xs font-semibold text-[var(--accent)] transition hover:text-[var(--foreground)]"
@@ -249,12 +257,20 @@ export default async function TodayPage({
 
             <AllMeCard variant="status">
               <PageSection
-                description="Progress check-ins will start lightweight before becoming a broader habits and activity system."
+                description="Read-only completion state for the selected day."
                 eyebrow="Review"
                 icon={<SquareCheckBig aria-hidden="true" className="h-6 w-6" />}
                 title="Daily closeout"
               >
-                <StatusPill label="Planned" tone="neutral" />
+                <ProgressSummaryCard
+                  dateKey={data.dateKey}
+                  href={
+                    data.isViewingToday
+                      ? "/progress"
+                      : `/progress?date=${data.dateKey}`
+                  }
+                  summary={data.progressSummary}
+                />
               </PageSection>
             </AllMeCard>
           </div>

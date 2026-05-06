@@ -285,6 +285,28 @@ Next Today layers should stay similarly narrow:
 - small finance snapshot
 - calendar-backed agenda
 
+## Progress Check-In Vertical Slice
+
+The first real `/progress` product slice has shipped.
+
+Implemented behavior:
+
+- `/progress` is no longer a placeholder route.
+- The page resolves the authorized user through the existing page guard.
+- Progress items and daily logs persist in app-owned Postgres tables.
+- Every Progress row carries `user_id`, and reads/mutations are scoped to the
+  authorized user.
+- A user can create a short check-in item.
+- A user can mark an item complete or undo completion for a selected local date.
+- Duplicate completion writes are idempotent through the Progress log unique
+  key.
+- Invalid requested date keys fall back to the user's local today.
+- `/today` Daily Closeout now shows a compact read-only Progress summary for
+  the selected date and links to `/progress`.
+
+This is intentionally not a full habit engine. Recurrence, streaks, scoring,
+workouts, chores, analytics, and Notes/Calendar linking remain deferred.
+
 ## Notes Vertical Slice
 
 The first real `/notes` product slice has shipped.

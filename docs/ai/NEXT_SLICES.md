@@ -14,26 +14,9 @@ boundary.
 
 ## Active Slice
 
-None selected. The Product Manager should choose the next slice before opening a
-new implementation workstream.
+No active implementation slice is selected.
 
 ## Ready Candidates
-
-### Calendar-Backed Today Agenda
-
-- Milestone: 3/4, Today and Calendar Integration.
-- Why now: Today already has daily notes and an agenda placeholder; Calendar
-  has cached events and local review state.
-- User value: `/today` becomes a daily command view with real schedule context.
-- Risk: medium; must read cached Calendar data only and avoid provider writes.
-- Required roles: Product Manager, UI/UX, Principal Engineer, QA Reviewer.
-- Likely files: `src/app/today/**`, `src/features/today/**`,
-  `src/features/calendar/agenda-*`, focused tests.
-- Special boundary: no provider-write, migration, auth, or finance-import edits.
-- Acceptance criteria: Today shows a small agenda from app-owned cached data,
-  handles empty/loading/error states, and does not call Google directly.
-- Non-goals: provider writes, new Calendar schema, recurrence editing, Finance
-  expansion.
 
 ### Notes Capture Detail Follow-Through
 
@@ -50,24 +33,6 @@ new implementation workstream.
 - Acceptance criteria: capture detail workflows are clear, reversible, and
   consistent between Notes and Today.
 - Non-goals: backlinks, tag system, rich-text editor, new dependencies.
-
-### First Progress Logging Slice
-
-- Milestone: 6, Progress Tracking.
-- Why now: Progress remains the thinnest product surface and should become a
-  real flow before deeper Finance work resumes.
-- User value: the app can record a small daily completion signal and later feed
-  Today.
-- Risk: medium to high; likely needs schema and a narrow domain model.
-- Required roles: Product Manager, Architect, Data/DB, UI/UX, Principal
-  Engineer, QA Reviewer.
-- Likely files: `docs/architecture/**`, `src/app/progress/**`,
-  `src/features/progress/**`, `src/server/db/schema.ts`, `db/migrations/**`.
-- Special boundary: one Data/DB-owned migration lane; no finance-dashboard,
-  finance-import, calendar-provider-write, auth, or unrelated migration edits.
-- Acceptance criteria: one simple progress item can be created, logged for a
-  day, and shown without cluttering Today.
-- Non-goals: full habit engine, scoring system, workouts, analytics.
 
 ## Deferred
 
@@ -144,5 +109,10 @@ new implementation workstream.
   recent notes support.
 - Notes vertical slice: capture inbox, detail pages, search/filter/density, and
   restore flow.
+- Calendar-backed Today agenda: `/today` reads selected, non-deleted cached
+  Calendar events through the Calendar agenda read model without direct Google
+  reads or provider writes.
 - Calendar recurrence guardrails: this-event-only UI/action support with smoke
   caveat documented in `docs/DEVELOPMENT_STATUS.md`.
+- First Progress Check-In: `/progress` supports one lightweight daily completion
+  flow with a read-only Today summary.
