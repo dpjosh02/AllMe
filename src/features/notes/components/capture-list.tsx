@@ -1,8 +1,8 @@
-import { CheckCircle2, RotateCcw, StickyNote } from "lucide-react";
+import { StickyNote } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 
-import { completeCapture, restoreCapture } from "@/features/notes/actions";
+import { CaptureStateActionForm } from "@/features/notes/components/capture-state-action-form";
 
 type CaptureListItem = {
   body: string;
@@ -92,35 +92,8 @@ function CaptureRow({
         >
           Open
         </Link>
-        <CaptureAction action={action} captureId={capture.id} />
+        <CaptureStateActionForm captureId={capture.id} mode={action} />
       </div>
     </article>
-  );
-}
-
-function CaptureAction({
-  action,
-  captureId,
-}: {
-  action: CaptureListProps["action"];
-  captureId: string;
-}) {
-  const isCompleteAction = action === "complete";
-
-  return (
-    <form action={isCompleteAction ? completeCapture : restoreCapture}>
-      <input name="captureId" type="hidden" value={captureId} />
-      <button
-        className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-xs font-semibold"
-        type="submit"
-      >
-        {isCompleteAction ? (
-          <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-        ) : (
-          <RotateCcw aria-hidden="true" className="h-4 w-4" />
-        )}
-        {isCompleteAction ? "Complete" : "Restore"}
-      </button>
-    </form>
   );
 }

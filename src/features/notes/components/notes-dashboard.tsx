@@ -14,6 +14,12 @@ import {
 import { CaptureCreateForm } from "@/features/notes/components/capture-create-form";
 import { CaptureList } from "@/features/notes/components/capture-list";
 import type { NotesPageData } from "@/features/notes/queries";
+import {
+  filterCapturesForQuery,
+  filterDailyNotesForQuery,
+  getEmptyCaptureLabel,
+  normalizeNotesSearch,
+} from "@/features/notes/read-model";
 
 type NotesDashboardProps = {
   data: NotesPageData;
@@ -35,15 +41,19 @@ export function NotesDashboard({ data }: NotesDashboardProps) {
   const [filter, setFilter] = useState<NotesFilter>("all");
   const [density, setDensity] = useState<Density>("comfortable");
   const deferredQuery = useDeferredValue(query);
-  const normalizedQuery = normalizeSearch(deferredQuery);
+  const normalizedQuery = normalizeNotesSearch(deferredQuery);
 
-  const activeCaptures = filterCaptures(data.activeCaptures, normalizedQuery);
-  const completedCaptures = filterCaptures(
+  const activeCaptures = filterCapturesForQuery(
+    data.activeCaptures,
+    normalizedQuery,
+  );
+  const completedCaptures = filterCapturesForQuery(
     data.completedCaptures,
     normalizedQuery,
   );
-  const dailyNotes = filterDailyNotes(data.dailyNotes, normalizedQuery);
-  const showActive = filter === "all" || filter === "captures" || filter === "active";
+  const dailyNotes = filterDailyNotesForQuery(data.dailyNotes, normalizedQuery);
+  const showActive =
+    filter === "all" || filter === "captures" || filter === "active";
   const showCompleted =
     filter === "all" || filter === "captures" || filter === "completed";
   const showDaily = filter === "all" || filter === "daily";
@@ -108,7 +118,9 @@ export function NotesDashboard({ data }: NotesDashboardProps) {
                 <DailyNotesList
                   density={density}
                   emptyLabel={
-                    normalizedQuery ? "No daily notes match this search." : "No daily notes yet."
+                    normalizedQuery
+                      ? "No daily notes match this search."
+                      : "No daily notes yet."
                   }
                   notes={dailyNotes}
                 />
@@ -196,7 +208,9 @@ function NotesControls({
           <button
             className="allme-control inline-flex min-h-9 items-center px-3 text-xs font-semibold"
             onClick={() =>
-              onDensityChange(density === "comfortable" ? "compact" : "comfortable")
+              onDensityChange(
+                density === "comfortable" ? "compact" : "comfortable",
+              )
             }
             type="button"
           >
@@ -265,46 +279,4 @@ function DailyNotesList({
       </div>
     </div>
   );
-}
-
-function filterCaptures<TCapture extends { body: string; title: string }>(
-  captures: TCapture[],
-  query: string,
-) {
-  if (!query) {
-    return captures;
-  }
-
-  return captures.filter((capture) =>
-    normalizeSearch(`${capture.title} ${capture.body}`).includes(query),
-  );
-}
-
-function filterDailyNotes(
-  notes: NotesPageData["dailyNotes"],
-  query: string,
-) {
-  if (!query) {
-    return notes;
-  }
-
-  return notes.filter((note) =>
-    normalizeSearch(`${note.displayDate} ${note.title} ${note.body}`).includes(
-      query,
-    ),
-  );
-}
-
-function getEmptyCaptureLabel({
-  defaultLabel,
-  query,
-}: {
-  defaultLabel: string;
-  query: string;
-}) {
-  return query ? "No captures match this search." : defaultLabel;
-}
-
-function normalizeSearch(value: string) {
-  return value.trim().toLowerCase();
 }

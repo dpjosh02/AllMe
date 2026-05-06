@@ -1,4 +1,7 @@
+"use client";
+
 import { CheckCircle2 } from "lucide-react";
+import { useFormStatus } from "react-dom";
 
 import { completeCapture } from "@/features/notes/actions";
 
@@ -36,16 +39,25 @@ export function QuickCaptureList({ captures }: QuickCaptureListProps) {
           </div>
           <form action={completeCapture}>
             <input name="captureId" type="hidden" value={capture.id} />
-            <button
-              className="allme-control inline-flex min-h-9 items-center gap-2 px-3 text-xs font-semibold"
-              type="submit"
-            >
-              <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-              Complete
-            </button>
+            <CompleteButton />
           </form>
         </article>
       ))}
     </div>
+  );
+}
+
+function CompleteButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className="allme-control inline-flex min-h-9 min-w-28 items-center justify-center gap-2 px-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+      disabled={pending}
+      type="submit"
+    >
+      <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+      {pending ? "Completing..." : "Complete"}
+    </button>
   );
 }
