@@ -1,11 +1,17 @@
 # Development Workflow
 
-## Version Control
+This is a short command and security index for local development. It should
+link to canonical docs instead of restating project status, AI workflow,
+lint/static-analysis rollout, or finance import contracts.
 
-- Main branch: `main`
-- Remote: `git@github.com:dpjosh02/AllMe.git`
-- Keep commits focused and push after verified increments.
-- Do not commit personal working journals, agent files, service account JSON, `.env`, `.env.local`, or real financial exports.
+## Canonical References
+
+- Global Codex workflow: `AGENTS.md`
+- AI role workflow: `docs/ai/WORKFLOW.md`
+- Current project status: `docs/DEVELOPMENT_STATUS.md`
+- Active roadmap: `docs/ROADMAP.md`
+- Lint/static-analysis guidance: `docs/AGENTS.md` and `docs/PLANS.md`
+- Fintable import contract: `docs/finance/FINTABLE_GOOGLE_SHEETS.md`
 
 ## Local Setup
 
@@ -16,69 +22,30 @@ cd ~/Documents/AllMe
 npm install
 ```
 
-Required local environment file:
+Local environment lives in `.env.local`, which is ignored by Git.
 
-```text
-.env.local
-```
-
-This file is ignored by Git.
-
-## Verification
-
-Run before committing meaningful code changes:
+## Common Commands
 
 ```bash
+npm run dev
 npm run verify
 npm run build
-```
-
-`npm run verify` runs:
-
-- ESLint
-- TypeScript typecheck
-- Vitest unit tests
-
-## Database Workflow
-
-Local Postgres is expected at:
-
-```text
-postgres://postgres:postgres@localhost:5432/allme
-```
-
-Apply migrations:
-
-```bash
 npm run db:migrate
-```
-
-Generate migrations after schema changes:
-
-```bash
 npm run db:generate
-```
-
-## Finance Import Workflow
-
-Check private Fintable sheet access without writing to the database:
-
-```bash
 npm run finance:fintable:dry-run
-```
-
-Write parsed Fintable data to PostgreSQL:
-
-```bash
 npm run finance:fintable:import
+npm run finance:categorize
 ```
 
-The importer should remain idempotent. Re-running it should update existing rows rather than duplicate accounts, transactions, balances, or raw records.
+Use `npm run verify` before committing meaningful code changes. It runs the
+blocking lint, typecheck, and unit-test checks.
 
-## Security Rules
+## Security Reminders
 
 - Keep service account JSON files outside the repo.
-- Keep `.env.local` out of Git.
-- Do not print transaction details in scripts unless explicitly building a local debugging tool.
-- Prefer count/status output for import scripts.
-- Keep raw financial rows in `finance_raw_records`, not in committed test fixtures.
+- Keep `.env.local` and real provider credentials out of Git.
+- Do not commit real financial exports, account names, balances, merchants, or
+  transaction details.
+- Prefer count/status output for finance import scripts.
+- Keep raw financial rows in `finance_raw_records`, not committed fixtures.
+- For Fintable details, use `docs/finance/FINTABLE_GOOGLE_SHEETS.md`.

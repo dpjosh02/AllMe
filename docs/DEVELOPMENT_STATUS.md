@@ -244,14 +244,8 @@ The first inference and preview layer exists in the tag manager edit view:
 - Custom text rules match across normalized descriptions, merchants, stored categories, raw category paths, and Plaid/Fintable personal finance category fields.
 - Saving a custom text rule writes a persistent `finance_category_rules` row with `matchLogic = any` and `contains_any` conditions, so future categorization/import runs can reuse the user-defined rule.
 
-The next tagging layer should move this inference and preview workflow server-side for full-history coverage:
-
-- infer candidate rules from the selected transaction's raw fields
-- show matching signals such as raw category, personal finance category, merchant, website, and description
-- preview matching transaction count before applying
-- let the user choose whether the tag applies to only this transaction, past similar transactions, future similar transactions, or both
-
-The most useful raw fields for future rule inference are:
+The current finance hardening queue lives in `docs/ai/NEXT_SLICES.md`. The most
+useful raw fields for future rule inference remain:
 
 - `personal_finance_category.detailed`
 - `personal_finance_category.primary`
@@ -309,7 +303,7 @@ Implemented behavior:
 - Summary counts show active captures, completed captures, and recent daily notes in the page hero.
 - The page uses the shared desktop scaffold so it remains visually aligned with Today, Finance, and Settings.
 
-This keeps Today lightweight while giving captures a dedicated review surface. The next Notes layer should add editing/detail views for individual captures or lightweight note pages before adding tags/backlinks.
+This keeps Today lightweight while giving captures a dedicated review surface. The next Notes layer should improve follow-through on existing capture detail workflows or add lightweight note pages before adding tags/backlinks.
 
 Verified after this work:
 
@@ -390,10 +384,5 @@ aa4df6f Initial project blueprint
 
 ## Near-Term Next Steps
 
-1. Move category rule preview and apply-to-similar matching server-side for full-history coverage.
-2. Add rule editing/deletion UI for user-created custom text rules.
-3. Add a dedicated category review workflow for assigning categories to uncategorized transactions.
-4. Consider moving transaction filtering server-side once the dataset grows beyond a few hundred rows.
-5. Add app navigation so `/`, `/finance`, and future sections share one shell.
-6. Add a visible import status/history page.
-7. Add a persistent ignored/deleted source-transaction table if transaction deletion should survive future Fintable syncs.
+Candidate next slices now live in `docs/ai/NEXT_SLICES.md` so planning and
+finance hardening candidates have one current queue.

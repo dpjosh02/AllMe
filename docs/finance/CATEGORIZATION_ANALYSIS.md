@@ -2,6 +2,19 @@
 
 This analysis is based on the imported Fintable transaction structure in local Postgres. It intentionally avoids merchant names, account names, amounts, and transaction-level details.
 
+## Historical Note
+
+This is a historical/reference analysis for the original finance categorization
+design. It remains useful for understanding raw provider signals, matching
+strategy, and why AllMe stores user-owned categories, rules, and assignments.
+
+Current implementation status and next finance candidates live in:
+
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/ai/NEXT_SLICES.md`
+
+Treat the recommendations below as design context, not a current task list.
+
 ## Summary
 
 The current normalized `finance_transactions.category` field is not enough for robust categorization.
@@ -541,22 +554,10 @@ This gives the user the flexibility to define personal categories like `Ordering
 
 ## Implementation Status
 
-Initial implementation is now connected to the website.
+This section is intentionally not kept as the live status source. The first
+categorization implementation has shipped and later finance tagging work added
+self-serve tag management, manual assignments, uncategorized review entry
+points, category filtering, and custom text-rule creation.
 
-Implemented:
-
-- `finance_user_categories`
-- `finance_category_rules`
-- `finance_transaction_category_assignments`
-- Default seed categories and rules
-- Rule evaluator with unit tests
-- `npm run finance:categorize`
-- Automatic categorization after Fintable imports
-- `/finance` transaction category badges
-
-Current limitations:
-
-- Categories and rules are code-seeded, not yet editable in the UI.
-- Uncategorized transactions do not yet have a review queue.
-- The dashboard shows assigned categories but does not yet filter by assigned category.
-- The dashboard now filters transactions by account and inclusive calendar date range on the client.
+For current status, use `docs/DEVELOPMENT_STATUS.md`. For future finance
+hardening candidates, use `docs/ai/NEXT_SLICES.md`.
