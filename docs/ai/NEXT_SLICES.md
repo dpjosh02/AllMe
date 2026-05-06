@@ -14,30 +14,7 @@ boundary.
 
 ## Active Slice
 
-### First Progress Check-In
-
-- Milestone: 6, Progress Tracking.
-- Decision packet:
-  `docs/ai/decisions/2026-05-06-first-progress-check-in.md`.
-- Why now: Today, Notes, and cached Calendar context now have real surfaces;
-  Progress remains the thinnest route and can become useful with one narrow
-  daily completion flow.
-- User value: the app can record a small daily completion signal and show it
-  back on `/today` without turning Today into a task manager.
-- Risk: medium; requires one schema/migration lane and careful local-date/user
-  scoping.
-- Required roles: Product Manager, Architect, Data/DB, UI/UX, Principal
-  Engineer, QA Reviewer; Release Integrator only if migration integration
-  overlaps another branch.
-- Likely files: `src/app/progress/**`, `src/features/progress/**`,
-  `src/features/today/**`, `src/server/db/schema.ts`, `db/migrations/**`,
-  focused tests.
-- Special boundary: no finance, calendar-provider-write, auth, package, or
-  unrelated migration edits.
-- Acceptance criteria: one simple progress item can be created, logged for a
-  selected day, undone, and summarized from Today with owner scoping preserved.
-- Non-goals: full habit engine, streaks, scoring, workouts, chores, weekly
-  analytics, Notes/Calendar linking, new dependencies.
+No active implementation slice is selected.
 
 ## Ready Candidates
 
@@ -137,3 +114,5 @@ boundary.
   reads or provider writes.
 - Calendar recurrence guardrails: this-event-only UI/action support with smoke
   caveat documented in `docs/DEVELOPMENT_STATUS.md`.
+- First Progress Check-In: `/progress` supports one lightweight daily completion
+  flow with a read-only Today summary.
