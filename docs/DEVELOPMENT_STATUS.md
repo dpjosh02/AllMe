@@ -275,15 +275,17 @@ Implemented behavior:
 - Recent Notes fetches roughly one month of daily notes and scrolls internally instead of expanding the full page.
 - Today date navigation uses scroll preservation so moving between archive days does not force the user back to the top of the page.
 - Opening an archive date creates that date's note on demand if it does not exist yet.
-- Supporting cards for Agenda and Daily Closeout remain intentionally marked as planned surfaces.
+- `/today` includes cached Calendar agenda context, read-only Progress closeout
+  context, and a compact read-only Finance snapshot for the selected date.
+- The Finance snapshot reads existing app-owned Finance data from Postgres,
+  shows posted activity, category-aware income/spending, uncategorized review
+  state or import freshness, and links to `/finance` for deeper review.
 
 This is a vertical slice because it crosses the real app layers: auth guard, settings lookup, Postgres persistence, server-rendered page, server action mutation, scaffold UI, and unit-tested timezone date handling.
 
 Next Today layers should stay similarly narrow:
 
 - note autosave or stronger save-state feedback
-- small finance snapshot
-- calendar-backed agenda
 
 ## Progress Check-In Vertical Slice
 

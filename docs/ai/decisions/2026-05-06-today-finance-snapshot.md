@@ -1,7 +1,7 @@
 # Decision: Today Finance Snapshot
 
 Date: 2026-05-06
-Status: Candidate
+Status: Completed
 Role: Architect / UI/UX
 
 UI/UX review: 2026-05-06

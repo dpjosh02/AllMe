@@ -18,10 +18,7 @@ No active implementation slice is selected.
 
 ## Ready Candidates
 
-No ready candidate is selected. Recommended next PM planning target: a narrow
-Milestone 3 Today finance snapshot that embeds existing app-owned Finance
-summary data as a supporting module on `/today` without expanding Finance
-capability.
+No ready candidate is selected.
 
 ## Deferred
 
@@ -108,3 +105,5 @@ capability.
 - Notes Capture Detail Follow-Through: capture detail edit, complete, restore,
   and return navigation now align across Notes and Today with focused Notes
   tests.
+- Today Finance Snapshot: `/today` now embeds a compact read-only Finance
+  support card backed by existing app-owned Postgres data.
