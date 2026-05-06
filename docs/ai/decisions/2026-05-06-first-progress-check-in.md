@@ -1,12 +1,14 @@
 # Decision: First Progress Check-In
 
 Date: 2026-05-06
-Status: Proposed
+Status: Completed
 Role: Product Manager / Architect
 
 Data/DB review: 2026-05-06
 
 UI/UX review: 2026-05-06
+
+Release review: 2026-05-06
 
 ## Goal
 
@@ -146,8 +148,8 @@ Canonical direction stays in `docs/ROADMAP.md`, `docs/PROJECT_BLUEPRINT.md`,
   `npm run test -- tests/unit/today`,
   `npm run typecheck`, and `npm run lint:minimal`.
 - After the implementation branch creates the migration, run `npm run
-  db:generate`, inspect the generated SQL and metadata, then run `npm run
-  db:migrate` against local Postgres before full verification.
+db:generate`, inspect the generated SQL and metadata, then run `npm run
+db:migrate` against local Postgres before full verification.
 
 ## UI/UX Requirements
 
@@ -379,6 +381,39 @@ If focused Progress tests are colocated differently, replace
 - Archival or deletion workflows beyond an optional `archived_at` field if the
   implementation needs a low-risk way to hide seed/test items.
 - Home dashboard Progress summary.
+
+## Release Review
+
+Shipped in commits `00b95ee` and `65dd83b`, then merged to `main` by
+`d80ea7e`.
+
+Validation completed:
+
+```bash
+npm run lint:minimal
+npm run typecheck
+npm run test -- tests/unit/progress
+npm run test -- tests/unit/today
+npm run test
+npm run db:migrate
+npm run verify
+```
+
+Results:
+
+- Focused Progress tests passed: 3 files, 11 tests.
+- Focused Today tests passed: 1 file, 3 tests.
+- Full unit suite passed: 31 files, 171 tests.
+- `db:migrate` applied migrations successfully.
+- `npm run verify` passed.
+
+Follow-up debt:
+
+- Progress intentionally remains a lightweight daily completion flow, not a
+  full habit/task engine.
+- No browser/manual UI pass was recorded during this release review.
+- Future Progress slices should keep schema/migration ownership in a single
+  Data/DB lane.
 
 ## Required Agents
 

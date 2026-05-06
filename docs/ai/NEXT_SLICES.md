@@ -14,15 +14,12 @@ boundary.
 
 ## Active Slice
 
-No active implementation slice is selected.
-
-## Ready Candidates
-
 ### Notes Capture Detail Follow-Through
 
 - Milestone: 3, Today and Daily Notes.
-- Why now: Captures have L2 pages; the next note layer should stay narrow before
-  tags/backlinks.
+- Why now: Progress is now a real lightweight daily completion surface. The next
+  low-risk product layer should strengthen existing Notes/Today capture
+  follow-through before adding larger Progress, Finance, or Calendar capability.
 - User value: quick captures become easier to review, edit, complete, and
   restore across Today and Notes.
 - Risk: low to medium; mostly UI and existing note persistence.
@@ -30,9 +27,19 @@ No active implementation slice is selected.
 - Likely files: `src/app/notes/**`, `src/features/notes/**`,
   `src/features/today/**`, focused tests.
 - Special boundary: no schema, migration, auth, provider-write, or finance-import edits.
-- Acceptance criteria: capture detail workflows are clear, reversible, and
-  consistent between Notes and Today.
+- Acceptance criteria:
+  - Capture detail pages make edit, complete, restore, and return navigation
+    clear and reversible.
+  - Notes and Today present the same capture completion/restoration states.
+  - Empty, saved, pending, and validation states are covered without raw errors
+    or identifiers.
+  - Focused tests cover capture state transitions and the Today/Notes read
+    models touched by the slice.
 - Non-goals: backlinks, tag system, rich-text editor, new dependencies.
+
+## Ready Candidates
+
+No additional ready candidate is selected beyond the active slice.
 
 ## Deferred
 

@@ -307,6 +307,18 @@ Implemented behavior:
 This is intentionally not a full habit engine. Recurrence, streaks, scoring,
 workouts, chores, analytics, and Notes/Calendar linking remain deferred.
 
+Verified after this work:
+
+```text
+npm run lint:minimal
+npm run typecheck
+npm run test -- tests/unit/progress
+npm run test -- tests/unit/today
+npm run test
+npm run db:migrate
+npm run verify
+```
+
 ## Notes Vertical Slice
 
 The first real `/notes` product slice has shipped.
