@@ -31,6 +31,14 @@
     "finance:test-data:clear": "tsx scripts/finance-clear-test-data.ts",
     "calendar:full-sync": "tsx scripts/calendar-full-sync.ts",
     "calendar:recurring-readiness": "tsx scripts/calendar-recurring-readiness.ts",
+    "slice:start": "tsx scripts/slice-workflow.ts start",
+    "slice:status": "tsx scripts/slice-workflow.ts status",
+    "slice:commit-plan": "tsx scripts/slice-workflow.ts commit-plan",
+    "slice:merge-plan": "tsx scripts/slice-workflow.ts merge-plan",
+    "slice:commit-impl": "tsx scripts/slice-workflow.ts commit-impl",
+    "slice:verify": "tsx scripts/slice-workflow.ts verify",
+    "slice:close": "tsx scripts/slice-workflow.ts close",
+    "slice:cleanup": "tsx scripts/slice-workflow.ts cleanup",
     "verify": "npm run lint:minimal && npm run typecheck && npm run test"
   },
   "repository": {

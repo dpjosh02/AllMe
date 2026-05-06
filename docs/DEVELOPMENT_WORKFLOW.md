@@ -40,6 +40,31 @@ npm run finance:categorize
 Use `npm run verify` before committing meaningful code changes. It runs the
 blocking lint, typecheck, and unit-test checks.
 
+## Slice Coordinator CLI
+
+Use the local slice coordinator for role-based AI work that needs separate plan
+and implementation worktrees. Run it from a clean `main` worktree unless the
+command explicitly targets the plan or implementation worktree.
+
+Normal sequence:
+
+```bash
+npm run slice:start -- notes-capture-detail --link-env
+cd ../allme-notes-capture-detail-plan
+npm run slice:commit-plan -- notes-capture-detail
+cd ../allme-notes-capture-detail-impl
+npm run slice:merge-plan -- notes-capture-detail
+npm run slice:commit-impl -- notes-capture-detail --all --message "type(scope): summary"
+npm run slice:verify -- notes-capture-detail
+cd ../AllMe
+npm run slice:close -- notes-capture-detail
+npm run slice:cleanup -- notes-capture-detail
+```
+
+Use `npm run slice:status -- <slice-slug>` to inspect worktrees and branch merge
+state. `slice:close` does not push; it prints the `git push origin main`
+command after a successful local merge.
+
 ## Security Reminders
 
 - Keep service account JSON files outside the repo.
