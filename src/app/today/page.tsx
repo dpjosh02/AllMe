@@ -2,6 +2,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
   Inbox,
   NotebookPen,
   SquareCheckBig,
@@ -23,6 +24,7 @@ import { ProgressSummaryCard } from "@/features/progress/components/progress-sum
 import { DailyNoteForm } from "@/features/today/components/daily-note-form";
 import { QuickCaptureForm } from "@/features/today/components/quick-capture-form";
 import { QuickCaptureList } from "@/features/today/components/quick-capture-list";
+import { TodayFinanceSnapshotCard } from "@/features/today/components/today-finance-snapshot-card";
 import { addDaysToDateKey } from "@/features/today/date";
 import { getTodayPageData } from "@/features/today/queries";
 import { requirePageUser } from "@/server/auth/guards";
@@ -190,7 +192,7 @@ export default async function TodayPage({
         </PageGridItem>
 
         <PageGridItem span="support" className="min-h-0">
-          <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-5">
+          <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto_auto] gap-5">
             <AllMeCard
               className="flex max-h-[24rem] min-h-0 flex-col overflow-hidden"
               variant="status"
@@ -252,6 +254,19 @@ export default async function TodayPage({
                     </Link>
                   </div>
                 )}
+              </PageSection>
+            </AllMeCard>
+
+            <AllMeCard variant="status">
+              <PageSection
+                description="Read-only money activity for the selected day."
+                eyebrow="Finance"
+                icon={
+                  <CircleDollarSign aria-hidden="true" className="h-6 w-6" />
+                }
+                title="Money context"
+              >
+                <TodayFinanceSnapshotCard snapshot={data.financeSnapshot} />
               </PageSection>
             </AllMeCard>
 
