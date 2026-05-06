@@ -1,10 +1,12 @@
 # Decision: Notes Capture Detail Follow-Through
 
 Date: 2026-05-06
-Status: Proposed
+Status: Completed
 Role: Product Manager
 
 UI/UX review: 2026-05-06
+
+Release review: 2026-05-06
 
 ## Goal
 
@@ -52,8 +54,7 @@ restore it later, and understand the same state from Today and Notes.
 
 ## Current Repo State
 
-- Active slice in `docs/ai/NEXT_SLICES.md`: `Notes Capture Detail
-  Follow-Through`.
+- Active slice in `docs/ai/NEXT_SLICES.md`: `Notes Capture Detail Follow-Through`.
 - Notes already has `/notes`, `/notes/captures/[captureId]`, active captures,
   completed captures, daily notes, search/filter, density toggle, completion,
   restoration, and detail editing.
@@ -152,8 +153,8 @@ behavior, and pending/error handling need to stay consistent.
 - Active captures empty: `No active captures.`
 - Completed captures empty: `No completed captures yet.`
 - Daily notes empty: `No daily notes yet.`
-- Search-filtered empty: keep the current pattern, such as `No captures match
-  this search.` or `No daily notes match this search.`
+- Search-filtered empty: keep the current pattern, such as
+  `No captures match this search.` or `No daily notes match this search.`
 - Empty states should use dashed `var(--line)` borders, `var(--empty)`
   background, and muted text. Do not use illustrations or accent-heavy empty
   cards.
@@ -312,3 +313,46 @@ Manual scenarios:
 - Bulk completion or bulk restore.
 - Capture archive beyond the existing completed list.
 - Any schema/model changes.
+
+## Release Review
+
+Shipped in commits `7f51400` and `98b5aa9`, then merged to `main` by
+`71cf633`.
+
+Validation completed:
+
+```bash
+npm run lint:minimal
+npm run typecheck
+npm run test -- tests/unit/notes
+npm run verify
+npm run build
+```
+
+Results:
+
+- Focused Notes tests passed: 2 files, 10 tests.
+- `npm run verify` passed: 33 files, 181 tests.
+- `npm run build` passed and included `/notes` and
+  `/notes/captures/[captureId]` as dynamic routes.
+
+Acceptance review:
+
+- Capture detail supports edit, complete, restore, and Notes overview
+  navigation.
+- Notes and Today use consistent active/completed capture language.
+- Completed captures remain recoverable from Notes without deleting the note
+  row.
+- Empty, pending, saved, validation, and not-found states avoid raw identifiers
+  and raw errors.
+- Linked Calendar event-note behavior remains local and does not imply provider
+  writes.
+- Focused Notes tests cover title/body updates, complete/restore transitions,
+  and touched read-model behavior.
+- Final merged diff did not touch schema, migrations, auth, provider-write
+  logic, Finance imports, package files, or dependencies.
+
+Residual validation gap:
+
+- A targeted manual browser check of `/notes`, `/notes/captures/[captureId]`,
+  and `/today` was not run during this release review.

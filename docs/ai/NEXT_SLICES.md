@@ -14,32 +14,14 @@ boundary.
 
 ## Active Slice
 
-### Notes Capture Detail Follow-Through
-
-- Milestone: 3, Today and Daily Notes.
-- Why now: Progress is now a real lightweight daily completion surface. The next
-  low-risk product layer should strengthen existing Notes/Today capture
-  follow-through before adding larger Progress, Finance, or Calendar capability.
-- User value: quick captures become easier to review, edit, complete, and
-  restore across Today and Notes.
-- Risk: low to medium; mostly UI and existing note persistence.
-- Required roles: Product Manager, UI/UX, Principal Engineer, QA Reviewer.
-- Likely files: `src/app/notes/**`, `src/features/notes/**`,
-  `src/features/today/**`, focused tests.
-- Special boundary: no schema, migration, auth, provider-write, or finance-import edits.
-- Acceptance criteria:
-  - Capture detail pages make edit, complete, restore, and return navigation
-    clear and reversible.
-  - Notes and Today present the same capture completion/restoration states.
-  - Empty, saved, pending, and validation states are covered without raw errors
-    or identifiers.
-  - Focused tests cover capture state transitions and the Today/Notes read
-    models touched by the slice.
-- Non-goals: backlinks, tag system, rich-text editor, new dependencies.
+No active implementation slice is selected.
 
 ## Ready Candidates
 
-No additional ready candidate is selected beyond the active slice.
+No ready candidate is selected. Recommended next PM planning target: a narrow
+Milestone 3 Today finance snapshot that embeds existing app-owned Finance
+summary data as a supporting module on `/today` without expanding Finance
+capability.
 
 ## Deferred
 
@@ -123,3 +105,6 @@ No additional ready candidate is selected beyond the active slice.
   caveat documented in `docs/DEVELOPMENT_STATUS.md`.
 - First Progress Check-In: `/progress` supports one lightweight daily completion
   flow with a read-only Today summary.
+- Notes Capture Detail Follow-Through: capture detail edit, complete, restore,
+  and return navigation now align across Notes and Today with focused Notes
+  tests.

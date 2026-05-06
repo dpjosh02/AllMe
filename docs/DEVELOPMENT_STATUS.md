@@ -337,7 +337,9 @@ Implemented behavior:
 - Summary counts show active captures, completed captures, and recent daily notes in the page hero.
 - The page uses the shared desktop scaffold so it remains visually aligned with Today, Finance, and Settings.
 
-This keeps Today lightweight while giving captures a dedicated review surface. The next Notes layer should improve follow-through on existing capture detail workflows or add lightweight note pages before adding tags/backlinks.
+This kept Today lightweight while giving captures a dedicated review surface.
+The follow-through layer below tightened the existing capture detail workflow
+before any tags, backlinks, or rich-text work.
 
 Verified after this work:
 
@@ -346,6 +348,36 @@ npm run verify
 npm run build
 Live browser test on http://localhost:3000/finance
 ```
+
+## Notes Capture Detail Follow-Through
+
+The follow-through layer for quick captures has shipped.
+
+Implemented behavior:
+
+- Capture detail pages now have clearer edit, complete, restore, and
+  return-to-Notes behavior.
+- Notes and Today use consistent active/completed capture action language.
+- Completed captures remain recoverable from Notes without deleting the note
+  row.
+- Capture title validation returns a user-safe inline error instead of exposing
+  raw action failures.
+- List and detail complete/restore actions have disabled pending states.
+- Linked Calendar event-note delete behavior remains local and does not imply a
+  Google Calendar provider write.
+
+Verified after this work:
+
+```text
+npm run lint:minimal
+npm run typecheck
+npm run test -- tests/unit/notes
+npm run verify
+npm run build
+```
+
+Targeted manual browser checks for `/notes`, `/notes/captures/[captureId]`, and
+`/today` were not run during release review.
 
 ## Synthetic Test Data
 
