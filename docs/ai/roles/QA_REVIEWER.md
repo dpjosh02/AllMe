@@ -33,6 +33,8 @@ the findings.
 ## Validation
 
 - Prefer focused commands that exercise the changed behavior.
+- For UI or route changes, run or request a targeted smoke test of the touched
+  user path and report whether it was completed.
 - For integration readiness, recommend or run `npm run verify` when feasible.
 - Report unchecked areas plainly.
 

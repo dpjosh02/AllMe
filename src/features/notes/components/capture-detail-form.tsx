@@ -16,6 +16,7 @@ type CaptureDetailFormProps = {
 };
 
 const initialState = {
+  error: null,
   savedAt: null,
 } satisfies CaptureSaveState;
 
@@ -36,11 +37,22 @@ export function CaptureDetailForm({
       <label className="grid gap-2">
         <span className="allme-kicker">Title</span>
         <input
+          aria-describedby={state.error ? "capture-title-error" : undefined}
+          aria-invalid={state.error ? "true" : undefined}
           className="min-h-12 rounded-xl border border-[var(--line)] bg-[var(--input)] px-4 text-base font-semibold outline-none transition focus:border-[var(--accent)]"
           defaultValue={title}
           name="title"
           required
         />
+        {state.error ? (
+          <span
+            aria-live="polite"
+            className="text-sm font-semibold text-[var(--danger)]"
+            id="capture-title-error"
+          >
+            {state.error}
+          </span>
+        ) : null}
       </label>
       <label className="grid gap-2">
         <span className="allme-kicker">Capture body</span>
@@ -58,7 +70,7 @@ export function CaptureDetailForm({
           <p
             aria-live="polite"
             className={`text-xs font-semibold text-[var(--success)] ${
-              state.savedAt
+              state.savedAt && !state.error
                 ? "animate-[allme-saved-fade_2.2s_ease-out_forwards]"
                 : "opacity-0"
             }`}

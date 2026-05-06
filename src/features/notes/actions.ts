@@ -1,14 +1,23 @@
 "use server";
 
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { notesMutationStore } from "@/features/notes/mutations";
+import {
+  CaptureMutationError,
+  completeCaptureForUser,
+  createCaptureForUser,
+  restoreCaptureForUser,
+  updateCaptureForUser,
+} from "@/features/notes/persistence";
 import { requireCurrentUser } from "@/server/auth/guards";
 import { db } from "@/server/db";
 import { calendarEventNoteLinks, notes } from "@/server/db/schema";
 
 export type CaptureSaveState = {
+  error: string | null;
   savedAt: string | null;
 };
 
@@ -16,43 +25,28 @@ export async function createCapture(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const body = String(formData.get("body") ?? "").trim();
 
-  if (!body) {
-    return;
-  }
-
-  await db.insert(notes).values({
+  const result = await createCaptureForUser({
     body,
-    title: createCaptureTitle(body),
+    store: notesMutationStore,
     userId: currentUser.id,
   });
 
-  revalidateCaptureViews();
+  if (result.created) {
+    revalidateCaptureViews();
+  }
 }
 
 export async function updateCapture(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const captureId = getCaptureId(formData);
-  const title = String(formData.get("title") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
 
-  if (!title) {
-    throw new Error("Capture title is required");
-  }
-
-  await db
-    .update(notes)
-    .set({
-      body,
-      title,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(notes.id, captureId),
-        eq(notes.userId, currentUser.id),
-        isNull(notes.noteDate),
-      ),
-    );
+  await updateCaptureForUser({
+    body: String(formData.get("body") ?? ""),
+    captureId,
+    store: notesMutationStore,
+    title: String(formData.get("title") ?? ""),
+    userId: currentUser.id,
+  });
 
   revalidateCaptureViews(captureId);
 }
@@ -61,9 +55,21 @@ export async function updateCaptureWithState(
   _previousState: CaptureSaveState,
   formData: FormData,
 ): Promise<CaptureSaveState> {
-  await updateCapture(formData);
+  try {
+    await updateCapture(formData);
+  } catch (error) {
+    if (error instanceof CaptureMutationError) {
+      return {
+        error: error.message,
+        savedAt: null,
+      };
+    }
+
+    throw error;
+  }
 
   return {
+    error: null,
     savedAt: new Date().toISOString(),
   };
 }
@@ -71,22 +77,12 @@ export async function updateCaptureWithState(
 export async function completeCapture(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const captureId = getCaptureId(formData);
-  const completedAt = new Date();
 
-  await db
-    .update(notes)
-    .set({
-      completedAt,
-      updatedAt: completedAt,
-    })
-    .where(
-      and(
-        eq(notes.id, captureId),
-        eq(notes.userId, currentUser.id),
-        isNull(notes.noteDate),
-        isNull(notes.completedAt),
-      ),
-    );
+  await completeCaptureForUser({
+    captureId,
+    store: notesMutationStore,
+    userId: currentUser.id,
+  });
 
   revalidateCaptureViews(captureId);
 }
@@ -95,20 +91,11 @@ export async function restoreCapture(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const captureId = getCaptureId(formData);
 
-  await db
-    .update(notes)
-    .set({
-      completedAt: null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(notes.id, captureId),
-        eq(notes.userId, currentUser.id),
-        isNull(notes.noteDate),
-        isNotNull(notes.completedAt),
-      ),
-    );
+  await restoreCaptureForUser({
+    captureId,
+    store: notesMutationStore,
+    userId: currentUser.id,
+  });
 
   revalidateCaptureViews(captureId);
 }
@@ -150,20 +137,10 @@ function getCaptureId(formData: FormData) {
   const captureId = String(formData.get("captureId") ?? "");
 
   if (!captureId) {
-    throw new Error("Missing capture id");
+    throw new CaptureMutationError("Capture not found.");
   }
 
   return captureId;
-}
-
-function createCaptureTitle(body: string) {
-  const firstLine = body.split(/\r?\n/)[0]?.trim() ?? "";
-
-  if (!firstLine) {
-    return "Quick capture";
-  }
-
-  return firstLine.length > 72 ? `${firstLine.slice(0, 69)}...` : firstLine;
 }
 
 function revalidateCaptureViews(captureId?: string) {

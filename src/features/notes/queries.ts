@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
+import { buildNotesStats } from "@/features/notes/read-model";
 import { formatDisplayDate } from "@/features/today/date";
 import { db } from "@/server/db";
 import { calendarEventNoteLinks, notes } from "@/server/db/schema";
@@ -17,11 +18,11 @@ export async function getNotesPageData(userId: string) {
     activeCaptures,
     completedCaptures,
     dailyNotes,
-    stats: {
+    stats: buildNotesStats({
       activeCaptureCount: activeCaptures.length,
       completedCaptureCount: completedCaptures.length,
       dailyNoteCount: dailyNotes.length,
-    },
+    }),
   };
 }
 
@@ -55,7 +56,10 @@ export async function getCaptureDetail({
     return null;
   }
 
-  const [capture] = await attachLinkedCalendarNoteState({ notes: rows, userId });
+  const [capture] = await attachLinkedCalendarNoteState({
+    notes: rows,
+    userId,
+  });
 
   return capture ?? null;
 }
@@ -170,6 +174,7 @@ async function attachLinkedCalendarNoteState<TNote extends { id: string }>({
     ...note,
     isLinkedToCalendarEvent:
       linksByNoteId.get(note.id)?.isLinkedToCalendarEvent ?? false,
-    linkedCalendarScope: linksByNoteId.get(note.id)?.linkedCalendarScope ?? null,
+    linkedCalendarScope:
+      linksByNoteId.get(note.id)?.linkedCalendarScope ?? null,
   }));
 }

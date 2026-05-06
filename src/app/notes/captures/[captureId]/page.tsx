@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -11,8 +11,8 @@ import {
   PageSection,
   StatusPill,
 } from "@/components/layout/page-scaffold";
-import { completeCapture, restoreCapture } from "@/features/notes/actions";
 import { CaptureDetailForm } from "@/features/notes/components/capture-detail-form";
+import { CaptureStateActionForm } from "@/features/notes/components/capture-state-action-form";
 import { DeleteCaptureForm } from "@/features/notes/components/delete-capture-form";
 import { getCaptureDetail } from "@/features/notes/queries";
 import { requirePageUser } from "@/server/auth/guards";
@@ -107,20 +107,11 @@ export default async function CaptureDetailPage({
                 eyebrow="Workflow"
                 title="Inbox state"
               >
-                <form action={isCompleted ? restoreCapture : completeCapture}>
-                  <input name="captureId" type="hidden" value={capture.id} />
-                  <button
-                    className="allme-control inline-flex min-h-10 items-center gap-2 px-4 text-sm font-semibold"
-                    type="submit"
-                  >
-                    {isCompleted ? (
-                      <RotateCcw aria-hidden="true" className="h-4 w-4" />
-                    ) : (
-                      <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-                    )}
-                    {isCompleted ? "Restore to inbox" : "Mark complete"}
-                  </button>
-                </form>
+                <CaptureStateActionForm
+                  captureId={capture.id}
+                  mode={isCompleted ? "restore" : "complete"}
+                  size="detail"
+                />
               </PageSection>
             </AllMeCard>
 
@@ -153,7 +144,9 @@ function MetadataRow({ label, value }: { label: string; value: string }) {
       <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
         {label}
       </dt>
-      <dd className="mt-1 break-words text-sm font-semibold leading-6">{value}</dd>
+      <dd className="mt-1 break-words text-sm font-semibold leading-6">
+        {value}
+      </dd>
     </div>
   );
 }
