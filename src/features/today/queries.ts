@@ -1,6 +1,10 @@
 import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getTodayAgenda } from "@/features/calendar/agenda-query";
+import {
+  createUnavailableTodayFinanceSnapshot,
+  getTodayFinanceSnapshot,
+} from "@/features/finance/dashboard/today-snapshot-query";
 import { getTodayProgressSummary } from "@/features/progress/queries";
 import {
   getLocalDateKey,
@@ -35,6 +39,7 @@ export async function getTodayPageData({
     displayDate: formatDisplayDate(dateKey),
     dailyNote,
     agendaItems: await getTodayAgenda({ dateKey, timezone, userId }),
+    financeSnapshot: await getSafeTodayFinanceSnapshot({ dateKey, userId }),
     isViewingToday: dateKey === localTodayKey,
     localTodayKey,
     progressSummary: await getTodayProgressSummary({ dateKey, userId }),
@@ -42,6 +47,20 @@ export async function getTodayPageData({
     recentDailyNotes: await getRecentDailyNotes(userId),
     timezone,
   };
+}
+
+async function getSafeTodayFinanceSnapshot({
+  dateKey,
+  userId,
+}: {
+  dateKey: string;
+  userId: string;
+}) {
+  try {
+    return await getTodayFinanceSnapshot({ dateKey, userId });
+  } catch {
+    return createUnavailableTodayFinanceSnapshot(dateKey);
+  }
 }
 
 async function getAgendaSourceSummary(userId: string) {
