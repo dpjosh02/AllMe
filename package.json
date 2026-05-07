@@ -31,6 +31,7 @@
     "finance:test-data:clear": "tsx scripts/finance-clear-test-data.ts",
     "calendar:full-sync": "tsx scripts/calendar-full-sync.ts",
     "calendar:recurring-readiness": "tsx scripts/calendar-recurring-readiness.ts",
+    "slice:guide": "tsx scripts/slice-workflow.ts guide",
     "slice:start": "tsx scripts/slice-workflow.ts start",
     "slice:status": "tsx scripts/slice-workflow.ts status",
     "slice:commit-plan": "tsx scripts/slice-workflow.ts commit-plan",

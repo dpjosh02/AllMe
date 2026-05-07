@@ -46,7 +46,51 @@ Use the local slice coordinator for role-based AI work that needs separate plan
 and implementation worktrees. Run it from a clean `main` worktree unless the
 command explicitly targets the plan or implementation worktree.
 
-Normal sequence:
+### Guided Slice Coordinator
+
+The guided coordinator automates the repetitive branch/worktree steps while
+leaving role work in separate Codex sessions. It prints the next prompt and the
+folder to open; it does not spawn independent conversations.
+
+Normal guided sequence:
+
+```bash
+npm run slice:guide -- start <slice-slug> --description "<slice description>"
+npm run slice:guide -- plan-ready <slice-slug>
+npm run slice:guide -- specialist-ready <slice-slug>
+npm run slice:guide -- impl-ready <slice-slug>
+npm run slice:guide -- qa-ready <slice-slug>
+npm run slice:guide -- cleanup <slice-slug>
+```
+
+Use `npm run slice:guide -- status <slice-slug>` to inspect main, plan, and
+implementation worktrees, branch merge state, changed files, and the next
+recommended command.
+
+Mental model:
+
+- `../allme-<slice-slug>-plan` is the docs-only planning worktree on
+  `codex/plan-<slice-slug>`.
+- `../allme-<slice-slug>-impl` is the product-code implementation worktree on
+  `codex/impl-<slice-slug>`.
+- `main` receives only the finalized integrated slice.
+
+Approval gates:
+
+- Planning and implementation commits ask before committing.
+- Plan-to-implementation merges ask before merging.
+- Implementation-to-main merge asks before merging and never pushes by default.
+- Cleanup asks before removing worktrees or deleting branches.
+- Force cleanup requires explicit `--force`; remote branch deletion requires
+  explicit `--delete-remote`.
+
+The plan worktree may contain only `docs/ai/**`,
+`docs/DEVELOPMENT_STATUS.md`, and `AGENTS.md` when workflow docs changed. Product
+source belongs in the implementation worktree after the plan is approved and
+merged forward. Role-specific behavior remains documented in
+`docs/ai/roles/`.
+
+Manual fallback sequence:
 
 ```bash
 npm run slice:start -- notes-capture-detail --link-env

@@ -1,6 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, symlinkSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
 
 type SliceCommand =
   | "start"
@@ -10,7 +18,11 @@ type SliceCommand =
   | "commit-impl"
   | "verify"
   | "close"
-  | "cleanup";
+  | "cleanup"
+  | "plan-ready"
+  | "specialist-ready"
+  | "impl-ready"
+  | "qa-ready";
 
 type ParsedArgs = {
   all: boolean;
@@ -18,12 +30,30 @@ type ParsedArgs = {
   build: boolean;
   command: SliceCommand;
   deleteRemote: boolean;
+  description?: string;
   force: boolean;
   from?: string;
+  guided: boolean;
   linkEnv: boolean;
   message?: string;
   migrate: boolean;
   skipVerify: boolean;
+  slug: string;
+};
+
+type SliceMetadata = {
+  baseBranch: string;
+  createdAt: string;
+  description: string;
+  implBranch: string;
+  implPath: string;
+  lastValidation?: {
+    command: string;
+    passed: boolean;
+    recordedAt: string;
+  };
+  planBranch: string;
+  planPath: string;
   slug: string;
 };
 
@@ -36,10 +66,14 @@ const commands = new Set<SliceCommand>([
   "verify",
   "close",
   "cleanup",
+  "plan-ready",
+  "specialist-ready",
+  "impl-ready",
+  "qa-ready",
 ]);
 
 function usage(): never {
-  console.error(`Usage: tsx scripts/slice-workflow.ts <command> <slice-slug> [options]
+  console.error(`Usage: tsx scripts/slice-workflow.ts [guide] <command> <slice-slug> [options]
 
 Commands:
   start          Create plan and implementation worktrees.
@@ -51,8 +85,25 @@ Commands:
   close          Verify and merge the implementation branch into main.
   cleanup        Remove worktrees and delete local slice branches.
 
+Guided commands:
+  guide start <slug> --description "<description>"
+                 Create plan/impl worktrees and print the PM/Architect prompt.
+  guide plan-ready <slug>
+                 Commit docs-only planning work and optionally merge it to impl.
+  guide specialist-ready <slug>
+                 Commit specialist plan updates and optionally merge them to impl.
+  guide impl-ready <slug>
+                 Commit implementation work and print the QA/release prompt.
+  guide qa-ready <slug>
+                 Commit QA updates, prompt validation, and optionally merge to main.
+  guide cleanup <slug>
+                 Remove slice worktrees and local branches after approval.
+  guide status <slug>
+                 Show detailed lifecycle status and the next recommended command.
+
 Options:
   --from <branch>             Base branch for start.
+  --description <text>        Human slice description for guided prompts.
   --link-env                  Symlink .env.local into the implementation worktree.
   --message, -m <message>     Commit message.
   --all                       Stage all implementation changes before commit.
@@ -66,7 +117,9 @@ Options:
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
-  const [rawCommand, ...rest] = argv;
+  const [first, ...remaining] = argv;
+  const guided = first === "guide";
+  const [rawCommand, ...rest] = guided ? remaining : argv;
 
   if (!commands.has(rawCommand as SliceCommand)) {
     usage();
@@ -80,6 +133,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     command: rawCommand as SliceCommand,
     deleteRemote: false,
     force: false,
+    guided,
     linkEnv: false,
     migrate: false,
     skipVerify: false,
@@ -90,6 +144,8 @@ function parseArgs(argv: string[]): ParsedArgs {
 
     if (arg === "--from") {
       parsed.from = requireValue(rest, (index += 1), arg);
+    } else if (arg === "--description") {
+      parsed.description = requireValue(rest, (index += 1), arg);
     } else if (arg === "--message" || arg === "-m") {
       parsed.message = requireValue(rest, (index += 1), arg);
     } else if (arg === "--link-env") {
@@ -271,6 +327,74 @@ function pathsFor(root: string, slug: string) {
   };
 }
 
+function humanizeSlug(slug: string): string {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function gitCommonDir(cwd: string): string {
+  const commonDir = git(["rev-parse", "--git-common-dir"], cwd);
+  return resolve(cwd, commonDir);
+}
+
+function metadataPath(root: string, slug: string): string {
+  return resolve(gitCommonDir(root), "allme-slices", `${slug}.json`);
+}
+
+function loadMetadata(root: string, slug: string): SliceMetadata | undefined {
+  const path = metadataPath(root, slug);
+
+  if (!existsSync(path)) {
+    return undefined;
+  }
+
+  return JSON.parse(readFileSync(path, "utf8")) as SliceMetadata;
+}
+
+function saveMetadata(root: string, metadata: SliceMetadata): void {
+  const path = metadataPath(root, metadata.slug);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(metadata, null, 2)}\n`);
+}
+
+function metadataFor(root: string, args: ParsedArgs): SliceMetadata {
+  const slice = pathsFor(root, args.slug);
+  const loaded = loadMetadata(root, args.slug);
+
+  return {
+    baseBranch: loaded?.baseBranch ?? args.from ?? "main",
+    createdAt: loaded?.createdAt ?? new Date().toISOString(),
+    description:
+      args.description ??
+      loaded?.description ??
+      "No slice description recorded.",
+    implBranch: slice.implBranch,
+    implPath: slice.implPath,
+    lastValidation: loaded?.lastValidation,
+    planBranch: slice.planBranch,
+    planPath: slice.planPath,
+    slug: args.slug,
+  };
+}
+
+async function confirm(question: string): Promise<boolean> {
+  const prompt = `${question}\nType "yes" to continue: `;
+  const readline = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  try {
+    const answer = await readline.question(prompt);
+    return answer.trim().toLowerCase() === "yes";
+  } finally {
+    readline.close();
+  }
+}
+
 function changedFiles(cwd: string): string[] {
   const tracked = git(["diff", "--name-only", "HEAD"], cwd);
   const untracked = git(["ls-files", "--others", "--exclude-standard"], cwd);
@@ -286,6 +410,49 @@ function lines(output: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function printFileList(files: string[]): void {
+  console.info(files.length > 0 ? files.join("\n") : "No changed files.");
+}
+
+function gitOutputOrEmpty(args: string[], cwd: string): string {
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+
+  if (result.status !== 0) {
+    return "";
+  }
+
+  return result.stdout.trim();
+}
+
+function branchFile(root: string, branch: string, file: string): string {
+  return gitOutputOrEmpty(["show", `${branch}:${file}`], root);
+}
+
+function branchFiles(root: string, branch: string, path: string): string[] {
+  return lines(
+    gitOutputOrEmpty(["ls-tree", "-r", "--name-only", branch, path], root),
+  );
+}
+
+function fileTextFromWorktreeOrBranch(
+  root: string,
+  worktreePath: string,
+  branch: string,
+  file: string,
+): string {
+  const diskPath = resolve(worktreePath, file);
+
+  if (existsSync(diskPath)) {
+    return readFileSync(diskPath, "utf8");
+  }
+
+  return branchFile(root, branch, file);
 }
 
 function requireBranch(cwd: string, expected: string, label: string): void {
@@ -328,7 +495,11 @@ function findMainRoot(): string {
   return line?.slice("worktree ".length) ?? root;
 }
 
-function startSlice(args: ParsedArgs): void {
+function createSliceWorktrees(args: ParsedArgs): {
+  base: string;
+  root: string;
+  slice: ReturnType<typeof pathsFor>;
+} {
   const root = repoRoot();
   const branch = currentBranch(root);
 
@@ -386,6 +557,11 @@ function startSlice(args: ParsedArgs): void {
     }
   }
 
+  return { base, root, slice };
+}
+
+function startSlice(args: ParsedArgs): void {
+  const { root, slice } = createSliceWorktrees(args);
   printNextSteps(root, args.slug, slice);
 }
 
@@ -456,16 +632,7 @@ function commitPlan(args: ParsedArgs): void {
     fail("No planning changes to commit.");
   }
 
-  const workflowChanged = files.some((file) => file.startsWith("docs/ai/"));
-  const blocked = files.filter(
-    (file) => !isAllowedPlanningFile(file, workflowChanged),
-  );
-
-  if (blocked.length > 0) {
-    fail(
-      `Planning commits may only contain approved docs paths:\n${blocked.join("\n")}`,
-    );
-  }
+  requirePlanningOnly(files);
 
   git(["add", "--", ...files], plan);
   git(
@@ -483,6 +650,220 @@ function isAllowedPlanningFile(
     file.startsWith("docs/ai/") ||
     file === "docs/DEVELOPMENT_STATUS.md" ||
     (file === "AGENTS.md" && workflowChanged)
+  );
+}
+
+function requirePlanningOnly(files: string[]): void {
+  const workflowChanged = files.some((file) => file.startsWith("docs/ai/"));
+  const blocked = files.filter(
+    (file) => !isAllowedPlanningFile(file, workflowChanged),
+  );
+
+  if (blocked.length > 0) {
+    fail(
+      `Plan worktree may only contain approved planning docs:\n${blocked.join(
+        "\n",
+      )}`,
+    );
+  }
+}
+
+function findDecisionPacket(
+  root: string,
+  slug: string,
+  worktreePath: string,
+  branch: string,
+): string | undefined {
+  const changedPackets = existsSync(worktreePath)
+    ? changedFiles(worktreePath).filter(isDecisionPacket)
+    : [];
+
+  if (changedPackets.length > 0) {
+    return changedPackets[0];
+  }
+
+  const branchPackets = branchExists(branch, root)
+    ? branchFiles(root, branch, "docs/ai/decisions").filter(isDecisionPacket)
+    : [];
+
+  const matching = branchPackets.filter((file) => file.includes(slug));
+
+  if (matching.length > 0) {
+    return matching.sort().at(-1);
+  }
+
+  const diffPackets = branchExists(branch, root)
+    ? lines(
+        gitOutputOrEmpty(
+          ["diff", "--name-only", `main...${branch}`, "--", "docs/ai"],
+          root,
+        ),
+      ).filter(isDecisionPacket)
+    : [];
+
+  return diffPackets.sort().at(-1);
+}
+
+function isDecisionPacket(file: string): boolean {
+  return file.startsWith("docs/ai/decisions/") && file.endsWith(".md");
+}
+
+function requiredSpecialistsFromPacket(
+  root: string,
+  packetPath: string | undefined,
+  planPath: string,
+  planBranch: string,
+): Array<"UI/UX" | "Data/DB"> {
+  if (!packetPath) {
+    return [];
+  }
+
+  const packet = fileTextFromWorktreeOrBranch(
+    root,
+    planPath,
+    planBranch,
+    packetPath,
+  );
+  const requiredText = requiredRolesText(packet);
+
+  return [
+    requiredText.includes("UI/UX") ? "UI/UX" : undefined,
+    requiredText.includes("Data/DB") ? "Data/DB" : undefined,
+  ].filter((role): role is "UI/UX" | "Data/DB" => Boolean(role));
+}
+
+function requiredRolesText(packet: string): string {
+  const requiredAgents = sectionText(packet, "Required Agents");
+
+  if (requiredAgents) {
+    return requiredAgents.split(/\nNot required:/i)[0] ?? requiredAgents;
+  }
+
+  const requiredRoles = packet.match(/Required roles:\s*([^\n]+)/i);
+
+  if (requiredRoles?.[1]) {
+    return requiredRoles[1];
+  }
+
+  return "";
+}
+
+function sectionText(markdown: string, heading: string): string {
+  const pattern = new RegExp(`^## ${escapeRegExp(heading)}\\s*$`, "im");
+  const match = pattern.exec(markdown);
+
+  if (!match) {
+    return "";
+  }
+
+  const start = match.index + match[0].length;
+  const next = markdown.slice(start).search(/^## /m);
+
+  return next === -1
+    ? markdown.slice(start).trim()
+    : markdown.slice(start, start + next).trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function printPrompt(title: string, prompt: string): void {
+  console.info("");
+  console.info(`--- ${title} prompt ---`);
+  console.info(prompt.trim());
+  console.info("--- end prompt ---");
+}
+
+function promptContext(
+  metadata: SliceMetadata,
+  branch: string,
+  worktreePath: string,
+  packetPath: string | undefined,
+): string {
+  return `Worktree path: ${worktreePath}
+Branch: ${branch}
+Slice slug: ${metadata.slug}
+Slice description: ${metadata.description}
+Active decision packet: ${packetPath ?? "none detected"}`;
+}
+
+function printPlannerPrompt(metadata: SliceMetadata): void {
+  printPrompt(
+    "Product Manager / Architect",
+    `You are the Product Manager / Architect for AllMe. Follow AGENTS.md and docs/ai/WORKFLOW.md.
+
+${promptContext(metadata, metadata.planBranch, metadata.planPath, undefined)}
+
+Open the worktree above. Read docs/ai/roles/PRODUCT_MANAGER.md, docs/ai/roles/ARCHITECT.md, docs/ai/NEXT_SLICES.md, docs/ai/TASK_TEMPLATE.md, docs/ROADMAP.md, docs/PROJECT_BLUEPRINT.md, and docs/DEVELOPMENT_STATUS.md.
+
+Plan only. Do not edit product source code. Allowed planning files are docs/ai/**, docs/DEVELOPMENT_STATUS.md, and AGENTS.md only when workflow docs changed. Create or update the active decision packet, define acceptance criteria, non-goals, required specialist roles, protected files, and validation expectations.
+
+When the plan is ready, stop and tell the user to run:
+npm run slice:guide -- plan-ready ${metadata.slug}`,
+  );
+}
+
+function printSpecialistPrompt(
+  role: "UI/UX" | "Data/DB",
+  metadata: SliceMetadata,
+  packetPath: string | undefined,
+): void {
+  const roleDoc =
+    role === "UI/UX" ? "docs/ai/roles/UI_UX.md" : "docs/ai/roles/DATA_DB.md";
+  const roleFocus =
+    role === "UI/UX"
+      ? "layout, interaction states, copy, design-system fit, and UI validation"
+      : "schema/query/import/persistence risks, migration ownership, idempotency, and data validation";
+
+  printPrompt(
+    role,
+    `You are the ${role} role for AllMe. Follow AGENTS.md, docs/ai/WORKFLOW.md, and ${roleDoc}.
+
+${promptContext(metadata, metadata.planBranch, metadata.planPath, packetPath)}
+
+Open the plan worktree above. This is a planning update only unless the user explicitly assigns implementation. Focus on ${roleFocus}. Update the decision packet or planning docs with required guidance, owned/protected files, risks, and validation expectations.
+
+Do not edit product source code in the plan worktree. Allowed planning files are docs/ai/**, docs/DEVELOPMENT_STATUS.md, and AGENTS.md only when workflow docs changed.
+
+When specialist planning is ready, stop and tell the user to run:
+npm run slice:guide -- specialist-ready ${metadata.slug}`,
+  );
+}
+
+function printPrincipalEngineerPrompt(
+  metadata: SliceMetadata,
+  packetPath: string | undefined,
+): void {
+  printPrompt(
+    "Principal Engineer",
+    `You are the Principal Engineer for AllMe. Follow AGENTS.md, docs/ai/WORKFLOW.md, and docs/ai/roles/PRINCIPAL_ENGINEER.md.
+
+${promptContext(metadata, metadata.implBranch, metadata.implPath, packetPath)}
+
+Open the implementation worktree above. Implement the smallest coherent slice described by the active decision packet. Keep product code in the implementation branch, preserve existing user/worktree changes, do not install dependencies, and escalate before crossing unassigned schema, auth, provider-write, finance import, package, or migration boundaries.
+
+Use focused validation for the changed behavior and report commands run or skipped. When implementation is ready, stop and tell the user to run:
+npm run slice:guide -- impl-ready ${metadata.slug}`,
+  );
+}
+
+function printQaReleasePrompt(
+  metadata: SliceMetadata,
+  packetPath: string | undefined,
+): void {
+  printPrompt(
+    "QA Reviewer / Release Integrator",
+    `You are the QA Reviewer / Release Integrator for AllMe. Follow AGENTS.md, docs/ai/WORKFLOW.md, docs/ai/roles/QA_REVIEWER.md, and docs/ai/roles/RELEASE_INTEGRATOR.md.
+
+${promptContext(metadata, metadata.implBranch, metadata.implPath, packetPath)}
+
+Open the implementation worktree above. Review for regressions, unsafe scope expansion, missing tests, broken invariants, migration/order risk, and release readiness. Keep findings concrete with file/line references when reviewing code. Only make QA/release fixes that are assigned and focused.
+
+Expected validation starts with npm run lint:minimal, npm run typecheck, npm run test, and npm run verify. Add npm run build or npm run db:migrate only when the slice requires them.
+
+When QA/release work is ready, stop and tell the user to run:
+npm run slice:guide -- qa-ready ${metadata.slug}`,
   );
 }
 
@@ -530,11 +911,11 @@ function commitImpl(args: ParsedArgs): void {
   git(["commit", "-m", message], impl, "inherit");
 }
 
-function warnHighRisk(files: string[]): void {
+function warnHighRisk(files: string[]): string[] {
   const risky = files.filter(isHighRiskFile);
 
   if (risky.length === 0) {
-    return;
+    return [];
   }
 
   console.warn("");
@@ -543,6 +924,7 @@ function warnHighRisk(files: string[]): void {
   );
   console.warn(risky.join("\n"));
   console.warn("");
+  return risky;
 }
 
 function isHighRiskFile(file: string): boolean {
@@ -550,8 +932,12 @@ function isHighRiskFile(file: string): boolean {
     file.startsWith("db/migrations/") ||
     file === "src/server/db/schema.ts" ||
     file.startsWith("src/server/auth/") ||
+    file === "proxy.ts" ||
+    file.startsWith("src/app/api/") ||
     file.startsWith("src/features/calendar/provider-write") ||
     file === "src/features/calendar/actions.ts" ||
+    file.startsWith("src/features/calendar/integrations/") ||
+    file.startsWith("src/features/calendar/sync/") ||
     file.startsWith("src/features/finance/imports/") ||
     file === "package.json" ||
     basename(file) === "package-lock.json" ||
@@ -651,6 +1037,445 @@ function cleanupSlice(args: ParsedArgs): void {
   }
 }
 
+async function guideStart(args: ParsedArgs): Promise<void> {
+  if (!args.description) {
+    fail('guide start requires --description "<slice description>".');
+  }
+
+  const { base, root, slice } = createSliceWorktrees(args);
+  const metadata: SliceMetadata = {
+    baseBranch: base,
+    createdAt: new Date().toISOString(),
+    description: args.description,
+    implBranch: slice.implBranch,
+    implPath: slice.implPath,
+    planBranch: slice.planBranch,
+    planPath: slice.planPath,
+    slug: args.slug,
+  };
+
+  saveMetadata(root, metadata);
+
+  console.info("");
+  console.info("Guided slice worktrees created.");
+  console.info(`Plan worktree: ${slice.planPath}`);
+  console.info(`Implementation worktree: ${slice.implPath}`);
+  printPlannerPrompt(metadata);
+}
+
+async function guidePlanReady(args: ParsedArgs): Promise<void> {
+  const root = findMainRoot();
+  const metadata = metadataFor(root, args);
+  const plan = commandTarget(root, args.slug, "plan");
+  requireBranch(plan, metadata.planBranch, "Plan worktree");
+
+  const files = changedFiles(plan);
+  console.info(`Plan worktree: ${plan}`);
+  printFileList(files);
+
+  if (files.length === 0) {
+    fail("No planning changes to commit.");
+  }
+
+  requirePlanningOnly(files);
+
+  const commitApproved = await confirm(
+    `Commit planning docs with message "Plan ${humanizeSlug(args.slug)}"?`,
+  );
+
+  if (!commitApproved) {
+    console.info("Plan commit skipped.");
+    return;
+  }
+
+  git(["add", "--", ...files], plan);
+  git(["commit", "-m", `Plan ${humanizeSlug(args.slug)}`], plan, "inherit");
+
+  const packetPath = findDecisionPacket(
+    root,
+    args.slug,
+    metadata.planPath,
+    metadata.planBranch,
+  );
+  const mergeApproved = await confirm(
+    `Merge ${metadata.planBranch} into ${metadata.implBranch} with --no-ff?`,
+  );
+
+  if (mergeApproved) {
+    mergePlanBranchIntoImpl(metadata, root);
+  } else {
+    console.info(
+      `Plan merge skipped. Run npm run slice:guide -- plan-ready ${args.slug} when ready.`,
+    );
+    return;
+  }
+
+  const specialists = requiredSpecialistsFromPacket(
+    root,
+    packetPath,
+    metadata.planPath,
+    metadata.planBranch,
+  );
+
+  console.info(`Implementation worktree: ${metadata.implPath}`);
+
+  if (specialists.length > 0) {
+    for (const role of specialists) {
+      printSpecialistPrompt(role, metadata, packetPath);
+    }
+  } else {
+    printPrincipalEngineerPrompt(metadata, packetPath);
+  }
+}
+
+async function guideSpecialistReady(args: ParsedArgs): Promise<void> {
+  const root = findMainRoot();
+  const metadata = metadataFor(root, args);
+  const plan = commandTarget(root, args.slug, "plan");
+  requireBranch(plan, metadata.planBranch, "Plan worktree");
+
+  const files = changedFiles(plan);
+  console.info(`Plan worktree: ${plan}`);
+  printFileList(files);
+
+  if (files.length === 0) {
+    fail("No specialist planning changes to commit.");
+  }
+
+  requirePlanningOnly(files);
+
+  const commitApproved = await confirm(
+    `Commit specialist planning updates with message "Update ${humanizeSlug(
+      args.slug,
+    )} plan"?`,
+  );
+
+  if (!commitApproved) {
+    console.info("Specialist plan commit skipped.");
+    return;
+  }
+
+  git(["add", "--", ...files], plan);
+  git(
+    ["commit", "-m", `Update ${humanizeSlug(args.slug)} plan`],
+    plan,
+    "inherit",
+  );
+
+  const mergeApproved = await confirm(
+    `Merge updated ${metadata.planBranch} into ${metadata.implBranch} with --no-ff?`,
+  );
+
+  if (mergeApproved) {
+    mergePlanBranchIntoImpl(metadata, root);
+  } else {
+    console.info(
+      `Updated plan merge skipped. Run npm run slice:guide -- specialist-ready ${args.slug} when ready.`,
+    );
+    return;
+  }
+
+  const packetPath = findDecisionPacket(
+    root,
+    args.slug,
+    metadata.planPath,
+    metadata.planBranch,
+  );
+  printPrincipalEngineerPrompt(metadata, packetPath);
+}
+
+async function guideImplReady(args: ParsedArgs): Promise<void> {
+  const root = findMainRoot();
+  const metadata = metadataFor(root, args);
+  const impl = commandTarget(root, args.slug, "impl");
+  requireBranch(impl, metadata.implBranch, "Impl worktree");
+
+  const files = changedFiles(impl);
+  console.info(`Implementation worktree: ${impl}`);
+  printFileList(files);
+
+  if (files.length === 0) {
+    fail("No implementation changes to commit.");
+  }
+
+  const risky = warnHighRisk(files);
+  const question =
+    risky.length > 0
+      ? `High-risk files changed. Commit implementation with message "Implement ${humanizeSlug(
+          args.slug,
+        )}"?`
+      : `Commit implementation with message "Implement ${humanizeSlug(
+          args.slug,
+        )}"?`;
+  const commitApproved = await confirm(question);
+
+  if (!commitApproved) {
+    console.info("Implementation commit skipped.");
+    return;
+  }
+
+  git(["add", "--", ...files], impl);
+  git(
+    ["commit", "-m", `Implement ${humanizeSlug(args.slug)}`],
+    impl,
+    "inherit",
+  );
+
+  const qaApproved = await confirm("Ready to hand off for QA/release?");
+
+  if (!qaApproved) {
+    console.info(
+      `QA/release handoff skipped. Run npm run slice:guide -- impl-ready ${args.slug} when ready.`,
+    );
+    return;
+  }
+
+  const packetPath = findDecisionPacket(
+    root,
+    args.slug,
+    metadata.implPath,
+    metadata.implBranch,
+  );
+  printQaReleasePrompt(metadata, packetPath);
+}
+
+async function guideQaReady(args: ParsedArgs): Promise<void> {
+  const root = findMainRoot();
+  const metadata = metadataFor(root, args);
+  const impl = commandTarget(root, args.slug, "impl");
+  requireBranch(impl, metadata.implBranch, "Impl worktree");
+
+  const files = changedFiles(impl);
+  console.info(`Implementation worktree: ${impl}`);
+  printFileList(files);
+
+  if (files.length > 0) {
+    const commitApproved = await confirm(
+      `Commit QA/release updates with message "Review ${humanizeSlug(
+        args.slug,
+      )}"?`,
+    );
+
+    if (!commitApproved) {
+      console.info("QA/release commit skipped.");
+      return;
+    }
+
+    git(["add", "--", ...files], impl);
+    git(["commit", "-m", `Review ${humanizeSlug(args.slug)}`], impl, "inherit");
+  }
+
+  await promptAndRunValidation(args, metadata, root, impl);
+
+  const mergeApproved = await confirm(
+    `Merge ${metadata.implBranch} into main with --no-ff?`,
+  );
+
+  if (mergeApproved) {
+    mergeImplIntoMain(metadata, root);
+  } else {
+    console.info(
+      `Main merge skipped. Run npm run slice:guide -- qa-ready ${args.slug} when ready.`,
+    );
+    return;
+  }
+
+  const cleanupApproved = await confirm("Ready to clean up slice worktrees?");
+
+  if (cleanupApproved) {
+    cleanupSlice(args);
+  } else {
+    console.info(
+      `Cleanup skipped. Run npm run slice:guide -- cleanup ${args.slug}`,
+    );
+  }
+}
+
+async function guideCleanup(args: ParsedArgs): Promise<void> {
+  const approved = await confirm(
+    `Remove worktrees and local branches for ${args.slug}?`,
+  );
+
+  if (!approved) {
+    console.info("Cleanup skipped.");
+    return;
+  }
+
+  cleanupSlice(args);
+  console.info("");
+  console.info("Cleanup complete.");
+  statusSlice(args);
+}
+
+async function guideClose(args: ParsedArgs): Promise<void> {
+  const approved = await confirm(
+    `Run close flow and merge codex/impl-${args.slug} into main?`,
+  );
+
+  if (!approved) {
+    console.info("Close skipped.");
+    return;
+  }
+
+  closeSlice(args);
+}
+
+function guideStatus(args: ParsedArgs): void {
+  const root = findMainRoot();
+  const metadata = metadataFor(root, args);
+  const planMerged = branchExists(metadata.planBranch, root)
+    ? isAncestor(metadata.planBranch, metadata.implBranch, root)
+    : false;
+  const implMerged = branchExists(metadata.implBranch, root)
+    ? isAncestor(metadata.implBranch, "main", root)
+    : false;
+
+  console.info(`Main worktree: ${root}`);
+  console.info(git(["status", "--short", "--branch"], root) || "clean");
+  console.info("");
+  printDetailedWorktreeStatus("Plan", metadata.planPath, metadata.planBranch);
+  printDetailedWorktreeStatus("Impl", metadata.implPath, metadata.implBranch);
+  console.info(`Plan merged into impl: ${planMerged ? "yes" : "no"}`);
+  console.info(`Impl merged into main: ${implMerged ? "yes" : "no"}`);
+  console.info("");
+  console.info(
+    `Next recommended command: ${nextGuidedCommand(metadata, root)}`,
+  );
+}
+
+function mergePlanBranchIntoImpl(metadata: SliceMetadata, root: string): void {
+  requireBranch(metadata.implPath, metadata.implBranch, "Impl worktree");
+  requireClean(metadata.implPath, "Impl worktree");
+  git(["merge", "--no-ff", metadata.planBranch], metadata.implPath, "inherit");
+}
+
+function mergeImplIntoMain(metadata: SliceMetadata, root: string): void {
+  requireBranch(root, "main", "Main worktree");
+  requireClean(root, "Main worktree");
+  requireBranch(metadata.implPath, metadata.implBranch, "Impl worktree");
+  requireClean(metadata.implPath, "Impl worktree");
+  git(["merge", "--no-ff", metadata.implBranch], root, "inherit");
+  console.info("");
+  console.info("Impl branch merged into main.");
+  console.info("Push with:");
+  console.info("git push origin main");
+}
+
+async function promptAndRunValidation(
+  args: ParsedArgs,
+  metadata: SliceMetadata,
+  root: string,
+  impl: string,
+): Promise<void> {
+  const scripts = ["lint:minimal", "typecheck", "test", "verify"];
+
+  if (args.build) {
+    scripts.push("build");
+  }
+
+  if (args.migrate) {
+    scripts.push("db:migrate");
+  }
+
+  const approved = await confirm(`Run validation now: ${scripts.join(", ")}?`);
+
+  if (!approved) {
+    console.info("Validation skipped. Run these before merging if needed:");
+    for (const script of scripts) {
+      console.info(`npm run ${script}`);
+    }
+    saveMetadata(root, {
+      ...metadata,
+      lastValidation: {
+        command: scripts.join(", "),
+        passed: false,
+        recordedAt: new Date().toISOString(),
+      },
+    });
+    return;
+  }
+
+  try {
+    for (const script of scripts) {
+      npmRun(script, impl);
+    }
+
+    console.info("Validation passed.");
+    saveMetadata(root, {
+      ...metadata,
+      lastValidation: {
+        command: scripts.join(", "),
+        passed: true,
+        recordedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    saveMetadata(root, {
+      ...metadata,
+      lastValidation: {
+        command: scripts.join(", "),
+        passed: false,
+        recordedAt: new Date().toISOString(),
+      },
+    });
+    throw error;
+  }
+}
+
+function printDetailedWorktreeStatus(
+  label: string,
+  worktreePath: string,
+  branch: string,
+): void {
+  console.info(`${label} worktree: ${worktreePath}`);
+
+  if (!existsSync(worktreePath)) {
+    console.info("missing");
+    console.info("");
+    return;
+  }
+
+  console.info(`Branch: ${currentBranch(worktreePath) || "detached"}`);
+  console.info(git(["status", "--short", "--branch"], worktreePath) || "clean");
+  console.info("Changed files:");
+  printFileList(changedFiles(worktreePath));
+  console.info(`Expected branch: ${branch}`);
+  console.info("");
+}
+
+function nextGuidedCommand(metadata: SliceMetadata, root: string): string {
+  if (
+    !branchExists(metadata.planBranch, root) ||
+    !branchExists(metadata.implBranch, root)
+  ) {
+    return `npm run slice:guide -- start ${metadata.slug} --description "<slice description>"`;
+  }
+
+  if (
+    existsSync(metadata.planPath) &&
+    changedFiles(metadata.planPath).length > 0
+  ) {
+    return `npm run slice:guide -- plan-ready ${metadata.slug}`;
+  }
+
+  if (!isAncestor(metadata.planBranch, metadata.implBranch, root)) {
+    return `npm run slice:guide -- plan-ready ${metadata.slug}`;
+  }
+
+  if (
+    existsSync(metadata.implPath) &&
+    changedFiles(metadata.implPath).length > 0
+  ) {
+    return `npm run slice:guide -- impl-ready ${metadata.slug}`;
+  }
+
+  if (!isAncestor(metadata.implBranch, "main", root)) {
+    return `npm run slice:guide -- qa-ready ${metadata.slug}`;
+  }
+
+  return `npm run slice:guide -- cleanup ${metadata.slug}`;
+}
+
 function assertNoSymlinkCollision(path: string): void {
   if (existsSync(path) || safeLstat(path)) {
     fail(`Path already exists: ${path}`);
@@ -666,7 +1491,13 @@ function safeLstat(path: string): boolean {
   }
 }
 
-const handlers: Record<SliceCommand, (args: ParsedArgs) => void> = {
+const legacyHandlers: Record<
+  Exclude<
+    SliceCommand,
+    "plan-ready" | "specialist-ready" | "impl-ready" | "qa-ready"
+  >,
+  (args: ParsedArgs) => void
+> = {
   cleanup: cleanupSlice,
   close: closeSlice,
   "commit-impl": commitImpl,
@@ -674,6 +1505,24 @@ const handlers: Record<SliceCommand, (args: ParsedArgs) => void> = {
   "merge-plan": mergePlan,
   start: startSlice,
   status: statusSlice,
+  verify: verifySlice,
+};
+
+const guideHandlers: Record<
+  SliceCommand,
+  (args: ParsedArgs) => Promise<void> | void
+> = {
+  cleanup: guideCleanup,
+  close: guideClose,
+  "commit-impl": commitImpl,
+  "commit-plan": commitPlan,
+  "impl-ready": guideImplReady,
+  "merge-plan": mergePlan,
+  "plan-ready": guidePlanReady,
+  "qa-ready": guideQaReady,
+  "specialist-ready": guideSpecialistReady,
+  start: guideStart,
+  status: guideStatus,
   verify: verifySlice,
 };
 
@@ -685,7 +1534,13 @@ try {
     assertNoSymlinkCollision(resolve(destination, ".env.local"));
   }
 
-  handlers[args.command](args);
+  if (args.guided) {
+    await guideHandlers[args.command](args);
+  } else if (args.command in legacyHandlers) {
+    legacyHandlers[args.command as keyof typeof legacyHandlers](args);
+  } else {
+    fail(`Command ${args.command} is only available through slice:guide.`);
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);
