@@ -2,6 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
+  financeAccounts,
+  financeBalanceSnapshots,
   financeImportRuns,
   financeTransactionCategoryAssignments,
   financeTransactions,
@@ -47,7 +49,7 @@ export async function getTodayFinanceSnapshot({
 }) {
   const [transactions, hasFinanceData, latestImport] = await Promise.all([
     getTodayFinanceSnapshotTransactions({ dateKey, userId }),
-    hasAnyFinanceData(userId),
+    hasNormalizedFinanceData(userId),
     getLatestFinanceImport(userId),
   ]);
 
@@ -154,7 +156,7 @@ async function getTodayFinanceSnapshotTransactions({
     );
 }
 
-async function hasAnyFinanceData(userId: string) {
+async function hasNormalizedFinanceData(userId: string) {
   const [transaction] = await db
     .select({ id: financeTransactions.id })
     .from(financeTransactions)
@@ -165,13 +167,25 @@ async function hasAnyFinanceData(userId: string) {
     return true;
   }
 
-  const [importRun] = await db
-    .select({ id: financeImportRuns.id })
-    .from(financeImportRuns)
-    .where(eq(financeImportRuns.userId, userId))
+  const [activeAccount] = await db
+    .select({ id: financeAccounts.id })
+    .from(financeAccounts)
+    .where(
+      and(eq(financeAccounts.userId, userId), eq(financeAccounts.isActive, true)),
+    )
     .limit(1);
 
-  return Boolean(importRun);
+  if (activeAccount) {
+    return true;
+  }
+
+  const [balanceSnapshot] = await db
+    .select({ id: financeBalanceSnapshots.id })
+    .from(financeBalanceSnapshots)
+    .where(eq(financeBalanceSnapshots.userId, userId))
+    .limit(1);
+
+  return Boolean(balanceSnapshot);
 }
 
 async function getLatestFinanceImport(userId: string) {

@@ -123,15 +123,22 @@ function getSnapshotStatus(snapshot: TodayFinanceSnapshot) {
 
 function getFreshnessLabel(snapshot: TodayFinanceSnapshot) {
   if (snapshot.postedCount === 0) {
-    return getLastImportLabel(snapshot) ?? "No posted money activity for this day.";
+    return (
+      getFinanceFreshnessLabel(snapshot) ??
+      "No posted money activity for this day."
+    );
   }
 
   return "0 need review";
 }
 
-function getLastImportLabel(snapshot: TodayFinanceSnapshot) {
+export function getFinanceFreshnessLabel(snapshot: TodayFinanceSnapshot) {
+  if (snapshot.latestImport?.status !== "succeeded") {
+    return null;
+  }
+
   const importDate =
-    snapshot.latestImport?.finishedAt ?? snapshot.latestImport?.startedAt;
+    snapshot.latestImport.finishedAt ?? snapshot.latestImport.startedAt;
 
   return importDate
     ? `Last import ${importDateFormatter.format(importDate)}`

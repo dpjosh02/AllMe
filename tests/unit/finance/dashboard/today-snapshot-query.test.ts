@@ -4,6 +4,7 @@ import {
   buildTodayFinanceSnapshot,
   createUnavailableTodayFinanceSnapshot,
 } from "@/features/finance/dashboard/today-snapshot-query";
+import { getFinanceFreshnessLabel } from "@/features/today/components/today-finance-snapshot-card";
 
 describe("today finance snapshot read model", () => {
   it("summarizes posted activity with category-aware income and spending", () => {
@@ -122,5 +123,55 @@ describe("today finance snapshot read model", () => {
       totalSpending: 0,
       uncategorizedCount: 0,
     });
+  });
+
+  it("does not count failed import runs as normalized finance data", () => {
+    const snapshot = buildTodayFinanceSnapshot({
+      dateKey: "2026-05-06",
+      hasFinanceData: false,
+      latestImport: {
+        finishedAt: new Date("2026-05-06T15:00:00.000Z"),
+        startedAt: new Date("2026-05-06T14:55:00.000Z"),
+        status: "failed",
+      },
+      transactions: [],
+    });
+
+    expect(snapshot.hasFinanceData).toBe(false);
+    expect(getFinanceFreshnessLabel(snapshot)).toBeNull();
+  });
+
+  it("does not count pending or running import runs as normalized finance data", () => {
+    for (const status of ["pending", "running"] as const) {
+      const snapshot = buildTodayFinanceSnapshot({
+        dateKey: "2026-05-06",
+        hasFinanceData: false,
+        latestImport: {
+          finishedAt: null,
+          startedAt: new Date("2026-05-06T14:55:00.000Z"),
+          status,
+        },
+        transactions: [],
+      });
+
+      expect(snapshot.hasFinanceData).toBe(false);
+      expect(getFinanceFreshnessLabel(snapshot)).toBeNull();
+    }
+  });
+
+  it("shows freshness only for succeeded import runs when normalized data exists", () => {
+    const snapshot = buildTodayFinanceSnapshot({
+      dateKey: "2026-05-06",
+      hasFinanceData: true,
+      latestImport: {
+        finishedAt: new Date("2026-05-06T15:00:00.000Z"),
+        startedAt: new Date("2026-05-06T14:55:00.000Z"),
+        status: "succeeded",
+      },
+      transactions: [],
+    });
+
+    expect(snapshot.hasFinanceData).toBe(true);
+    expect(getFinanceFreshnessLabel(snapshot)).toBe("Last import May 6");
   });
 });
